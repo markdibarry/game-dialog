@@ -1,0 +1,10 @@
+node_modules/
+bower_components/
+.vscode/**
+.vscode-test/**
+vsc-extension-quickstart.md
+
+*.log
+
+build/
+dist/
