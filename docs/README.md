@@ -27,9 +27,9 @@ To write a dialog line, you start by referencing a speaker's identifier. If noth
 ```
 Bartender: Rainy out this evening!
 ```
-The system will look in the persistant storage for an actor matching the ID "Bartender" for a defined custom name. If, after the lookup, it finds "Denny", it will set the Speaker's display name as "Denny" for this dialog session. If it finds nothing, it will simply display "Bartender".
+The system will look in the persistent storage for an actor matching the ID "Bartender" for a defined custom name. If, after the lookup, it finds "Denny", it will set the Speaker's display name as "Denny" for this dialog session. If it finds nothing, it will simply display "Bartender".
 
-To access different customizable properties for a Speaker, you can reference it using the follwoing syntax:
+To access different customizable properties for a Speaker, you can reference it using the following syntax:
 
 ```
 $ID_Property
@@ -142,7 +142,7 @@ Bartender: 2% okay? [next=End]
 Bartender: Have a great day!
 ```
 
-This can come in handy for bigger conversations, where you need to organize the branches into separate sections, but for short interactions like this, you can just nest the lines directly in the choice! When the lines for that choice finishes, it'll move on to the next main line. Let's refactor a bit:
+This can come in handy for bigger conversations, where you need to organize the branches into separate sections, but for short interactions like this, you can just nest the lines directly in the choice! When the lines for that choice finishes, it'll move on to the next main line. Lets refactor a bit:
 
 ```
 Patron: I'm thirsty!
@@ -221,7 +221,7 @@ The `end` tag will end the conversation after the current line.
 
 #### Auto Proceed
 
-When a line finishes displaying it'll wait for user user prompt. If you want to bypass this, you can use the `auto` tag:
+When a line finishes displaying it'll wait for user prompt. If you want to bypass this, you can use the `auto` tag:
 
 ```
 Bartender: People say I talk a lot...
@@ -231,7 +231,7 @@ Bartender: They also say I interrupt people.
 
 ### Variables
 
-One of the core needs of a good dialog system is being able to store and retrieve data to display. This usually falls into two scopes, persistant and temporary storage. Persistant refers to data that persists outside the current dialog session, and temporary is data just within the session.
+One of the core needs of a good dialog system is being able to store and retrieve data to display. This usually falls into two scopes, persistent and temporary storage. Persistent refers to data that persists outside the current dialog session, and temporary is data just within the session.
 
 #### Temporary
 
@@ -270,7 +270,7 @@ $gold += 20
 Bartender: Now I have [$gold] total.
 ```
 
-You may also have variables that should be read-only. If you wanted to get the game's current time, you would architect your persistent lookup to retrive the value via a custom variable key like `game_time_hrs`, while ignoring any attempt to set it.
+You may also have variables that should be read-only. If you wanted to get the game's current time, you would architect your persistent lookup to retrieve the value via a custom variable key like `game_time_hrs`, while ignoring any attempt to set it.
 
 ```
 $game_time_hrs = "hamburger"
@@ -287,7 +287,7 @@ Variables can make these conversations even more interesting by using them to dr
 Bartender: I can only serve you drinks if you have a library card.
     if $has_library_card
     ? I'm a long-time patron.
-        Bartender: OH. Excuse me! How embarassing for me.
+        Bartender: OH. Excuse me! How embarrassing for me.
     ? Let me speak to your manager.
         Bartender: I AM the manager! [end]
 Bartender: What'll you have?
