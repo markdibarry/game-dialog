@@ -1,0 +1,24 @@
+--Introduction--
+Stalone: ^^Hi my name is[speed=0.3]...[/speed] [$Stalone_Name]!
+    I can eat a lot of crackers and whistle!^^
+Threena: Hi my name is Th-[auto]
+Twosen: [speed=0]My name [$Threena_Mood=annoyed]is Twosen.
+if true
+    Threena: Why did you interrupt me?
+        ? I love you!
+            Twosen: Because I love you![nl]I tease because I care!
+            Threena: Well, whatever. [next=lunch]
+        ? I didn't notice.
+            Twosen: Oh, were you talking?
+            Threena: I was, and that was super rude.
+            Twosen: By all means, you have the floor!
+            Threena: My name is Thr-[auto][next=lunch]
+        if $actor_Twosen_empathy > 5
+            ? I'm sorry.
+                $actor_Threena_bond += 1
+                Twosen: You're right. That was out of line.
+                Threena: No worries.
+
+--Lunch--
+Stalone: I want lunch!
+Twosen, Threena: Not now, $Stalone_Name!

@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.11.1" />
+    <PackageReference Include="Antlr4BuildTasks" Version="11.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="test.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Antlr4 Include="DialogLexer.g4">
+      <Listener>false</Listener>
+      <Visitor>True</Visitor>
+      <GAtn>true</GAtn>
+      <Package>GameDialogParser</Package>
+      <Error>true</Error>
+    </Antlr4>
+    <Antlr4 Include="DialogParser.g4">
+      <Listener>false</Listener>
+      <Visitor>True</Visitor>
+      <GAtn>true</GAtn>
+      <Package>GameDialogParser</Package>
+      <Error>true</Error>
+    </Antlr4>
+  </ItemGroup>
+
+</Project>
