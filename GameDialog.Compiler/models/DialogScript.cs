@@ -1,11 +1,16 @@
-﻿public class DialogScript
-{
+﻿using System.Text.Json.Serialization;
 
+namespace GameDialog.Compiler;
+
+[Serializable]
+public class DialogScript
+{
     public List<string> ActorIds { get; set; } = new();
     public List<float> ExpFloats { get; set; } = new();
     public List<string> ExpStrings { get; set; } = new();
     public List<Section> Sections { get; set; } = new();
-    public List<string> VariableNames { get; set; } = new();
+    public List<Variable> Variables { get; set; } = new();
+    public List<Function> Functions { get; set; } = new();
 }
 
 public class Section
@@ -42,4 +47,31 @@ public struct LineIndex
 {
     public int Line { get; set; }
     public int Section { get; set; }
+}
+
+public class Variable
+{
+    public Variable(string name)
+    {
+        Name = name;
+    }
+
+    public Variable(string name, VarType type)
+        : this(name)
+    {
+        Type = type;
+    }
+
+    public string Name { get; }
+    public VarType Type { get; set; }
+    [JsonIgnore]
+    public List<int> Starts { get; set; }
+}
+
+public class Function
+{
+    public string Name { get; set; }
+    public VarType Type { get; set; }
+    [JsonIgnore]
+    public List<int> Starts { get; set; }
 }

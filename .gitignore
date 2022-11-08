@@ -21,4 +21,5 @@ bld/
 
 */bin/*
 */obj/*
-
+*/node_modules
+*/out

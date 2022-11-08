@@ -1,4 +1,4 @@
-﻿namespace GameDialogParser;
+﻿namespace GameDialog;
 
 public class TextEvent
 {

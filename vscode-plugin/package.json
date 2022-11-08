@@ -1,0 +1,74 @@
+{
+    "name": "game-dialog",
+    "displayName": "Game Dialog",
+    "description": "A game dialog language",
+    "version": "0.0.1",
+    "license": "MIT",
+    "engines": {
+        "vscode": "^1.73.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "activationEvents": [
+        "onLanguage:gamedialog"
+    ],
+    "main": "./out/src/extension.js",
+    "contributes": {
+        "languages": [
+            {
+                "id": "gamedialog",
+                "aliases": [
+                    "Game Dialog",
+                    "gamedialog"
+                ],
+                "extensions": [
+                    ".dia"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "gamedialog",
+                "scopeName": "source.gamedialog",
+                "path": "./syntaxes/gamedialog.tmLanguage.json"
+            }
+        ],
+        "configuration": {
+            "title": "Game Dialog",
+            "properties": {
+                "gamedialog.EnableLanguageServer": {
+                    "order": 1,
+                    "type": "boolean",
+                    "default": true,
+                    "description": "This turns on the language."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run build",
+        "build": "concurrently --timings --kill-others-on-fail \"npm:buildExtension\" \"npm:buildServerProd\"",
+        "buildExtension": "tsc -p ./tsconfig.json",
+        "buildServer": "dotnet publish -c Debug -o out/server ./../GameDialog.Server/GameDialog.Server.csproj"
+    },
+    "dependencies": {
+        "vscode-jsonrpc": "^8.0.0",
+        "vscode-languageclient": "^8.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^16.11.7",
+        "@types/vscode": "^1.63.0",
+        "@typescript-eslint/eslint-plugin": "^5.30.0",
+        "@typescript-eslint/parser": "^5.30.0",
+        "eslint": "^8.13.0",
+        "typescript": "^4.8.4",
+        "webpack": "^5.74.0",
+        "webpack-cli": "^4.10.0",
+        "concurrently": "^7.5.0"
+    },
+    "extensionDependencies": [
+        "ms-dotnettools.vscode-dotnet-runtime"
+    ]
+}

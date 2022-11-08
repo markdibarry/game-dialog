@@ -8,11 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.11.1" />
-    <PackageReference Include="Antlr4BuildTasks" Version="11.5.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="test.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -20,19 +15,25 @@
 
   <ItemGroup>
     <Antlr4 Include="DialogLexer.g4">
-      <Listener>false</Listener>
+      <Listener>True</Listener>
       <Visitor>True</Visitor>
       <GAtn>true</GAtn>
-      <Package>GameDialogParser</Package>
+      <Package>GameDialog.Compiler</Package>
       <Error>true</Error>
     </Antlr4>
     <Antlr4 Include="DialogParser.g4">
-      <Listener>false</Listener>
+      <Listener>True</Listener>
       <Visitor>True</Visitor>
       <GAtn>true</GAtn>
-      <Package>GameDialogParser</Package>
+      <Package>GameDialog.Compiler</Package>
       <Error>true</Error>
     </Antlr4>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.11.1" />
+    <PackageReference Include="Antlr4BuildTasks" Version="11.5.0" />
+    <PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.6" />
   </ItemGroup>
 
 </Project>

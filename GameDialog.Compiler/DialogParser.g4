@@ -38,23 +38,23 @@ choice_if_stmt
         (ELSE INDENT choice_stmt DEDENT)?
     ;
 expression
-    : OPEN_PAREN expression CLOSE_PAREN
-    | OP_NOT expression
-    | expression (OP_MULT | OP_DIVIDE) expression
-    | expression (OP_ADD | OP_SUB) expression
-    | expression (OP_LESS_EQUALS | OP_GREATER_EQUALS | OP_LESS | OP_GREATER) expression
-    | expression (OP_EQUALS | OP_NOT_EQUALS) expression
-    | expression (OP_AND | OP_OR) expression
-    | constant;
+    : OPEN_PAREN right=expression CLOSE_PAREN #ExpPara
+    | op=OP_NOT right=expression #ExpNot
+    | left=expression op=(OP_MULT | OP_DIVIDE) right=expression #ExpMultDiv
+    | left=expression op=(OP_ADD | OP_SUB) right=expression #ExpAddSub
+    | left=expression op=(OP_LESS_EQUALS | OP_GREATER_EQUALS | OP_LESS | OP_GREATER) right=expression #ExpComp
+    | left=expression op=(OP_EQUALS | OP_NOT_EQUALS) right=expression #ExpEqual
+    | left=expression op=(OP_AND | OP_OR) right=expression #ExpAndOr
+    | FLOAT #ConstFloat
+    | BOOL #ConstBool
+    | NAME #ConstVar
+    | STRING #ConstString
+    | function #ConstFunc;
 assignment
     :
         NAME
-        (OP_ASSIGNMENT | OP_MULT_ASSIGN | OP_DIVIDE_ASSIGN | OP_ADD_ASSIGN | OP_SUB_ASSIGN) 
-        expression
+        op=(OP_ASSIGN | OP_MULT_ASSIGN | OP_DIVIDE_ASSIGN | OP_ADD_ASSIGN | OP_SUB_ASSIGN) 
+        right=expression
     ;
-constant
-    : NUMBER
-    | BOOL
-    | NAME
-    | STRING;
+function : NAME '(' (expression (COMMA expression)*)? ')';
 tag: TAG_EDGE (assignment | expression)+ TAG_EDGE;

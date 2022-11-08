@@ -1,6 +1,6 @@
 using Antlr4.Runtime;
 
-namespace GameDialogParser;
+namespace GameDialog.Compiler;
 
 public abstract class DialogLexerBase : Lexer
 {

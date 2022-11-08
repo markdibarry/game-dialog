@@ -32,7 +32,7 @@ The system will look in the persistent storage for an actor matching the ID "Bar
 To access different customizable properties for a Speaker, you can reference it using the following syntax:
 
 ```
-$ID_Property
+ID_Property
 ```
 
 #### Display Name
@@ -42,13 +42,13 @@ Just because the system may set the Speaker's name automatically, doesn't mean i
 Here's an example of updating the name after speaking:
 ```
 Bartender: You can call me Denny! I'm the bartender here.
-$Bartender_Name = "Denny"
+Bartender_Name = "Denny"
 ```
 After the name is set, any lines referencing the ID "Bartender" in the same dialog session will display the name "Denny".
 
 To make changes in the middle of the Speaker's text, simply surround the call in brackets. Here's the same example but updating the name while speaking:
 ```
-Bartender:  You can call me Denny! [$Bartender_Name = "Denny"] I'm the bartender here.
+Bartender:  You can call me Denny! [Bartender_Name = "Denny"] I'm the bartender here.
 ```
 This will update the display name while the character is still speaking!
 
@@ -75,11 +75,12 @@ For a character reveal, you may want to hide the Speaker's portrait, or show a c
 ```
 --BigReveal--
 
-$Bartender_Name = "???"
-$Bartender_Portrait = "MysteriousFigure"
+Bartender_Name = "???"
+Bartender_Portrait = "MysteriousFigure"
 Bartender: I don't know how you found me... I was trying to remain hidden. It was me all along!
-$Bartender_Name = "Denny"
-$Bartender_Portrait = "Denny"
+
+Bartender_Name = "Denny"
+Bartender_Portrait = "Denny"
 Bartender: Would you like to see a menu?
 ```
 
@@ -100,7 +101,7 @@ Bartender
 Here's a dialog example where the bartender gets some good news:
 
 ```
-Bartender: It was a rough walk to work today. [$Bartender_Mood="happy"] But my customers always cheer me up!
+Bartender: It was a rough walk to work today. [Bartender_Mood="happy"] But my customers always cheer me up!
 ```
 
 ### Choices
@@ -235,14 +236,14 @@ One of the core needs of a good dialog system is being able to store and retriev
 
 #### Temporary
 
-By default, a temporary lookup is created every time a dialog session is started, and is cleared along with the session when it ends. All variables (like Speaker properties) are prefixed with a `$`.
+By default, a temporary lookup is created every time a dialog session is started, and is cleared along with the session when it ends.
 
 You can create and set a variable using the following syntax:
 
 ```
-$myNumVariable = 5.1
-$myStrVariable = "Stuff"
-$myboolVariable = true
+myNumVariable = 5.1
+myStrVariable = "Stuff"
+myboolVariable = true
 ```
 
 As you may have noticed above, this system supports three data types: **float**, **boolean**, and **string**. Once you have set a variable, you can only reassign it to a value of the same type.
@@ -252,11 +253,11 @@ You're able to use variables to display a value in the dialog line like so:
 ```
 --Hobbies--
 
-$hobby = "boating"
-Bartender: I'm really into [$hobby]!
+hobby = "boating"
+Bartender: I'm really into [hobby]!
 ```
 
-If you try to access a variable that doesn't exist, the default value for the expected type will be provided. In the previous example, if `$hobby` was never defined, but the variable was still attempted to be accessed, the line would be displayed as `I'm really into !`, so be careful!
+If you try to access a variable that doesn't exist, the default value for the expected type will be provided. In the previous example, if `hobby` was never defined, but the variable was still attempted to be accessed, the line would be displayed as `I'm really into !`, so be careful!
 
 #### Persistent
 
@@ -266,15 +267,15 @@ As an example, say you want to set the player's gold count. You would set up the
 
 ```
 Bartender: Thank you for the tip!
-$gold += 20
-Bartender: Now I have [$gold] total.
+gold += 20
+Bartender: Now I have [gold] total.
 ```
 
 You may also have variables that should be read-only. If you wanted to get the game's current time, you would architect your persistent lookup to retrieve the value via a custom variable key like `game_time_hrs`, while ignoring any attempt to set it.
 
 ```
-$game_time_hrs = "hamburger"
-Patron: I've been waiting here for [$game_time_hrs] hours!
+game_time_hrs = "hamburger"
+Patron: I've been waiting here for [game_time_hrs] hours!
 ```
 
 This will still render the hours as stored in the persistent storage. The system will not fail if attempting to set read-only variables, and will simply ignore it, so please keep this in mind.
@@ -285,7 +286,7 @@ Variables can make these conversations even more interesting by using them to dr
 
 ```
 Bartender: I can only serve you drinks if you have a library card.
-    if $has_library_card
+    if has_library_card
     ? I'm a long-time patron.
         Bartender: OH. Excuse me! How embarrassing for me.
     ? Let me speak to your manager.
@@ -298,10 +299,10 @@ Here's an example controlling the lines that are seen based on a variable:
 
 ```
 Bartender: Haven't I seen you somewhere before?
-if $times_visited > 2
+if times_visited > 2
     Patron: How do you NOT remember me??
     Bartender: Oh, geeze. My bad!
-elseif $times_visited > 0
+else if times_visited > 0
     Patron: I've been in once or twice.
 else
     Patron: Never seen you in my life.
