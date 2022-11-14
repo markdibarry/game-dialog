@@ -7,36 +7,40 @@ script: section+ EOF;
 section: section_title section_body;
 section_title: TITLE_EDGE NAME TITLE_EDGE NEWLINE+;
 section_body: stmt+;
+
 stmt
-    : if_stmt
-    | exp_stmt* line_stmt
+    : cond_stmt
+    | tag NEWLINE+
     | line_stmt
-    | exp_stmt+
-    | INDENT stmt+ DEDENT;
+    | INDENT stmt+ DEDENT
+    ;
+
 line_stmt
     :
-        NAME (line_text | ml_text) NEWLINE+
+        speaker_ids (line_text | ml_text) NEWLINE+
         (INDENT choice_stmt* DEDENT)?
     ;
-exp_stmt: (expression | assignment) NEWLINE+;
+speaker_ids: NAME (NAME_SEPARATOR NAME)*;
 ml_text: ML_EDGE (TEXT | tag)* ML_EDGE;
 line_text: LINE_ENTER (TEXT | tag)*;
-if_stmt
-    :
-        IF expression NEWLINE+ INDENT stmt+ DEDENT
-        (ELSEIF expression NEWLINE+ INDENT stmt+ DEDENT)*
-        (ELSE INDENT stmt+ DEDENT)?
-    ;
+
+cond_stmt: if_stmt elseif_stmt* else_stmt?;
+if_stmt: IF TAG_ENTER expression TAG_EXIT NEWLINE+ INDENT stmt+ DEDENT;
+elseif_stmt : ELSEIF TAG_ENTER expression TAG_EXIT NEWLINE+ INDENT stmt+ DEDENT;
+else_stmt: ELSE NEWLINE+ INDENT stmt+ DEDENT;
+
+tag: TAG_ENTER (assignment | expression | attr_expression) TAG_EXIT;
+attr_expression : NAME (expression | assignment)+;
+
 choice_stmt
-    : choice_if_stmt 
+    : choice_cond_stmt
     | (CHOICE TEXT (tag? NEWLINE+ | NEWLINE+ INDENT stmt* DEDENT))
     ;
-choice_if_stmt
-    :
-        IF expression NEWLINE+ INDENT choice_stmt DEDENT
-        (ELSEIF expression NEWLINE+ INDENT choice_stmt DEDENT)*
-        (ELSE INDENT choice_stmt DEDENT)?
-    ;
+choice_cond_stmt: choice_if_stmt choice_elseif_stmt* choice_else_stmt?;
+choice_if_stmt: IF TAG_ENTER expression TAG_EXIT NEWLINE+ INDENT choice_stmt DEDENT;
+choice_elseif_stmt: ELSEIF TAG_ENTER expression TAG_EXIT NEWLINE+ INDENT choice_stmt DEDENT;
+choice_else_stmt: ELSE NEWLINE+ INDENT choice_stmt DEDENT;
+
 expression
     : OPEN_PAREN right=expression CLOSE_PAREN #ExpPara
     | op=OP_NOT right=expression #ExpNot
@@ -57,4 +61,3 @@ assignment
         right=expression
     ;
 function : NAME '(' (expression (COMMA expression)*)? ')';
-tag: TAG_EDGE (assignment | expression)+ TAG_EDGE;

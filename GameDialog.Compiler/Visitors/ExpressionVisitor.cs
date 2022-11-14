@@ -1,11 +1,23 @@
 ﻿using Antlr4.Runtime;
+using Antlr4.Runtime.Tree;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using System.Diagnostics.CodeAnalysis;
 
 namespace GameDialog.Compiler;
 
-public partial class MainDialogVisitor : DialogParserBaseVisitor<VarType>
+public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
 {
+    public ExpressionVisitor(DialogScript dialogScript, List<Diagnostic> diagnostics, MemberRegister memberRegister)
+    {
+        _dialogScript = dialogScript;
+        _diagnostics = diagnostics;
+        _memberRegister = memberRegister;
+    }
+
+    private readonly DialogScript _dialogScript;
+    private readonly List<Diagnostic> _diagnostics;
+    private readonly MemberRegister _memberRegister;
+    private List<int> _currentExp = new();
     private bool _expWalkStarted;
     private static readonly Dictionary<int, ExpType> InstructionLookup = new()
         {
@@ -29,15 +41,53 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<VarType>
             { DialogLexer.OP_SUB_ASSIGN, ExpType.SubAssign }
         };
 
+    public Expression GetExpression(ParserRuleContext context, VarType expectedType = default)
+    {
+        VarType resultType = Visit(context);
+        var result = _currentExp;
+        _currentExp = new();
+        if (expectedType != default && resultType != expectedType)
+        {
+            _diagnostics.Add(new()
+            {
+                Range = context.GetRange(),
+                Message = $"Type Mismatch: Expected {expectedType}, but returned {resultType}.",
+                Severity = DiagnosticSeverity.Error,
+            });
+        }
+        return new Expression(result);
+    }
+
     public override VarType VisitAssignment([NotNull] DialogParser.AssignmentContext context)
     {
-        // Start assignment expression
-        int varIndex = AddVarName(context.NAME().GetText());
-        Variable variable = _dialogScript.Variables[varIndex];
+        VarDef variable;
+        string varName = context.NAME().GetText();
+        int varIndex = _dialogScript.Variables.FindIndex(x => x.Name == varName);
+        if (varIndex == -1)
+        {
+            variable = new(varName);
+            _dialogScript.Variables.Add(variable);
+            varIndex = _dialogScript.Variables.Count - 1;
+        }
+        else
+        {
+            variable = _dialogScript.Variables[varIndex];
+        }
         VarType newType = PushExp(
             new[] { (int)InstructionLookup[context.op.Type], (int)ExpType.Var, varIndex },
             variable.Type,
             context.right);
+        if (newType == VarType.Undefined)
+        {
+            //Diagnostics.Add(new()
+            //{
+            //    Range = context.GetRange(),
+            //    Message = $"Type Error: Cannot infer expression result type.",
+            //    Severity = DiagnosticSeverity.Error,
+            //});
+            _dialogScript.Variables.Remove(variable);
+            return VarType.Undefined;
+        }
         if (variable.Type == VarType.Undefined)
             variable.Type = newType;
 
@@ -88,22 +138,21 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<VarType>
             _expWalkStarted = true;
         }
 
-        foreach (int val in values)
-            _currentExp.Add(val);
+        _currentExp.AddRange(values);
 
         foreach (var exp in exps)
         {
             // Visit inner expression
             VarType resultType = Visit(exp);
-            if (resultType == VarType.Undefined)
-            {
-                _diagnostics.Add(new()
-                {
-                    Range = exp.GetRange(),
-                    Message = $"Type Error: Cannot infer expression result type.",
-                    Severity = DiagnosticSeverity.Error,
-                });
-            }
+            //if (resultType == VarType.Undefined)
+            //{
+            //    Diagnostics.Add(new()
+            //    {
+            //        Range = exp.GetRange(),
+            //        Message = $"Type Error: Cannot infer expression result type.",
+            //        Severity = DiagnosticSeverity.Error,
+            //    });
+            //}
             if (expectedType == VarType.Undefined)
                 expectedType = resultType;
             if (resultType != expectedType)
@@ -120,10 +169,6 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<VarType>
         if (isTopExp)
         {
             _expWalkStarted = false;
-            string joined = string.Join(", ", _currentExp);
-            //Evaluator ev = new(_dialogScript);
-            //ev.Evaluate(_currentExp.ToArray());
-            _currentExp = new();
         }
         return expectedType;
     }

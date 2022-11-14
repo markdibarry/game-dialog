@@ -5,10 +5,10 @@ namespace GameDialog.Compiler;
 
 public class DialogDocument
 {
-    public DialogDocument(string fileName)
+    public DialogDocument(string fileName, string text)
     {
         FileName = fileName;
-        AntlrInputStream stream = new(string.Empty);
+        AntlrInputStream stream = new(text);
         Lexer = new(stream);
         CommonTokenStream tokens = new(Lexer);
         Parser = new(tokens);
@@ -18,25 +18,20 @@ public class DialogDocument
         Parser.AddErrorListener(ParserErrorListener);
     }
 
+    public DialogDocument(string fileName)
+        :this(fileName, string.Empty)
+    {
+    }
+
     public LexerErrorListener LexerErrorListener { get; private set; }
     public ParserErrorListener ParserErrorListener { get; private set; }
     public DialogLexer Lexer { get; set; }
     public DialogParser Parser { get; set; }
-    public string Text { get; set; }
+    public string Text { get; set; } = string.Empty;
     public string FileName { get; set; }
 
     public void PushChange(TextDocumentContentChangeEvent changeEvent)
     {
-        //var range = changeEvent.Range;
-        //var startIndex = LineStarts[range.Start.Line] + range.Start.Character;
-        //var endIndex = LineStarts[range.End.Line] + range.End.Character;
-
-        //var stringBuilder = new StringBuilder();
-
-        //stringBuilder.Append(Text, 0, startIndex)
-        //    .Append(changeEvent.Text)
-        //    .Append(Text, endIndex, Text.Length - endIndex);
-
         Text = changeEvent.Text;
         AntlrInputStream stream = new(Text);
         Lexer.SetInputStream(stream);

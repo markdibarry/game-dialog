@@ -1,9 +1,9 @@
 ﻿
-namespace GameDialog;
+namespace GameDialog.Compiler;
 
-public class Tag
+public class BBCode
 {
-    public Tag(string text, int index)
+    public BBCode(string text, int index)
     {
         // strip brackets
         text = text[1..^1];
@@ -45,7 +45,7 @@ public class Tag
         "fill",
         "indent",
         "url",
-        "image",
+        "img",
         "font",
         "table",
         "cell",
@@ -57,8 +57,8 @@ public class Tag
         "shake"
     };
 
-    public bool IsBBCode()
+    public static bool IsBBCode(string name)
     {
-        return BBCodeTags.Contains(Name);
+        return BBCodeTags.Contains(name);
     }
 }

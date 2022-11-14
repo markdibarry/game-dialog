@@ -16,17 +16,23 @@ public class DialogCompiler
 
     public CompilationResult Compile(DialogDocument document)
     {
+        MemberRegister memberRegister = new();
         ParserRuleContext context = document.Parser.script();
-        //Utility.PrintTokens((CommonTokenStream)document.Parser.TokenStream);
-        //Utility.PrintTree(context);
+        Utility.PrintTokens((CommonTokenStream)document.Parser.TokenStream);
+        Utility.PrintTree(context);
         DialogScript dialogScript = new();
         List<Diagnostic> diagnostics = new();
-        MainDialogVisitor visitor = new(dialogScript, diagnostics);
+        // Get all speaker ids
+        SpeakerIdVisitor speakerNameVisitor = new(dialogScript);
+        speakerNameVisitor.Visit(context);
+
+        MainDialogVisitor visitor = new(dialogScript, diagnostics, memberRegister);
         visitor.Visit(context);
+        diagnostics.AddRange(document.GetDiagnostics());
         CompilationResult result = new()
         {
             DialogScript = dialogScript,
-            Diagnostics = diagnostics.Concat(document.GetDiagnostics()).ToList()
+            Diagnostics = diagnostics
         };
         return result;
     }

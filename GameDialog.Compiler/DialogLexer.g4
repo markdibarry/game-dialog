@@ -14,6 +14,7 @@ CHOICE: '?' ' '+ -> pushMode(ChoiceMode);
 IF: 'if' -> pushMode(ExpressionMode);
 ELSEIF: 'else if' -> pushMode(ExpressionMode);
 ELSE: 'else';
+MAIN_TAG_ENTER: TAG_ENTER -> type(TAG_ENTER), pushMode(ExpressionMode);
 SPEAKER_NAME: NAME -> type(NAME), pushMode(SpeakerMode);
 ANY: . ;
 
@@ -23,18 +24,20 @@ TITLE_END: TITLE_EDGE -> type(TITLE_EDGE), popMode;
 TITLE_ANY: ANY -> type(ANY);
 
 mode SpeakerMode;
+NAME_SEPARATOR: ',' WS;
+EXTRA_NAME: NAME -> type(NAME);
 ML_EDGE: ':' ' '+ '^^' -> popMode, pushMode(MLTextMode);
 LINE_ENTER: ':' ' '+ -> popMode, pushMode(LineTextMode);
 SPEAKER_ANY: ANY -> more, popMode, pushMode(ExpressionMode);
 
 mode LineTextMode;
-TAG_EDGE: '[' -> pushMode(ExpressionMode);
+LINE_TAG_ENTER: TAG_ENTER (WS* '/')? -> type(TAG_ENTER), pushMode(ExpressionMode);
 TEXT: (STRING_ESCAPE_SEQ | ~[[\\\r\n])+;
 TEXT_NEWLINE: NEWLINE -> type(NEWLINE), popMode;
 TEXT_ANY: ANY -> type(ANY);
 
 mode MLTextMode;
-ML_TAG_EDGE: TAG_EDGE -> type(TAG_EDGE), pushMode(ExpressionMode);
+ML_TAG_ENTER: TAG_ENTER (WS* '/')? -> type(TAG_ENTER), pushMode(ExpressionMode);
 ML_EXIT: '^^' -> type(ML_EDGE), popMode;
 ML_TEXT: (STRING_ESCAPE_SEQ | ~[[^\\\r\n])+ -> type(TEXT);
 ML_NEWLINE: NEWLINE -> skip;
@@ -42,7 +45,7 @@ ML_ANY: ANY -> type(ANY);
 
 mode ChoiceMode;
 CHOICE_TEXT: (STRING_ESCAPE_SEQ | ~[[\\\r\n])+ -> type(TEXT);
-TAG_ENTER: TAG_EDGE -> type(TAG_EDGE), pushMode(ExpressionMode);
+CHOICE_TAG_ENTER: TAG_ENTER -> type(TAG_ENTER), pushMode(ExpressionMode);
 CHOICE_NEWLINE: NEWLINE -> type(NEWLINE), popMode;
 CHOICE_ANY: ANY -> type(ANY);
 
@@ -73,7 +76,8 @@ OP_ADD: '+';
 OP_SUB: '-';
 COMMA: ',';
 NAME: NAME_START NAME_CONTINUE*;
-EXP_EXIT: ']' -> type(TAG_EDGE), popMode;
+TAG_ENTER: '[';
+TAG_EXIT: ']' -> popMode;
 EXP_NEWLINE: NEWLINE -> type(NEWLINE), popMode;
 EXP_ANY: ANY -> type(ANY);
 

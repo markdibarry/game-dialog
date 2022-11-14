@@ -1,10 +1,36 @@
---Test--
-if 13a + 5 == 7
-	Bob: Hi my name is [name]!
-auto
-abc = "Some string"
-abc = 5
-next = 2
+--Introduction--
+if [9 > 5]
+    [cat = "fast"]
+[run = 10]
+[Stalone name="Bevis"]
+Stalone: ^^Hi my name is[speed=0.3]...[/speed] [Stalone name]!
+    I can eat a lot of crackers and whistle!^^
+if [time < 5]
+    if [true]
+        Stalone: blah blah.
+    else if [false]
+        [run = 11]
+        Balone: tah hah.
+else
+    Stalone: blih blih.
+Threena: Hi my name is Th-[auto]
+Twosen: [speed=0]My name [Threena mood="annoyed"]is Twosen.
+if [true]
+    Threena: Why did you interrupt me?
+        ? I love you!
+            Twosen: Because I love you![nl]I tease because I care!
+            Threena: Well, whatever. [cow goto = lunch butt = 5]
+        ? I didn't notice.
+            Twosen: Oh, were you talking?
+            Threena: I was, and that was super rude.
+            Twosen: By all means, you have the floor!
+            Threena: My name is Thr-[auto][goto=lunch]
+        if [actor_Twosen_empathy > 5]
+            ? I'm sorry
+                [actor_Threena_bond += 1]
+                Twosen: You're right. That was out of line.
+                Threena: No worries.
 
---Second--
-Lady: cool beans.
+--Lunch--
+Stalone: I want lunch!
+Twosen, Threena: Not now, [Stalone name]!

@@ -41,17 +41,17 @@ internal class Evaluator
         };
     }
 
-    public Variable GetVar(int index) => _script.Variables[index];
+    public VarDef GetVar(int index) => _script.Variables[index];
 
     public T EvalVar<T>()
     {
-        Variable variable = GetVar(_iterator);
+        VarDef variable = GetVar(_iterator);
         return default;
     }
 
     public T EvalFunc<T>()
     {
-        Variable variable = GetVar(++_iterator);
+        VarDef variable = GetVar(++_iterator);
         int argNum = _expression[++_iterator];
         if (argNum == 0)
             return default;
