@@ -17,7 +17,7 @@ stmt
 
 line_stmt
     :
-        speaker_ids (line_text | ml_text) NEWLINE+
+        (speaker_ids | UNDERSCORE) (line_text | ml_text) NEWLINE+
         (INDENT choice_stmt* DEDENT)?
     ;
 speaker_ids: NAME (NAME_SEPARATOR NAME)*;
@@ -29,17 +29,17 @@ if_stmt: IF TAG_ENTER expression TAG_EXIT NEWLINE+ INDENT stmt+ DEDENT;
 elseif_stmt : ELSEIF TAG_ENTER expression TAG_EXIT NEWLINE+ INDENT stmt+ DEDENT;
 else_stmt: ELSE NEWLINE+ INDENT stmt+ DEDENT;
 
-tag: TAG_ENTER (assignment | expression | attr_expression) TAG_EXIT;
-attr_expression : NAME (expression | assignment)+;
+tag: TAG_ENTER (assignment | expression | attr_expression | BBCODE_NAME BBCODE_EXTRA_TEXT?) TAG_EXIT;
+attr_expression: NAME (expression | assignment)+;
 
 choice_stmt
     : choice_cond_stmt
-    | (CHOICE TEXT (tag? NEWLINE+ | NEWLINE+ INDENT stmt* DEDENT))
+    | CHOICE TEXT (tag? NEWLINE+ | NEWLINE+ INDENT stmt* DEDENT)
     ;
 choice_cond_stmt: choice_if_stmt choice_elseif_stmt* choice_else_stmt?;
-choice_if_stmt: IF TAG_ENTER expression TAG_EXIT NEWLINE+ INDENT choice_stmt DEDENT;
-choice_elseif_stmt: ELSEIF TAG_ENTER expression TAG_EXIT NEWLINE+ INDENT choice_stmt DEDENT;
-choice_else_stmt: ELSE NEWLINE+ INDENT choice_stmt DEDENT;
+choice_if_stmt: IF TAG_ENTER expression TAG_EXIT NEWLINE+ INDENT choice_stmt+ DEDENT;
+choice_elseif_stmt: ELSEIF TAG_ENTER expression TAG_EXIT NEWLINE+ INDENT choice_stmt+ DEDENT;
+choice_else_stmt: ELSE NEWLINE+ INDENT choice_stmt+ DEDENT;
 
 expression
     : OPEN_PAREN right=expression CLOSE_PAREN #ExpPara

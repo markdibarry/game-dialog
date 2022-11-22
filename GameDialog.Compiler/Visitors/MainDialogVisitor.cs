@@ -1,5 +1,7 @@
 ﻿using Antlr4.Runtime.Misc;
+using Antlr4.Runtime.Tree;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using System.Text;
 
 namespace GameDialog.Compiler;
 
@@ -10,8 +12,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
     private readonly MemberRegister _memberRegister;
     private readonly ExpressionVisitor _expressionVisitor;
     private readonly List<(int, IResolveable)> _unresolvedStmts = new();
-    private int _sectionIndex;
-    private bool _inLineStatement;
+    private Section _currentSection = new();
     private int _nestLevel;
 
     public MainDialogVisitor(DialogScript dialogScript, List<Diagnostic> diagnostics, MemberRegister memberRegister)
@@ -31,18 +32,27 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         foreach (var section in context.section())
         {
             string title = section.section_title().NAME().GetText();
+            if (title.ToLower() == BuiltIn.END)
+            {
+                _diagnostics.Add(new Diagnostic()
+                {
+                    Range = section.section_title().GetRange(),
+                    Message = $"\"end\" is a reserved name.",
+                    Severity = DiagnosticSeverity.Error,
+                });
+            }
             _dialogScript.Sections.Add(new() { Name = title });
         }
 
         for (int i = 0; i < context.section().Length; i++)
         {
-            _sectionIndex = i;
+            _currentSection = _dialogScript.Sections[i];
             // Parse each statement
             foreach (var stmt in context.section()[i].section_body().stmt())
                 Visit(stmt);
-            // Resolve all outstanding statements to the next section
-            if (i < context.section().Length - 1)
-                ResolveStatements(new GoTo(StatementType.Section, i + 1));
+            // Resolve all outstanding statements to the end
+            if (i == context.section().Length - 1)
+                ResolveStatements(new GoTo(StatementType.Section, -1));
         }
 
         return 0;
@@ -52,42 +62,39 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
     {
         // Create new goto and conditional
         GoTo newGoto = new(StatementType.Conditional, _dialogScript.ConditionalSets.Count);
-        Section currentSection = _dialogScript.Sections[_sectionIndex];
+        ResolveStatements(newGoto);
 
-        if (currentSection.Start.Type == default)
-            currentSection.Start = newGoto;
-        else
-            ResolveStatements(newGoto);
-
-        List<Expression> conditionalSet = new();
+        List<InstructionStmt> conditionalSet = new();
         _dialogScript.ConditionalSets.Add(conditionalSet);
 
         _nestLevel++;
         // if
-        Expression ifExp = _expressionVisitor.GetExpression(context.if_stmt().expression());
+        InstructionStmt ifExp = new(_expressionVisitor.GetExpression(context.if_stmt().expression()));
         conditionalSet.Add(ifExp);
         _unresolvedStmts.Add((_nestLevel, ifExp));
         foreach (var stmt in context.if_stmt().stmt())
             Visit(stmt);
-
+        LowerUnresolvedStatements();
         // else if
         foreach (var elseifstmt in context.elseif_stmt())
         {
-            Expression elseifExp = _expressionVisitor.GetExpression(elseifstmt.expression());
+            InstructionStmt elseifExp = new(_expressionVisitor.GetExpression(elseifstmt.expression()));
             conditionalSet.Add(elseifExp);
             _unresolvedStmts.Add((_nestLevel, elseifExp));
             foreach (var stmt in elseifstmt.stmt())
                 Visit(stmt);
+            LowerUnresolvedStatements();
         }
 
         // else (always add one)
-        Expression elseExpression = new(null);
+        InstructionStmt elseExpression = new(null);
         conditionalSet.Add(elseExpression);
         _unresolvedStmts.Add((_nestLevel, elseExpression));
         if (context.else_stmt() != null)
         {
             foreach (var stmt in context.else_stmt().stmt())
                 Visit(stmt);
+            LowerUnresolvedStatements();
         }
 
         _nestLevel--;
@@ -96,118 +103,61 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
 
     public override int VisitLine_stmt([NotNull] DialogParser.Line_stmtContext context)
     {
-        _inLineStatement = true;
+        Line line = new();
+        if (context.UNDERSCORE() == null)
+        {
+            foreach (var speaker in context.speaker_ids().NAME())
+                line.SpeakerIndices.Add(_dialogScript.SpeakerIds.IndexOf(speaker.GetText()));
+        }
+        var children = context.line_text()?.children ?? context.ml_text()?.children;
+        if (children != null)
+            HandleLineText(line, children);
         // Create new goto and line
         GoTo newGoto = new(StatementType.Line, _dialogScript.Lines.Count);
         ResolveStatements(newGoto);
-        _inLineStatement = false;
+        if (line.Next.Type == default)
+            _unresolvedStmts.Add((_nestLevel, line));
+        _dialogScript.Lines.Add(line);
+        if (context.choice_stmt().Length > 0)
+            HandleChoices(context.choice_stmt());
         return 0;
     }
 
     public override int VisitTag([NotNull] DialogParser.TagContext context)
     {
-        if (_inLineStatement)
-            HandleLineTag(context);
-        else
-            HandleStmtTag(context);
+        HandleStmtTag(context);
         return 0;
+    }
+
+    private void HandleLineText(Line line, IList<IParseTree> children)
+    {
+        // Start building a string of text and instruction identifiers
+        StringBuilder sb = new();
+        foreach (var child in children)
+        {
+            if (child is ITerminalNode node && node.Symbol.Type == DialogParser.TEXT)
+                sb.Append(node.GetText());
+            else if (child is DialogParser.TagContext tag)
+                HandleLineTag(line, sb, tag);
+        }
+        line.Text = sb.ToString();
     }
 
     private void ResolveStatements(GoTo next)
     {
+        if (_currentSection.Start.Type == default)
+            _currentSection.Start = next;
         foreach (var stmt in _unresolvedStmts.Where(x => x.Item1 >= _nestLevel))
             stmt.Item2.Next = next;
         _unresolvedStmts.RemoveAll(x => x.Item2.Next.Type != default);
     }
 
-    private void HandleLineTag(DialogParser.TagContext context)
+    private void LowerUnresolvedStatements()
     {
-
-    }
-
-    private void HandleStmtTag(DialogParser.TagContext context)
-    {
-        if (BBCode.IsBBCode(GetTagName(context)))
+        for (int i = 0; i < _unresolvedStmts.Count; i++)
         {
-            _diagnostics.Add(new Diagnostic()
-            {
-                Range = context.GetRange(),
-                Message = $"BBCode cannot be used in stand-alone expressions.",
-                Severity = DiagnosticSeverity.Error,
-            });
-            return;
+            if (_unresolvedStmts[i].Item1 >= _nestLevel)
+                _unresolvedStmts[i] = (_nestLevel - 1, _unresolvedStmts[i].Item2);
         }
-
-        Expression? exp;
-
-        if (context.expression() != null)
-            exp = GetStmtTagExpressionExpression(context.expression());
-        else if (context.assignment() != null)
-            exp = _expressionVisitor.GetExpression(context.assignment());
-        else
-            exp = GetStmtTagAttrExpression(context.attr_expression());
-
-        if (exp == null)
-            return;
-        GoTo newGoto = new(StatementType.Expression, _dialogScript.Expressions.Count);
-        ResolveStatements(newGoto);
-        _dialogScript.Expressions.Add(exp);
-        _unresolvedStmts.Add((_nestLevel, exp));
-    }
-
-    private Expression GetStmtTagExpressionExpression([NotNull] DialogParser.ExpressionContext context)
-    {
-        if (BuiltIn.IsAutoExpression(context))
-            return BuiltIn.GetAutoExpression(_dialogScript);
-        else
-            return _expressionVisitor.GetExpression(context);
-    }
-
-    private Expression? GetStmtTagAttrExpression([NotNull] DialogParser.Attr_expressionContext context)
-    {
-        if (BuiltIn.IsNameExpression(context))
-        {
-            return null;
-        }
-        else if (BuiltIn.IsSpeakerExpression(context))
-        {
-            if (!_dialogScript.SpeakerIds.Contains(context.NAME().GetText()))
-            {
-                _diagnostics.Add(new Diagnostic()
-                {
-                    Range = context.GetRange(),
-                    Message = $"Can only edit speakers that appear in this dialog script.",
-                    Severity = DiagnosticSeverity.Error,
-                });
-                return null;
-            }
-            return BuiltIn.GetSpeakerExpression(context, _dialogScript);
-        }
-
-        _diagnostics.Add(new Diagnostic()
-        {
-            Range = context.GetRange(),
-            Message = $"Unrecognized expression.",
-            Severity = DiagnosticSeverity.Error,
-        });
-        return null;
-    }
-
-    private string GetTagName([NotNull] DialogParser.TagContext context)
-    {
-        if (context.expression() != null)
-        {
-            if (context.expression() is DialogParser.ConstVarContext varContext)
-                return varContext.NAME().GetText();
-        }
-        else if (context.assignment() != null)
-        {
-            return context.assignment().NAME().GetText();
-        }
-        else
-        {
-            return context.attr_expression().NAME().GetText();
-        }
-        return string.Empty;
     }
 }

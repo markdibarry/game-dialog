@@ -91,31 +91,31 @@ internal class Evaluator
 
     public bool EvalBoolExp()
     {
-        return (ExpType)_expression[_iterator++] switch
+        return (InstructionType)_expression[_iterator++] switch
         {
-            ExpType.Bool => EvalBool(),
-            ExpType.Less => EvalLess(),
-            ExpType.Greater => EvalGreater(),
-            ExpType.LessEquals => EvalLessEquals(),
-            ExpType.GreaterEquals => EvalGreaterEquals(),
-            ExpType.Equals => EvalEquals(),
-            ExpType.NotEquals => !EvalEquals(),
-            ExpType.Not => EvalNot(),
-            ExpType.And => EvalAnd(),
-            ExpType.Or => EvalOr(),
-            ExpType.Var => EvalVar<bool>(),
-            ExpType.Func => EvalFunc<bool>(),
+            InstructionType.Bool => EvalBool(),
+            InstructionType.Less => EvalLess(),
+            InstructionType.Greater => EvalGreater(),
+            InstructionType.LessEquals => EvalLessEquals(),
+            InstructionType.GreaterEquals => EvalGreaterEquals(),
+            InstructionType.Equals => EvalEquals(),
+            InstructionType.NotEquals => !EvalEquals(),
+            InstructionType.Not => EvalNot(),
+            InstructionType.And => EvalAnd(),
+            InstructionType.Or => EvalOr(),
+            InstructionType.Var => EvalVar<bool>(),
+            InstructionType.Func => EvalFunc<bool>(),
             _ => throw new NotSupportedException()
         };
     }
 
     public string EvalStringExp()
     {
-        return (ExpType)_expression[_iterator++] switch
+        return (InstructionType)_expression[_iterator++] switch
         {
-            ExpType.String => EvalString(),
-            ExpType.Var => EvalVar<string>(),
-            ExpType.Func => EvalFunc<string>(),
+            InstructionType.String => EvalString(),
+            InstructionType.Var => EvalVar<string>(),
+            InstructionType.Func => EvalFunc<string>(),
             _ => throw new NotSupportedException()
         };
     }
@@ -137,41 +137,41 @@ internal class Evaluator
 
     public float EvalFloatExp()
     {
-        return (ExpType)_expression[_iterator++] switch
+        return (InstructionType)_expression[_iterator++] switch
         {
-            ExpType.Float => EvalFloat(),
-            ExpType.Mult => EvalMult(),
-            ExpType.Div => EvalDiv(),
-            ExpType.Add => EvalAdd(),
-            ExpType.Sub => EvalSub(),
-            ExpType.Var => EvalVar<float>(),
-            ExpType.Func => EvalFunc<float>(),
+            InstructionType.Float => EvalFloat(),
+            InstructionType.Mult => EvalMult(),
+            InstructionType.Div => EvalDiv(),
+            InstructionType.Add => EvalAdd(),
+            InstructionType.Sub => EvalSub(),
+            InstructionType.Var => EvalVar<float>(),
+            InstructionType.Func => EvalFunc<float>(),
             _ => throw new NotSupportedException()
         };
     }
 
     public VarType GetExpValueType(int index)
     {
-        return (ExpType)_expression[index] switch
+        return (InstructionType)_expression[index] switch
         {
-            ExpType.String => VarType.String,
-            ExpType.Float or
-            ExpType.Mult or
-            ExpType.Div or
-            ExpType.Add or
-            ExpType.Sub => VarType.Float,
-            ExpType.Bool or
-            ExpType.Less or
-            ExpType.Greater or
-            ExpType.LessEquals or
-            ExpType.GreaterEquals or
-            ExpType.Equals or
-            ExpType.NotEquals or
-            ExpType.Not or
-            ExpType.And or
-            ExpType.Or => VarType.Bool,
-            ExpType.Var or
-            ExpType.Func => _script.Variables[_expression[index + 1]].Type,
+            InstructionType.String => VarType.String,
+            InstructionType.Float or
+            InstructionType.Mult or
+            InstructionType.Div or
+            InstructionType.Add or
+            InstructionType.Sub => VarType.Float,
+            InstructionType.Bool or
+            InstructionType.Less or
+            InstructionType.Greater or
+            InstructionType.LessEquals or
+            InstructionType.GreaterEquals or
+            InstructionType.Equals or
+            InstructionType.NotEquals or
+            InstructionType.Not or
+            InstructionType.And or
+            InstructionType.Or => VarType.Bool,
+            InstructionType.Var or
+            InstructionType.Func => _script.Variables[_expression[index + 1]].Type,
             _ => VarType.Undefined
         };
     }

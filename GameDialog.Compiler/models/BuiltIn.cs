@@ -1,29 +1,25 @@
-﻿using Antlr4.Runtime.Misc;
-
-namespace GameDialog.Compiler;
+﻿namespace GameDialog.Compiler;
 
 public class BuiltIn
 {
     private static readonly string[] _builtIns =
     {
         AUTO,
-        SPEED,
-        GOTO,
-        G_AUTO,
-        G_SPEED,
         END,
-        PAUSE
+        GOTO,
+        NEWLINE,
+        PAUSE,
+        SPEED
     };
 
     private static readonly string[] _validSpeakerAttributes = { MOOD, NAME, PORTRAIT };
 
     public const string AUTO = "auto";
-    public const string SPEED = "speed";
-    public const string GOTO = "goto";
-    public const string G_AUTO = "g_auto";
-    public const string G_SPEED = "g_speed";
     public const string END = "end";
+    public const string GOTO = "goto";
+    public const string NEWLINE = "nl";
     public const string PAUSE = "pause";
+    public const string SPEED = "speed";
     public const string NAME = "name";
     public const string PORTRAIT = "portrait";
     public const string MOOD = "mood";
@@ -34,64 +30,64 @@ public class BuiltIn
         return _builtIns.Contains(text);
     }
 
-    public static Expression GetAutoExpression(DialogScript dialogScript)
+    public static List<int> GetBBCodeInts(int stringIndex)
     {
-        // TODO make this less magic-y
-        List<int> autoInts = new()
-        {
-            (int)ExpType.Assign,
-            (int)ExpType.Var,
-            dialogScript.Variables.FindIndex(x => x.Name == AUTO),
-            (int)VarType.Bool,
-            1
-        };
-        return new Expression(autoInts);
+        return new () { (int)InstructionType.BBCode, stringIndex };
     }
 
-    public static Expression GetSpeakerExpression([NotNull] DialogParser.Attr_expressionContext context, DialogScript dialogScript)
+    public static List<int> GetSpeakerGetInts(string name, DialogScript dialogScript)
     {
-        SpeakerUpdate speakerUpdate = new();
+        int index = dialogScript.ExpStrings.IndexOf(name);
+        if (index == -1)
+        {
+            dialogScript.ExpStrings.Add(name);
+            index = dialogScript.ExpStrings.Count - 1;
+        }
+        return new() { (int)InstructionType.SpeakerGet, index };
+    }
+
+    public static List<int> GetSpeakerSetInts(DialogParser.Attr_expressionContext context, DialogScript dialogScript)
+    {
+        List<int> updateInts = new() { (int)InstructionType.SpeakerSet, -1, -1, -1 };
         foreach (var ass in context.assignment())
         {
             string value = ((DialogParser.ConstStringContext)ass.right).STRING().GetText();
-            
-            switch (context.NAME().GetText())
+            int index = dialogScript.ExpStrings.IndexOf(value);
+            if (index == -1)
+            {
+                dialogScript.ExpStrings.Add(value);
+                index = dialogScript.ExpStrings.Count - 1;
+            }
+
+            switch (ass.NAME().GetText())
             {
                 case NAME:
-                    speakerUpdate.Name = value;
-                    break;
-                case PORTRAIT:
-                    speakerUpdate.Portrait = value;
+                    updateInts[1] = index;
                     break;
                 case MOOD:
-                    speakerUpdate.Mood= value;
+                    updateInts[2] = index;
+                    break;
+                case PORTRAIT:
+                    updateInts[3] = index;
                     break;
             }
         }
-        dialogScript.SpeakerUpdates.Add(speakerUpdate);
-        List<int> updateInts = new() { (int)ExpType.SpeakerUpdate, dialogScript.SpeakerUpdates.Count - 1};
-        return new(updateInts);
+        
+        return updateInts;
     }
 
-    public static bool IsAutoExpression(DialogParser.ExpressionContext context)
+    public static bool IsNameExpression(DialogParser.Attr_expressionContext context)
     {
-        return context is DialogParser.ConstVarContext varContext
-                && varContext.NAME().GetText() == AUTO;
-    }
-
-    public static bool IsNameExpression([NotNull] DialogParser.Attr_expressionContext context)
-    {
-        return context.assignment() == null
-            && context.expression() != null
+        return context.assignment().Length == 0
             && context.expression().Length == 1
             && context.expression()[0] is DialogParser.ConstVarContext varContext
             && varContext.NAME().GetText() == NAME;
     }
 
-    public static bool IsSpeakerExpression([NotNull] DialogParser.Attr_expressionContext context)
+    public static bool IsSpeakerExpression(DialogParser.Attr_expressionContext context)
     {
         bool namesValid = false;
-        if (context.assignment() != null)
+        if (context.assignment().Any() && context.expression().Length == 0)
         {
             var names = context.assignment().Select(x => x.NAME().GetText());
             namesValid = names.Distinct().Count() == names.Count();
@@ -100,6 +96,6 @@ public class BuiltIn
             namesValid = namesValid && context.assignment().All(x => x.right is DialogParser.ConstStringContext);
         }
 
-        return context.expression() == null && namesValid;
+        return namesValid;
     }
 }

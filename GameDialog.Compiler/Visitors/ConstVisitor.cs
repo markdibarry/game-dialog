@@ -50,7 +50,7 @@ public partial class ExpressionVisitor
                 Severity = DiagnosticSeverity.Error,
             });
         }
-        PushExp(new[] { (int)ExpType.Var, index }, type);
+        PushExp(new[] { (int)InstructionType.Var, index }, type);
         return type;
     }
 
@@ -83,10 +83,10 @@ public partial class ExpressionVisitor
         // If no expressions, push function with no parameters
         if (context.expression() == null)
         {
-            PushExp(new[] { (int)ExpType.Func, index, 0 }, default);
+            PushExp(new[] { (int)InstructionType.Func, index, 0 }, default);
             return funcDef.Type;
         }
-        PushExp(new[] { (int)ExpType.Func, index, context.expression().Length }, default);
+        PushExp(new[] { (int)InstructionType.Func, index, context.expression().Length }, default);
         for (int i = 0; i < context.expression().Length; i++)
         {
             var exp = context.expression()[i];

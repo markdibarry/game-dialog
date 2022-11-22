@@ -15,7 +15,7 @@ IF: 'if' -> pushMode(ExpressionMode);
 ELSEIF: 'else if' -> pushMode(ExpressionMode);
 ELSE: 'else';
 MAIN_TAG_ENTER: TAG_ENTER -> type(TAG_ENTER), pushMode(ExpressionMode);
-SPEAKER_NAME: NAME -> type(NAME), pushMode(SpeakerMode);
+SPEAKER_NAME: (NAME | UNDERSCORE) -> type(NAME), pushMode(SpeakerMode);
 ANY: . ;
 
 mode TitleMode;
@@ -28,16 +28,16 @@ NAME_SEPARATOR: ',' WS;
 EXTRA_NAME: NAME -> type(NAME);
 ML_EDGE: ':' ' '+ '^^' -> popMode, pushMode(MLTextMode);
 LINE_ENTER: ':' ' '+ -> popMode, pushMode(LineTextMode);
-SPEAKER_ANY: ANY -> more, popMode, pushMode(ExpressionMode);
+SPEAKER_ANY: ANY -> type(ANY);
 
 mode LineTextMode;
-LINE_TAG_ENTER: TAG_ENTER (WS* '/')? -> type(TAG_ENTER), pushMode(ExpressionMode);
+LINE_TAG_ENTER: TAG_ENTER (WS* '/')? -> type(TAG_ENTER), pushMode(TagMode);
 TEXT: (STRING_ESCAPE_SEQ | ~[[\\\r\n])+;
 TEXT_NEWLINE: NEWLINE -> type(NEWLINE), popMode;
 TEXT_ANY: ANY -> type(ANY);
 
 mode MLTextMode;
-ML_TAG_ENTER: TAG_ENTER (WS* '/')? -> type(TAG_ENTER), pushMode(ExpressionMode);
+ML_TAG_ENTER: TAG_ENTER (WS* '/')? -> type(TAG_ENTER), pushMode(TagMode);
 ML_EXIT: '^^' -> type(ML_EDGE), popMode;
 ML_TEXT: (STRING_ESCAPE_SEQ | ~[[^\\\r\n])+ -> type(TEXT);
 ML_NEWLINE: NEWLINE -> skip;
@@ -48,6 +48,20 @@ CHOICE_TEXT: (STRING_ESCAPE_SEQ | ~[[\\\r\n])+ -> type(TEXT);
 CHOICE_TAG_ENTER: TAG_ENTER -> type(TAG_ENTER), pushMode(ExpressionMode);
 CHOICE_NEWLINE: NEWLINE -> type(NEWLINE), popMode;
 CHOICE_ANY: ANY -> type(ANY);
+
+mode TagMode;
+BBCODE_NAME: ('b'|'i'|'u'|'s'|'code'|'p'|'center'|'right'|'left'|'fill'|'indent'
+	|'url'|'img'|'font'|'font_size'|'opentype_features'|'table'|'cell'|'ul'
+	|'ol'|'lb'|'rb'|'color'|'bgcolor'|'fgcolor'|'outline_size'|'outline_color'
+	|'wave'|'tornado'|'fade'|'rainbow'|'shake') -> popMode, pushMode(BBCodeMode);
+TAG_BOOL: BOOL -> type(BOOL), popMode, pushMode(ExpressionMode);
+NON_BBCODE_NAME: NAME -> type(NAME), popMode, pushMode(ExpressionMode);
+TAG_ANY: ANY -> more, popMode, pushMode(ExpressionMode);
+
+mode BBCodeMode;
+BBCODE_EXTRA_TEXT: ~']'+;
+BBCODE_TAG_EXIT: ']' -> type(TAG_EXIT), popMode;
+BBCODE_ANY: ANY -> type(ANY);
 
 mode ExpressionMode;
 OPEN_PAREN : '(';
@@ -76,6 +90,7 @@ OP_ADD: '+';
 OP_SUB: '-';
 COMMA: ',';
 NAME: NAME_START NAME_CONTINUE*;
+UNDERSCORE: '_';
 TAG_ENTER: '[';
 TAG_EXIT: ']' -> popMode;
 EXP_NEWLINE: NEWLINE -> type(NEWLINE), popMode;
@@ -84,9 +99,8 @@ EXP_ANY: ANY -> type(ANY);
 fragment STRING_ESCAPE_SEQ
 	: '\\' .
 	| '\\' NEWLINE;
-fragment UNDERSCORE: '_';
 fragment NAME_START: [A-Za-z];
-fragment NAME_CONTINUE: NAME_START | '_' | DIGIT;
+fragment NAME_CONTINUE: NAME_START | UNDERSCORE | DIGIT;
 fragment INT: DIGIT+;
 fragment DIGIT: [0-9];
 fragment SPACE: [ \t];

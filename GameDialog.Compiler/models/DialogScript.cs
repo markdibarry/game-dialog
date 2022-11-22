@@ -6,12 +6,14 @@ public class DialogScript
     public List<string> SpeakerIds { get; set; } = new();
     public List<float> ExpFloats { get; set; } = new();
     public List<string> ExpStrings { get; set; } = new();
-    public List<SpeakerUpdate> SpeakerUpdates { get; set; } = new() 
+    public List<Choice> Choices { get; set; } = new();
+    public List<List<int>> ChoiceSets { get; set; } = new();
     public List<Section> Sections { get; set; } = new();
     public List<VarDef> Variables { get; set; } = new();
     public List<Line> Lines { get; set; } = new();
-    public List<List<Expression>> ConditionalSets { get; set; } = new();
-    public List<Expression> Expressions { get; set; } = new();
+    public List<List<InstructionStmt>> ConditionalSets { get; set; } = new();
+    public List<InstructionStmt> InstructionStmts { get; set; } = new();
+    public List<List<int>> Instructions { get; set; } = new();
 }
 
 public class Section
@@ -34,22 +36,20 @@ public readonly struct GoTo
 
 public class Line : IResolveable
 {
-    public List<Choice> Choices { get; set; }
-    public List<List<int>> Expressions { get; set; }
+    public List<int> InstructionIndices { get; set; } = new();
     public GoTo Next { get; set; }
-    public List<int> SpeakerIndices { get; set; }
-    public List<Tag> Tags { get; set; }
-    public string Text { get; set; }
+    public List<int> SpeakerIndices { get; set; } = new();
+    public string Text { get; set; } = string.Empty;
 }
 
-public class Expression : IResolveable
+public class InstructionStmt : IResolveable
 {
-    public Expression(List<int>? values)
+    public InstructionStmt(List<int>? values)
         :this(values, new GoTo(default, default))
     {
     }
 
-    public Expression(List<int>? values, GoTo nextStatement)
+    public InstructionStmt(List<int>? values, GoTo nextStatement)
     {
         Values = values;
         Next = nextStatement;
@@ -61,15 +61,8 @@ public class Expression : IResolveable
 
 public class Choice : IResolveable
 {
-    public List<int> Condition { get; set; }
     public GoTo Next { get; set; }
-    public string Text { get; set; }
-}
-
-public class Tag
-{
-    public int Position { get; set; }
-    public int Type { get; set; }
+    public string Text { get; set; } = string.Empty;
 }
 
 public class VarDef
@@ -102,7 +95,8 @@ public enum StatementType
     Undefined,
     Line,
     Conditional,
-    Expression,
+    Instruction,
+    Choice,
     Section
 }
 

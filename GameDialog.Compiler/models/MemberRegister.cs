@@ -5,10 +5,8 @@ public class MemberRegister
     public MemberRegister()
     {
         VarDefs.Add(new VarDef(BuiltIn.AUTO, VarType.Bool));
-        VarDefs.Add(new VarDef(BuiltIn.G_AUTO, VarType.Bool));
         VarDefs.Add(new VarDef(BuiltIn.GOTO, VarType.String));
         VarDefs.Add(new VarDef(BuiltIn.SPEED, VarType.Float));
-        VarDefs.Add(new VarDef(BuiltIn.G_SPEED, VarType.Float));
         VarDefs.Add(new VarDef(BuiltIn.PAUSE, VarType.Float));
         FuncDefs.Add(new FuncDef(BuiltIn.UPDATE_SPEAKER, default,
             new()

@@ -1,5 +1,4 @@
 ﻿using Antlr4.Runtime;
-using Antlr4.Runtime.Tree;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using System.Diagnostics.CodeAnalysis;
 
@@ -19,32 +18,32 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
     private readonly MemberRegister _memberRegister;
     private List<int> _currentExp = new();
     private bool _expWalkStarted;
-    private static readonly Dictionary<int, ExpType> InstructionLookup = new()
+    private static readonly Dictionary<int, InstructionType> InstructionLookup = new()
         {
-            { DialogLexer.OP_MULT, ExpType.Mult },
-            { DialogLexer.OP_DIVIDE, ExpType.Div },
-            { DialogLexer.OP_ADD, ExpType.Add },
-            { DialogLexer.OP_SUB, ExpType.Sub },
-            { DialogLexer.OP_LESS_EQUALS, ExpType.LessEquals },
-            { DialogLexer.OP_GREATER_EQUALS, ExpType.GreaterEquals },
-            { DialogLexer.OP_LESS, ExpType.Less },
-            { DialogLexer.OP_GREATER, ExpType.Greater },
-            { DialogLexer.OP_EQUALS, ExpType.Equals },
-            { DialogLexer.OP_NOT_EQUALS, ExpType.NotEquals },
-            { DialogLexer.OP_AND, ExpType.And },
-            { DialogLexer.OP_OR, ExpType.Or },
-            { DialogLexer.OP_NOT, ExpType.Not },
-            { DialogLexer.OP_ASSIGN, ExpType.Assign },
-            { DialogLexer.OP_MULT_ASSIGN, ExpType.MultAssign },
-            { DialogLexer.OP_DIVIDE_ASSIGN, ExpType.DivAssign },
-            { DialogLexer.OP_ADD_ASSIGN, ExpType.AddAssign },
-            { DialogLexer.OP_SUB_ASSIGN, ExpType.SubAssign }
+            { DialogLexer.OP_MULT, InstructionType.Mult },
+            { DialogLexer.OP_DIVIDE, InstructionType.Div },
+            { DialogLexer.OP_ADD, InstructionType.Add },
+            { DialogLexer.OP_SUB, InstructionType.Sub },
+            { DialogLexer.OP_LESS_EQUALS, InstructionType.LessEquals },
+            { DialogLexer.OP_GREATER_EQUALS, InstructionType.GreaterEquals },
+            { DialogLexer.OP_LESS, InstructionType.Less },
+            { DialogLexer.OP_GREATER, InstructionType.Greater },
+            { DialogLexer.OP_EQUALS, InstructionType.Equals },
+            { DialogLexer.OP_NOT_EQUALS, InstructionType.NotEquals },
+            { DialogLexer.OP_AND, InstructionType.And },
+            { DialogLexer.OP_OR, InstructionType.Or },
+            { DialogLexer.OP_NOT, InstructionType.Not },
+            { DialogLexer.OP_ASSIGN, InstructionType.Assign },
+            { DialogLexer.OP_MULT_ASSIGN, InstructionType.MultAssign },
+            { DialogLexer.OP_DIVIDE_ASSIGN, InstructionType.DivAssign },
+            { DialogLexer.OP_ADD_ASSIGN, InstructionType.AddAssign },
+            { DialogLexer.OP_SUB_ASSIGN, InstructionType.SubAssign }
         };
 
-    public Expression GetExpression(ParserRuleContext context, VarType expectedType = default)
+    public List<int> GetExpression(ParserRuleContext context, VarType expectedType = default)
     {
         VarType resultType = Visit(context);
-        var result = _currentExp;
+        List<int> result = _currentExp;
         _currentExp = new();
         if (expectedType != default && resultType != expectedType)
         {
@@ -55,7 +54,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
                 Severity = DiagnosticSeverity.Error,
             });
         }
-        return new Expression(result);
+        return result;
     }
 
     public override VarType VisitAssignment([NotNull] DialogParser.AssignmentContext context)
@@ -74,7 +73,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
             variable = _dialogScript.Variables[varIndex];
         }
         VarType newType = PushExp(
-            new[] { (int)InstructionLookup[context.op.Type], (int)ExpType.Var, varIndex },
+            new[] { (int)InstructionLookup[context.op.Type], (int)InstructionType.Var, varIndex },
             variable.Type,
             context.right);
         if (newType == VarType.Undefined)
@@ -144,15 +143,6 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
         {
             // Visit inner expression
             VarType resultType = Visit(exp);
-            //if (resultType == VarType.Undefined)
-            //{
-            //    Diagnostics.Add(new()
-            //    {
-            //        Range = exp.GetRange(),
-            //        Message = $"Type Error: Cannot infer expression result type.",
-            //        Severity = DiagnosticSeverity.Error,
-            //    });
-            //}
             if (expectedType == VarType.Undefined)
                 expectedType = resultType;
             if (resultType != expectedType)
@@ -167,9 +157,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
         }
 
         if (isTopExp)
-        {
             _expWalkStarted = false;
-        }
         return expectedType;
     }
 }

@@ -18,8 +18,8 @@ public class DialogCompiler
     {
         MemberRegister memberRegister = new();
         ParserRuleContext context = document.Parser.script();
-        Utility.PrintTokens((CommonTokenStream)document.Parser.TokenStream);
-        Utility.PrintTree(context);
+        //Utility.PrintTokens((CommonTokenStream)document.Parser.TokenStream);
+        //Utility.PrintTree(context);
         DialogScript dialogScript = new();
         List<Diagnostic> diagnostics = new();
         // Get all speaker ids
