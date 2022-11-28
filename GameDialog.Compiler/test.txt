@@ -12,7 +12,7 @@ Threena: Why did you interrupt me?
         Threena: I was, and that was super rude.
         Twosen: By all means, you have the floor!
         Threena: My name is Thr-[auto]
-    if [actor_Twosen_empathy > 5]
+    if [8 > 5]
         ? I'm sorry
             [actor_Threena_bond += 1]
             Twosen: You're right. That was out of line.

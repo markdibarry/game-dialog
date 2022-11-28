@@ -1,25 +1,26 @@
 ﻿using Antlr4.Runtime;
+using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
 namespace GameDialog.Compiler;
 
 public class DialogDocument
 {
-    public DialogDocument(string fileName, string text)
+    public DialogDocument(DocumentUri uri, string text)
     {
-        FileName = fileName;
+        Uri = uri;
         AntlrInputStream stream = new(text);
         Lexer = new(stream);
         CommonTokenStream tokens = new(Lexer);
         Parser = new(tokens);
-        LexerErrorListener = new(fileName);
-        ParserErrorListener = new(fileName);
+        LexerErrorListener = new(uri.Path);
+        ParserErrorListener = new(uri.Path);
         Lexer.AddErrorListener(LexerErrorListener);
         Parser.AddErrorListener(ParserErrorListener);
     }
 
-    public DialogDocument(string fileName)
-        :this(fileName, string.Empty)
+    public DialogDocument(DocumentUri uri)
+        :this(uri, string.Empty)
     {
     }
 
@@ -28,11 +29,11 @@ public class DialogDocument
     public DialogLexer Lexer { get; set; }
     public DialogParser Parser { get; set; }
     public string Text { get; set; } = string.Empty;
-    public string FileName { get; set; }
+    public DocumentUri Uri { get; set; }
 
-    public void PushChange(TextDocumentContentChangeEvent changeEvent)
+    public void UpdateText(string text)
     {
-        Text = changeEvent.Text;
+        Text = text;
         AntlrInputStream stream = new(Text);
         Lexer.SetInputStream(stream);
         CommonTokenStream tokens = new(Lexer);

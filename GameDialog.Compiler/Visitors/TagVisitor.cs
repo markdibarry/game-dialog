@@ -20,16 +20,9 @@ public partial class MainDialogVisitor
             return;
         }
 
-        List<int>? ints;
+        List<int>? ints = GetTagInts(context);
 
-        if (context.expression() != null)
-            ints = GetExpressionTagInts(context);
-        else if (context.assignment() != null)
-            ints = GetAssignTagInts(context);
-        else
-            ints = GetAttrTagInts(context);
-
-        if (ints == null)
+        if (ints == null || ints.Count == 0)
             return;
 
         if (ints[0] == (int)InstructionType.Goto)
@@ -54,22 +47,24 @@ public partial class MainDialogVisitor
         {
             //Add BBCode as a string (I'm not able to provide validation)
             string bbText = context.BBCODE_NAME().GetText();
+            if (context.TAG_ENTER().GetText().EndsWith('/'))
+                bbText = '/' + bbText;
             if (context.BBCODE_EXTRA_TEXT() != null)
                 bbText += context.BBCODE_EXTRA_TEXT().GetText();
-            _dialogScript.ExpStrings.Add(bbText);
-            ints = BuiltIn.GetBBCodeInts(_dialogScript.ExpStrings.Count - 1);
+            int bbCodeIndex = _dialogScript.InstStrings.IndexOf(bbText);
+            if (bbCodeIndex == -1)
+            {
+                _dialogScript.InstStrings.Add(bbText);
+                bbCodeIndex = _dialogScript.InstStrings.Count - 1;
+            }
+            ints = new() { (int)InstructionType.BBCode, bbCodeIndex };
         }
         else
         {
-            if (context.expression() != null)
-                ints = GetExpressionTagInts(context);
-            else if (context.assignment() != null)
-                ints = GetAssignTagInts(context);
-            else
-                ints = GetAttrTagInts(context);
+            ints = GetTagInts(context);
         }
 
-        if (ints == null)
+        if (ints == null || ints.Count == 0)
             return;
 
         if (ints[0] == (int)InstructionType.Goto)
@@ -82,15 +77,26 @@ public partial class MainDialogVisitor
         sb.Append($"[{line.InstructionIndices.Count - 1}]");
     }
 
+    private List<int>? GetTagInts([NotNull] DialogParser.TagContext context)
+    {
+        if (context.expression() != null)
+            return GetExpressionTagInts(context);
+        else if (context.assignment() != null)
+            return GetAssignTagInts(context);
+        else if (context.attr_expression() != null)
+            return GetAttrTagInts(context);
+        return null;
+    }
+
     private List<int>? GetExpressionTagInts([NotNull] DialogParser.TagContext context)
     {
         DialogParser.ExpressionContext expContext = context.expression();
         if (expContext is not DialogParser.ConstVarContext varContext)
-            return _expressionVisitor.GetExpression(expContext);
+            return _expressionVisitor.GetInstruction(expContext);
 
         string expName = varContext.NAME().GetText();
         if (!BuiltIn.IsBuiltIn(expName))
-            return _expressionVisitor.GetExpression(expContext);
+            return _expressionVisitor.GetInstruction(expContext);
 
         bool isClose = context.TAG_ENTER().GetText().EndsWith('/');
         switch (expName)
@@ -121,8 +127,8 @@ public partial class MainDialogVisitor
                     });
                     return null;
                 }
-                _dialogScript.ExpFloats.Add(-1);
-                return new() { (int)InstructionType.Speed, _dialogScript.ExpFloats.Count - 1 };
+                _dialogScript.InstFloats.Add(-1);
+                return new() { (int)InstructionType.Speed, _dialogScript.InstFloats.Count - 1 };
         }
         // Nothing matched
         _diagnostics.Add(new Diagnostic()
@@ -139,7 +145,7 @@ public partial class MainDialogVisitor
         DialogParser.AssignmentContext assContext = context.assignment();
         string expName = assContext.NAME().GetText();
         if (!BuiltIn.IsBuiltIn(expName))
-            return _expressionVisitor.GetExpression(assContext);
+            return _expressionVisitor.GetInstruction(assContext);
         switch (expName)
         {
             case BuiltIn.AUTO:
@@ -164,8 +170,8 @@ public partial class MainDialogVisitor
                     });
                     return null;
                 }
-                _dialogScript.ExpFloats.Add(float.Parse(floatContext.GetText()));
-                return new() { (int)InstructionType.Speed, _dialogScript.ExpFloats.Count - 1 };
+                _dialogScript.InstFloats.Add(float.Parse(floatContext.GetText()));
+                return new() { (int)InstructionType.Speed, _dialogScript.InstFloats.Count - 1 };
         }
         _diagnostics.Add(new Diagnostic()
         {
@@ -223,7 +229,7 @@ public partial class MainDialogVisitor
         }
         if (BuiltIn.IsNameExpression(attContext))
         {
-            return BuiltIn.GetSpeakerGetInts(attName, _dialogScript);
+            return GetSpeakerGetInts(attName);
         }
         else if (BuiltIn.IsSpeakerExpression(attContext))
         {
@@ -237,7 +243,7 @@ public partial class MainDialogVisitor
                 });
                 return null;
             }
-            return BuiltIn.GetSpeakerSetInts(attContext, _dialogScript);
+            return GetSpeakerUpdateInts(attContext);
         }
 
         _diagnostics.Add(new Diagnostic()
@@ -247,5 +253,45 @@ public partial class MainDialogVisitor
             Severity = DiagnosticSeverity.Error,
         });
         return null;
+    }
+
+    public List<int> GetSpeakerGetInts(string name)
+    {
+        int index = _dialogScript.InstStrings.IndexOf(name);
+        if (index == -1)
+        {
+            _dialogScript.InstStrings.Add(name);
+            index = _dialogScript.InstStrings.Count - 1;
+        }
+        return new() { (int)InstructionType.SpeakerGet, index };
+    }
+
+    private List<int> GetSpeakerUpdateInts(DialogParser.Attr_expressionContext context)
+    {
+        List<int> updateInts = new() { (int)InstructionType.SpeakerSet };
+        List<int> nameInst = new() { -1 };
+        List<int> moodInst = new() { -1 };
+        List<int> portraitInst = new() { -1 };
+        foreach (var ass in context.assignment())
+        {
+            List<int> values = _expressionVisitor.GetInstruction(ass.right, VarType.String);
+            switch (ass.NAME().GetText())
+            {
+                case BuiltIn.NAME:
+                    nameInst = values;
+                    break;
+                case BuiltIn.MOOD:
+                    moodInst = values;
+                    break;
+                case BuiltIn.PORTRAIT:
+                    portraitInst = values;
+                    break;
+            }
+        }
+        updateInts.AddRange(nameInst);
+        updateInts.AddRange(moodInst);
+        updateInts.AddRange(portraitInst);
+
+        return updateInts;
     }
 }

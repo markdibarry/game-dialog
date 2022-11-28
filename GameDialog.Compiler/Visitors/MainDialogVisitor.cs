@@ -69,7 +69,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
 
         _nestLevel++;
         // if
-        InstructionStmt ifExp = new(_expressionVisitor.GetExpression(context.if_stmt().expression()));
+        InstructionStmt ifExp = new(_expressionVisitor.GetInstruction(context.if_stmt().expression()));
         conditionalSet.Add(ifExp);
         _unresolvedStmts.Add((_nestLevel, ifExp));
         foreach (var stmt in context.if_stmt().stmt())
@@ -78,7 +78,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         // else if
         foreach (var elseifstmt in context.elseif_stmt())
         {
-            InstructionStmt elseifExp = new(_expressionVisitor.GetExpression(elseifstmt.expression()));
+            InstructionStmt elseifExp = new(_expressionVisitor.GetInstruction(elseifstmt.expression()));
             conditionalSet.Add(elseifExp);
             _unresolvedStmts.Add((_nestLevel, elseifExp));
             foreach (var stmt in elseifstmt.stmt())
@@ -145,8 +145,8 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
 
     private void ResolveStatements(GoTo next)
     {
-        if (_currentSection.Start.Type == default)
-            _currentSection.Start = next;
+        if (_currentSection.Next.Type == default)
+            _currentSection.Next = next;
         foreach (var stmt in _unresolvedStmts.Where(x => x.Item1 >= _nestLevel))
             stmt.Item2.Next = next;
         _unresolvedStmts.RemoveAll(x => x.Item2.Next.Type != default);

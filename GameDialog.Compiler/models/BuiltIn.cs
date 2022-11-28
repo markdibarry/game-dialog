@@ -24,56 +24,11 @@ public class BuiltIn
     public const string PORTRAIT = "portrait";
     public const string MOOD = "mood";
     public const string UPDATE_SPEAKER = "UpdateSpeaker";
+    public const string GET_NAME = "GetName";
 
     public static bool IsBuiltIn(string text)
     {
         return _builtIns.Contains(text);
-    }
-
-    public static List<int> GetBBCodeInts(int stringIndex)
-    {
-        return new () { (int)InstructionType.BBCode, stringIndex };
-    }
-
-    public static List<int> GetSpeakerGetInts(string name, DialogScript dialogScript)
-    {
-        int index = dialogScript.ExpStrings.IndexOf(name);
-        if (index == -1)
-        {
-            dialogScript.ExpStrings.Add(name);
-            index = dialogScript.ExpStrings.Count - 1;
-        }
-        return new() { (int)InstructionType.SpeakerGet, index };
-    }
-
-    public static List<int> GetSpeakerSetInts(DialogParser.Attr_expressionContext context, DialogScript dialogScript)
-    {
-        List<int> updateInts = new() { (int)InstructionType.SpeakerSet, -1, -1, -1 };
-        foreach (var ass in context.assignment())
-        {
-            string value = ((DialogParser.ConstStringContext)ass.right).STRING().GetText();
-            int index = dialogScript.ExpStrings.IndexOf(value);
-            if (index == -1)
-            {
-                dialogScript.ExpStrings.Add(value);
-                index = dialogScript.ExpStrings.Count - 1;
-            }
-
-            switch (ass.NAME().GetText())
-            {
-                case NAME:
-                    updateInts[1] = index;
-                    break;
-                case MOOD:
-                    updateInts[2] = index;
-                    break;
-                case PORTRAIT:
-                    updateInts[3] = index;
-                    break;
-            }
-        }
-        
-        return updateInts;
     }
 
     public static bool IsNameExpression(DialogParser.Attr_expressionContext context)
@@ -92,8 +47,6 @@ public class BuiltIn
             var names = context.assignment().Select(x => x.NAME().GetText());
             namesValid = names.Distinct().Count() == names.Count();
             namesValid = namesValid && names.All(x => _validSpeakerAttributes.Contains(x));
-            // All assignments must be strings
-            namesValid = namesValid && context.assignment().All(x => x.right is DialogParser.ConstStringContext);
         }
 
         return namesValid;

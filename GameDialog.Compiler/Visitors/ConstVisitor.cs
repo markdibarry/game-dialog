@@ -1,4 +1,6 @@
 ﻿using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace GameDialog.Compiler;
 
@@ -6,15 +8,15 @@ public partial class ExpressionVisitor
 {
     public override VarType VisitConstFloat(DialogParser.ConstFloatContext context)
     {
-        _dialogScript.ExpFloats.Add(float.Parse(context.FLOAT().GetText()));
-        PushExp(new[] { (int)VarType.Float, _dialogScript.ExpFloats.Count - 1 }, default);
+        _dialogScript.InstFloats.Add(float.Parse(context.FLOAT().GetText()));
+        PushExp(new[] { (int)VarType.Float, _dialogScript.InstFloats.Count - 1 }, default);
         return VarType.Float;
     }
 
     public override VarType VisitConstString(DialogParser.ConstStringContext context)
     {
-        _dialogScript.ExpStrings.Add(context.STRING().GetText());
-        PushExp(new[] { (int)VarType.String, _dialogScript.ExpStrings.Count - 1 }, default);
+        _dialogScript.InstStrings.Add(context.STRING().GetText());
+        PushExp(new[] { (int)VarType.String, _dialogScript.InstStrings.Count - 1 }, default);
         return VarType.String;
     }
 
@@ -28,8 +30,8 @@ public partial class ExpressionVisitor
     public override VarType VisitConstVar(DialogParser.ConstVarContext context)
     {
         string varName = context.NAME().GetText();
-        int index = _dialogScript.Variables.FindIndex(x => x.Name == varName);
-        if (index == -1)
+        VarDef? varDef = _memberRegister.VarDefs.FirstOrDefault(x => x.Name == varName);
+        if (varDef == null)
         {
             _diagnostics.Add(new()
             {
@@ -39,9 +41,10 @@ public partial class ExpressionVisitor
             });
             return VarType.Undefined;
         }
-        VarType type = _dialogScript.Variables[index].Type;
+        // nameIndex shouldn't be -1 here.
+        int nameIndex = _dialogScript.InstStrings.IndexOf(varName);
         // Should never happen?
-        if (type == VarType.Undefined)
+        if (varDef.Type == VarType.Undefined)
         {
             _diagnostics.Add(new()
             {
@@ -50,58 +53,76 @@ public partial class ExpressionVisitor
                 Severity = DiagnosticSeverity.Error,
             });
         }
-        PushExp(new[] { (int)InstructionType.Var, index }, type);
-        return type;
+        PushExp(new[] { (int)InstructionType.Var, nameIndex }, varDef.Type);
+        return varDef.Type;
     }
 
     public override VarType VisitFunction(DialogParser.FunctionContext context)
     {
         string funcName = context.NAME().GetText();
-        int index = _dialogScript.Variables.FindIndex(x => x.Name == funcName);
-        if (index == -1)
+        var funcDefs = _memberRegister.FuncDefs.Where(x => x.Name == funcName);
+        if (!funcDefs.Any())
         {
             _diagnostics.Add(new()
             {
                 Range = context.GetRange(),
-                Message = $"{funcName} must be defined in order to be used in dialog.",
+                Message = $"Function not found: Functions must be defined in the Dialog Bridge before use.",
                 Severity = DiagnosticSeverity.Error,
             });
             return VarType.Undefined;
         }
-        FuncDef funcDef = _memberRegister.FuncDefs.First(x => x.Name == funcName);
-        int argsFound = context.expression() != null ? context.expression().Length : 0;
-        if (funcDef.Args.Count != argsFound)
+        VarType returnType = funcDefs.First().ReturnType;
+        int argsFound = context.expression().Length;
+        int nameIndex = _dialogScript.InstStrings.IndexOf(funcName);
+        if (nameIndex == -1)
+        {
+            _dialogScript.InstStrings.Add(funcName);
+            nameIndex = _dialogScript.InstStrings.Count - 1;
+        }
+
+        PushExp(new[] { (int)InstructionType.Func, nameIndex, argsFound }, default);
+        List<VarType> argTypesFound = new();
+        for (int i = 0; i < argsFound; i++)
+        {
+            var exp = context.expression()[i];
+            argTypesFound.Add(Visit(exp));
+        }
+        FuncDef? funcDef = FindMatchingFuncDef(funcName, returnType, argTypesFound);
+        if (funcDef == null)
         {
             _diagnostics.Add(new()
             {
                 Range = context.GetRange(),
-                Message = $"{funcName} expects {funcDef.Args.Count} arguments, but received {argsFound}.",
+                Message = $"Function not found: Functions must be defined in the Dialog Bridge before use.",
                 Severity = DiagnosticSeverity.Error,
             });
-            return funcDef.Type;
+            return VarType.Undefined;
         }
-        // If no expressions, push function with no parameters
-        if (context.expression() == null)
-        {
-            PushExp(new[] { (int)InstructionType.Func, index, 0 }, default);
-            return funcDef.Type;
-        }
-        PushExp(new[] { (int)InstructionType.Func, index, context.expression().Length }, default);
-        for (int i = 0; i < context.expression().Length; i++)
-        {
-            var exp = context.expression()[i];
-            VarType expType = Visit(exp);
-            if (expType != funcDef.Args[i].Type)
-            {
-                _diagnostics.Add(new()
-                {
-                    Range = exp.GetRange(),
-                    Message = $"Argument {i} invalid: cannot convert {expType} to {funcDef.Args[i].Type}.",
-                    Severity = DiagnosticSeverity.Error,
-                });
-            }
-        }
-
-        return funcDef.Type;
+        return returnType;
     }
+
+    private FuncDef? FindMatchingFuncDef(string name, VarType returnType, List<VarType> argTypes)
+    {
+        return _memberRegister.FuncDefs.Where(funcDef =>
+        {
+            if (funcDef.Name != name
+                || funcDef.ReturnType != returnType
+                || argTypes.Count > funcDef.ArgTypes.Count)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < funcDef.ArgTypes.Count; i++)
+            {
+                // if match but has more parameters, check if optional
+                if (i >= argTypes.Count)
+                    return funcDef.ArgTypes.Skip(argTypes.Count).All(y => y.IsOptional);
+
+                if (argTypes[i] != funcDef.ArgTypes[i].Type)
+                    return false;
+            }
+            return true;
+        }).FirstOrDefault();
+    }
+
 }

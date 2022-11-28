@@ -11,13 +11,13 @@ public enum VarType
 
 public enum InstructionType
 {
-    Unknown,
+    Undefined,
     Float,
     String,
     Bool,
-    // Variable index
+    // name string
     Var,
-    // Variable index, number of arguments (float), expressions...
+    // name string, number of arguments (float), expressions...
     Func,
     // float, float
     Mult,
@@ -51,8 +51,6 @@ public enum InstructionType
     NewLine,
     // float
     Speed,
-    // SpeakerId (float), Name (string), Mood (string), Portrait (string)
-    SpeakerSet,
-    // SpeakerId (string)
-    SpeakerGet,
+    // SpeakerId (float), Name (expression), Mood (expression), Portrait (expression)
+    SpeakerSet
 }

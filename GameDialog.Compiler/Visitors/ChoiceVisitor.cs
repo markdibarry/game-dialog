@@ -42,7 +42,7 @@ public partial class MainDialogVisitor
     {
         // if
         var ifStmt = choiceCond.choice_if_stmt();
-        var ifExp = _expressionVisitor.GetExpression(ifStmt.expression(), VarType.Bool);
+        var ifExp = _expressionVisitor.GetInstruction(ifStmt.expression(), VarType.Bool);
         List<int> unresolvedClauses = new();
         _dialogScript.Instructions.Add(ifExp);
         choiceSet.AddRange(new[] { _dialogScript.Instructions.Count - 1, -3 });
@@ -56,7 +56,7 @@ public partial class MainDialogVisitor
             choiceSet.AddRange(new[] { -2, -3 });
             unresolvedClauses.Add(choiceSet.Count - 1);
 
-            var elseifExp = _expressionVisitor.GetExpression(elseifStmt.expression(), VarType.Bool);
+            var elseifExp = _expressionVisitor.GetInstruction(elseifStmt.expression(), VarType.Bool);
             _dialogScript.Instructions.Add(elseifExp);
             choiceSet[unresolvedFallbackIndex] = choiceSet.Count;
             choiceSet.AddRange(new[] { _dialogScript.Instructions.Count - 1, -3 });

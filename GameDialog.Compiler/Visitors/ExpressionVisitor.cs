@@ -16,8 +16,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
     private readonly DialogScript _dialogScript;
     private readonly List<Diagnostic> _diagnostics;
     private readonly MemberRegister _memberRegister;
-    private List<int> _currentExp = new();
-    private bool _expWalkStarted;
+    private List<int> _currentInst = new();
     private static readonly Dictionary<int, InstructionType> InstructionLookup = new()
         {
             { DialogLexer.OP_MULT, InstructionType.Mult },
@@ -40,11 +39,11 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
             { DialogLexer.OP_SUB_ASSIGN, InstructionType.SubAssign }
         };
 
-    public List<int> GetExpression(ParserRuleContext context, VarType expectedType = default)
+    public List<int> GetInstruction(ParserRuleContext context, VarType expectedType = default)
     {
         VarType resultType = Visit(context);
-        List<int> result = _currentExp;
-        _currentExp = new();
+        List<int> result = _currentInst;
+        _currentInst = new();
         if (expectedType != default && resultType != expectedType)
         {
             _diagnostics.Add(new()
@@ -59,36 +58,27 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
 
     public override VarType VisitAssignment([NotNull] DialogParser.AssignmentContext context)
     {
-        VarDef variable;
         string varName = context.NAME().GetText();
-        int varIndex = _dialogScript.Variables.FindIndex(x => x.Name == varName);
-        if (varIndex == -1)
+        VarDef? varDef = _memberRegister.VarDefs.FirstOrDefault(x => x.Name == varName);
+        int nameIndex = _dialogScript.InstStrings.IndexOf(varName);
+        if (nameIndex == -1)
         {
-            variable = new(varName);
-            _dialogScript.Variables.Add(variable);
-            varIndex = _dialogScript.Variables.Count - 1;
-        }
-        else
-        {
-            variable = _dialogScript.Variables[varIndex];
+            varDef = new(varName);
+            _memberRegister.VarDefs.Add(varDef);
+            _dialogScript.InstStrings.Add(varName);
+            nameIndex = _dialogScript.InstStrings.Count - 1;
         }
         VarType newType = PushExp(
-            new[] { (int)InstructionLookup[context.op.Type], (int)InstructionType.Var, varIndex },
-            variable.Type,
+            new[] { (int)InstructionLookup[context.op.Type], (int)InstructionType.Var, nameIndex },
+            varDef.Type,
             context.right);
         if (newType == VarType.Undefined)
         {
-            //Diagnostics.Add(new()
-            //{
-            //    Range = context.GetRange(),
-            //    Message = $"Type Error: Cannot infer expression result type.",
-            //    Severity = DiagnosticSeverity.Error,
-            //});
-            _dialogScript.Variables.Remove(variable);
+            _memberRegister.VarDefs.Remove(varDef);
             return VarType.Undefined;
         }
-        if (variable.Type == VarType.Undefined)
-            variable.Type = newType;
+        if (varDef.Type == VarType.Undefined)
+            varDef.Type = newType;
 
         return VarType.Undefined;
     }
@@ -130,14 +120,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
 
     private VarType PushExp(int[] values, VarType expectedType, params ParserRuleContext[] exps)
     {
-        bool isTopExp = false;
-        if (!_expWalkStarted)
-        {
-            isTopExp = true;
-            _expWalkStarted = true;
-        }
-
-        _currentExp.AddRange(values);
+        _currentInst.AddRange(values);
 
         foreach (var exp in exps)
         {
@@ -156,8 +139,6 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
             }
         }
 
-        if (isTopExp)
-            _expWalkStarted = false;
         return expectedType;
     }
 }

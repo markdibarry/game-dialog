@@ -41,17 +41,17 @@ internal class Evaluator
         };
     }
 
-    public VarDef GetVar(int index) => _script.Variables[index];
+    //public VarDef GetVar(int index) => _script.Variables[index];
 
     public T EvalVar<T>()
     {
-        VarDef variable = GetVar(_iterator);
+        //VarDef variable = GetVar(_iterator);
         return default;
     }
 
     public T EvalFunc<T>()
     {
-        VarDef variable = GetVar(++_iterator);
+        //VarDef variable = GetVar(++_iterator);
         int argNum = _expression[++_iterator];
         if (argNum == 0)
             return default;
@@ -122,10 +122,10 @@ internal class Evaluator
 
     public string EvalString()
     {
-        return _script.ExpStrings[_expression[_iterator++]];
+        return _script.InstStrings[_expression[_iterator++]];
     }
 
-    public float EvalFloat() => _script.ExpFloats[_expression[_iterator++]];
+    public float EvalFloat() => _script.InstFloats[_expression[_iterator++]];
 
     public float EvalMult() => EvalFloatExp() * EvalFloatExp();
 
@@ -170,8 +170,8 @@ internal class Evaluator
             InstructionType.Not or
             InstructionType.And or
             InstructionType.Or => VarType.Bool,
-            InstructionType.Var or
-            InstructionType.Func => _script.Variables[_expression[index + 1]].Type,
+            //InstructionType.Var or
+            //InstructionType.Func => _script.Variables[_expression[index + 1]].Type,
             _ => VarType.Undefined
         };
     }

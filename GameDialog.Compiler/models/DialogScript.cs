@@ -4,12 +4,11 @@
 public class DialogScript
 {
     public List<string> SpeakerIds { get; set; } = new();
-    public List<float> ExpFloats { get; set; } = new();
-    public List<string> ExpStrings { get; set; } = new();
+    public List<float> InstFloats { get; set; } = new();
+    public List<string> InstStrings { get; set; } = new();
     public List<Choice> Choices { get; set; } = new();
     public List<List<int>> ChoiceSets { get; set; } = new();
     public List<Section> Sections { get; set; } = new();
-    public List<VarDef> Variables { get; set; } = new();
     public List<Line> Lines { get; set; } = new();
     public List<List<InstructionStmt>> ConditionalSets { get; set; } = new();
     public List<InstructionStmt> InstructionStmts { get; set; } = new();
@@ -19,7 +18,7 @@ public class DialogScript
 public class Section
 {
     public string Name { get; set; } = string.Empty;
-    public GoTo Start { get; set; }
+    public GoTo Next { get; set; }
 }
 
 public readonly struct GoTo

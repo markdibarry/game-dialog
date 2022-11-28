@@ -1,11 +1,20 @@
-﻿using System.Collections.Concurrent;
+﻿using OmniSharp.Extensions.LanguageServer.Protocol;
+using System.Collections.Concurrent;
 
 namespace GameDialog.Compiler;
 
 public class DocumentManager
 {
-    public ConcurrentDictionary<string, DialogDocument> Documents { get; set; } = new();
-    private DialogCompiler _compiler = new();
+    public DocumentManager()
+    {
+        MemberRegister = new();
+        _compiler = new(MemberRegister);
+    }
 
-    public Dictionary<string, CompilationResult> Compile() => _compiler.Compile(Documents);
+    private readonly DialogCompiler _compiler;
+    public ConcurrentDictionary<DocumentUri, DialogDocument> Documents { get; set; } = new();
+    public MemberRegister MemberRegister { get; }
+
+
+    public Dictionary<DocumentUri, CompilationResult> Compile() => _compiler.Compile(Documents);
 }
