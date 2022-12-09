@@ -1,6 +1,7 @@
 ﻿using Antlr4.Runtime;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection.Metadata;
 
 namespace GameDialog.Compiler;
 
@@ -67,6 +68,16 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
             _memberRegister.VarDefs.Add(varDef);
             _dialogScript.InstStrings.Add(varName);
             nameIndex = _dialogScript.InstStrings.Count - 1;
+        }
+        if (context.op.Type != DialogLexer.OP_ASSIGN && varDef.Type != VarType.Float)
+        {
+            _diagnostics.Add(new()
+            {
+                Range = context.GetRange(),
+                Message = $"Operator requires variable to be of type {VarType.Float} and already have a value.",
+                Severity = DiagnosticSeverity.Error,
+            });
+            return VarType.Undefined;
         }
         VarType newType = PushExp(
             new[] { (int)InstructionLookup[context.op.Type], (int)InstructionType.Var, nameIndex },

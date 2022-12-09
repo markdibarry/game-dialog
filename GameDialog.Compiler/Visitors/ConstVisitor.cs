@@ -1,6 +1,4 @@
 ﻿using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
 
 namespace GameDialog.Compiler;
 
