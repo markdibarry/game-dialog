@@ -81,14 +81,6 @@ public class VarDef
     public VarType Type { get; set; }
 }
 
-public class SpeakerUpdate
-{
-    public int SpeakerId { get; set; }
-    public string? Name { get; set; }
-    public string? Portrait { get; set; }
-    public string? Mood { get; set; }
-}
-
 public enum StatementType
 {
     Undefined,

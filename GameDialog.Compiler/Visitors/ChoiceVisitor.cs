@@ -14,10 +14,10 @@ public partial class MainDialogVisitor
     {
         _nestLevel++;
         // follows pattern
-        // -1 = choice index
-        // -2 = go to index
+        // Choice = choice index
+        // GoTo = go to index
         // -3 = unresolved index
-        // > -1 = instruction index, next is go to if condition fails
+        // other = instruction index, next is go to if condition fails
         foreach (var choiceStmt in context)
         {
             if (choiceStmt.TEXT() != null)
@@ -32,7 +32,7 @@ public partial class MainDialogVisitor
     {
         Choice choice = new() { Text = choiceStmt.TEXT().GetText()};
         _dialogScript.Choices.Add(choice);
-        choiceSet.AddRange(new[] { -1, _dialogScript.Choices.Count - 1 });
+        choiceSet.AddRange(new[] { (int)OpCode.Choice, _dialogScript.Choices.Count - 1 });
         _unresolvedStmts.Add((_nestLevel, choice));
         foreach (var stmt in choiceStmt.stmt())
             Visit(stmt);
@@ -53,7 +53,7 @@ public partial class MainDialogVisitor
         foreach (var elseifStmt in choiceCond.choice_elseif_stmt())
         {
             // close if clause with go-to
-            choiceSet.AddRange(new[] { -2, -3 });
+            choiceSet.AddRange(new[] { (int)OpCode.Goto, -3 });
             unresolvedClauses.Add(choiceSet.Count - 1);
 
             var elseifExp = _expressionVisitor.GetInstruction(elseifStmt.expression(), VarType.Bool);
@@ -69,7 +69,7 @@ public partial class MainDialogVisitor
         if (choiceCond.choice_else_stmt() != null)
         {
             // close elseif clause with go-to
-            choiceSet.AddRange(new[] { -2, -3 });
+            choiceSet.AddRange(new[] { (int)OpCode.Goto, -3 });
             unresolvedClauses.Add(choiceSet.Count - 1);
 
             var elseStmt = choiceCond.choice_else_stmt();

@@ -25,7 +25,7 @@ public partial class MainDialogVisitor
         if (ints == null || ints.Count == 0)
             return;
 
-        if (ints[0] == (int)InstructionType.Goto)
+        if (ints[0] == (int)OpCode.Goto)
         {
             // If next is decided
             _dialogScript.InstructionStmts.Add(new(null, new(StatementType.Section, ints[1])));
@@ -57,7 +57,7 @@ public partial class MainDialogVisitor
                 _dialogScript.InstStrings.Add(bbText);
                 bbCodeIndex = _dialogScript.InstStrings.Count - 1;
             }
-            ints = new() { (int)InstructionType.BBCode, bbCodeIndex };
+            ints = new() { (int)OpCode.BBCode, bbCodeIndex };
         }
         else
         {
@@ -67,7 +67,7 @@ public partial class MainDialogVisitor
         if (ints == null || ints.Count == 0)
             return;
 
-        if (ints[0] == (int)InstructionType.Goto)
+        if (ints[0] == (int)OpCode.Goto)
         {
             line.Next = new(StatementType.Section, ints[1]);
             return;
@@ -111,11 +111,11 @@ public partial class MainDialogVisitor
                 });
                 return null;
             case BuiltIn.END:
-                return new() { (int)InstructionType.Goto, -1 };
+                return new() { (int)OpCode.Goto, -1 };
             case BuiltIn.AUTO:
-                return new() { (int)InstructionType.Auto, isClose ? 0 : 1 };
+                return new() { (int)OpCode.Auto, isClose ? 0 : 1 };
             case BuiltIn.NEWLINE:
-                return new() { (int)InstructionType.NewLine };
+                return new() { (int)OpCode.NewLine };
             case BuiltIn.SPEED:
                 if (!isClose)
                 {
@@ -128,7 +128,7 @@ public partial class MainDialogVisitor
                     return null;
                 }
                 _dialogScript.InstFloats.Add(-1);
-                return new() { (int)InstructionType.Speed, _dialogScript.InstFloats.Count - 1 };
+                return new() { (int)OpCode.Speed, _dialogScript.InstFloats.Count - 1 };
         }
         // Nothing matched
         _diagnostics.Add(new Diagnostic()
@@ -171,7 +171,7 @@ public partial class MainDialogVisitor
                     return null;
                 }
                 _dialogScript.InstFloats.Add(float.Parse(floatContext.GetText()));
-                return new() { (int)InstructionType.Speed, _dialogScript.InstFloats.Count - 1 };
+                return new() { (int)OpCode.Speed, _dialogScript.InstFloats.Count - 1 };
         }
         _diagnostics.Add(new Diagnostic()
         {
@@ -212,7 +212,7 @@ public partial class MainDialogVisitor
                 }
                 string sectionName = attContext.expression()[0].GetText();
                 if (sectionName.ToLower() == BuiltIn.END)
-                    return new() { (int)InstructionType.Goto, -1 };
+                    return new() { (int)OpCode.Goto, -1 };
                 int sectionIndex = _dialogScript.Sections.FindIndex(x => x.Name == sectionName);
                 if (sectionIndex == -1)
                 {
@@ -224,7 +224,7 @@ public partial class MainDialogVisitor
                     });
                     return null;
                 }
-                return new() { (int)InstructionType.Goto, sectionIndex };
+                return new() { (int)OpCode.Goto, sectionIndex };
 
         }
         if (BuiltIn.IsNameExpression(attContext))
@@ -257,18 +257,24 @@ public partial class MainDialogVisitor
 
     public List<int> GetSpeakerGetInts(string name)
     {
-        int index = _dialogScript.InstStrings.IndexOf(name);
-        if (index == -1)
+        int funcIndex = _dialogScript.InstStrings.IndexOf("GetName");
+        if (funcIndex == -1)
+        {
+            _dialogScript.InstStrings.Add("GetName");
+            funcIndex = _dialogScript.InstStrings.Count - 1;
+        }
+        int nameIndex = _dialogScript.InstStrings.IndexOf(name);
+        if (nameIndex == -1)
         {
             _dialogScript.InstStrings.Add(name);
-            index = _dialogScript.InstStrings.Count - 1;
+            nameIndex = _dialogScript.InstStrings.Count - 1;
         }
-        return new() { (int)InstructionType.SpeakerGet, index };
+        return new() { (int)OpCode.Func, funcIndex, 1, (int)OpCode.String, nameIndex};
     }
 
     private List<int> GetSpeakerUpdateInts(DialogParser.Attr_expressionContext context)
     {
-        List<int> updateInts = new() { (int)InstructionType.SpeakerSet };
+        List<int> updateInts = new() { (int)OpCode.SpeakerSet };
         List<int> nameInst = new() { -1 };
         List<int> moodInst = new() { -1 };
         List<int> portraitInst = new() { -1 };

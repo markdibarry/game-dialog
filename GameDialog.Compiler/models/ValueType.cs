@@ -9,7 +9,7 @@ public enum VarType
     Void = 4
 }
 
-public enum InstructionType
+public enum OpCode
 {
     Undefined,
     Float,
@@ -52,5 +52,6 @@ public enum InstructionType
     // float
     Speed,
     // SpeakerId (float), Name (expression), Mood (expression), Portrait (expression)
-    SpeakerSet
+    SpeakerSet,
+    Choice
 }

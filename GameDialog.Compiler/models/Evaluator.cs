@@ -91,31 +91,31 @@ internal class Evaluator
 
     public bool EvalBoolExp()
     {
-        return (InstructionType)_expression[_iterator++] switch
+        return (OpCode)_expression[_iterator++] switch
         {
-            InstructionType.Bool => EvalBool(),
-            InstructionType.Less => EvalLess(),
-            InstructionType.Greater => EvalGreater(),
-            InstructionType.LessEquals => EvalLessEquals(),
-            InstructionType.GreaterEquals => EvalGreaterEquals(),
-            InstructionType.Equals => EvalEquals(),
-            InstructionType.NotEquals => !EvalEquals(),
-            InstructionType.Not => EvalNot(),
-            InstructionType.And => EvalAnd(),
-            InstructionType.Or => EvalOr(),
-            InstructionType.Var => EvalVar<bool>(),
-            InstructionType.Func => EvalFunc<bool>(),
+            OpCode.Bool => EvalBool(),
+            OpCode.Less => EvalLess(),
+            OpCode.Greater => EvalGreater(),
+            OpCode.LessEquals => EvalLessEquals(),
+            OpCode.GreaterEquals => EvalGreaterEquals(),
+            OpCode.Equals => EvalEquals(),
+            OpCode.NotEquals => !EvalEquals(),
+            OpCode.Not => EvalNot(),
+            OpCode.And => EvalAnd(),
+            OpCode.Or => EvalOr(),
+            OpCode.Var => EvalVar<bool>(),
+            OpCode.Func => EvalFunc<bool>(),
             _ => throw new NotSupportedException()
         };
     }
 
     public string EvalStringExp()
     {
-        return (InstructionType)_expression[_iterator++] switch
+        return (OpCode)_expression[_iterator++] switch
         {
-            InstructionType.String => EvalString(),
-            InstructionType.Var => EvalVar<string>(),
-            InstructionType.Func => EvalFunc<string>(),
+            OpCode.String => EvalString(),
+            OpCode.Var => EvalVar<string>(),
+            OpCode.Func => EvalFunc<string>(),
             _ => throw new NotSupportedException()
         };
     }
@@ -137,39 +137,39 @@ internal class Evaluator
 
     public float EvalFloatExp()
     {
-        return (InstructionType)_expression[_iterator++] switch
+        return (OpCode)_expression[_iterator++] switch
         {
-            InstructionType.Float => EvalFloat(),
-            InstructionType.Mult => EvalMult(),
-            InstructionType.Div => EvalDiv(),
-            InstructionType.Add => EvalAdd(),
-            InstructionType.Sub => EvalSub(),
-            InstructionType.Var => EvalVar<float>(),
-            InstructionType.Func => EvalFunc<float>(),
+            OpCode.Float => EvalFloat(),
+            OpCode.Mult => EvalMult(),
+            OpCode.Div => EvalDiv(),
+            OpCode.Add => EvalAdd(),
+            OpCode.Sub => EvalSub(),
+            OpCode.Var => EvalVar<float>(),
+            OpCode.Func => EvalFunc<float>(),
             _ => throw new NotSupportedException()
         };
     }
 
     public VarType GetExpValueType(int index)
     {
-        return (InstructionType)_expression[index] switch
+        return (OpCode)_expression[index] switch
         {
-            InstructionType.String => VarType.String,
-            InstructionType.Float or
-            InstructionType.Mult or
-            InstructionType.Div or
-            InstructionType.Add or
-            InstructionType.Sub => VarType.Float,
-            InstructionType.Bool or
-            InstructionType.Less or
-            InstructionType.Greater or
-            InstructionType.LessEquals or
-            InstructionType.GreaterEquals or
-            InstructionType.Equals or
-            InstructionType.NotEquals or
-            InstructionType.Not or
-            InstructionType.And or
-            InstructionType.Or => VarType.Bool,
+            OpCode.String => VarType.String,
+            OpCode.Float or
+            OpCode.Mult or
+            OpCode.Div or
+            OpCode.Add or
+            OpCode.Sub => VarType.Float,
+            OpCode.Bool or
+            OpCode.Less or
+            OpCode.Greater or
+            OpCode.LessEquals or
+            OpCode.GreaterEquals or
+            OpCode.Equals or
+            OpCode.NotEquals or
+            OpCode.Not or
+            OpCode.And or
+            OpCode.Or => VarType.Bool,
             //InstructionType.Var or
             //InstructionType.Func => _script.Variables[_expression[index + 1]].Type,
             _ => VarType.Undefined

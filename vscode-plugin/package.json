@@ -15,6 +15,21 @@
     ],
     "main": "./out/src/extension.js",
     "contributes": {
+        "commands": [
+            {
+                "command": "extension.createConstants",
+                "title": "Create Constants File"
+            }
+        ],
+        "menus": {
+            "explorer/context": [
+                {
+                    "when": "resourceExtname == .csv",
+                    "command": "extension.createConstants",
+                    "group": "navigation"
+                }
+            ]
+        },
         "languages": [
             {
                 "id": "gamedialog",

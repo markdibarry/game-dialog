@@ -124,7 +124,7 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
         if (string.IsNullOrEmpty(rootPath))
             return;
         var files = Directory.GetFiles(rootPath, fileName, SearchOption.AllDirectories);
-        if (files.Count() != 1)
+        if (files.Length != 1)
             return;
         string code = new StreamReader(files[0]).ReadToEnd();
         SyntaxTree tree = CSharpSyntaxTree.ParseText(code);

@@ -51,7 +51,7 @@ public partial class ExpressionVisitor
                 Severity = DiagnosticSeverity.Error,
             });
         }
-        PushExp(new[] { (int)InstructionType.Var, nameIndex }, varDef.Type);
+        PushExp(new[] { (int)OpCode.Var, nameIndex }, varDef.Type);
         return varDef.Type;
     }
 
@@ -78,7 +78,7 @@ public partial class ExpressionVisitor
             nameIndex = _dialogScript.InstStrings.Count - 1;
         }
 
-        PushExp(new[] { (int)InstructionType.Func, nameIndex, argsFound }, default);
+        PushExp(new[] { (int)OpCode.Func, nameIndex, argsFound }, default);
         List<VarType> argTypesFound = new();
         for (int i = 0; i < argsFound; i++)
         {

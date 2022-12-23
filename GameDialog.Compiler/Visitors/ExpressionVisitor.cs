@@ -18,26 +18,26 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
     private readonly List<Diagnostic> _diagnostics;
     private readonly MemberRegister _memberRegister;
     private List<int> _currentInst = new();
-    private static readonly Dictionary<int, InstructionType> InstructionLookup = new()
+    private static readonly Dictionary<int, OpCode> InstructionLookup = new()
         {
-            { DialogLexer.OP_MULT, InstructionType.Mult },
-            { DialogLexer.OP_DIVIDE, InstructionType.Div },
-            { DialogLexer.OP_ADD, InstructionType.Add },
-            { DialogLexer.OP_SUB, InstructionType.Sub },
-            { DialogLexer.OP_LESS_EQUALS, InstructionType.LessEquals },
-            { DialogLexer.OP_GREATER_EQUALS, InstructionType.GreaterEquals },
-            { DialogLexer.OP_LESS, InstructionType.Less },
-            { DialogLexer.OP_GREATER, InstructionType.Greater },
-            { DialogLexer.OP_EQUALS, InstructionType.Equals },
-            { DialogLexer.OP_NOT_EQUALS, InstructionType.NotEquals },
-            { DialogLexer.OP_AND, InstructionType.And },
-            { DialogLexer.OP_OR, InstructionType.Or },
-            { DialogLexer.OP_NOT, InstructionType.Not },
-            { DialogLexer.OP_ASSIGN, InstructionType.Assign },
-            { DialogLexer.OP_MULT_ASSIGN, InstructionType.MultAssign },
-            { DialogLexer.OP_DIVIDE_ASSIGN, InstructionType.DivAssign },
-            { DialogLexer.OP_ADD_ASSIGN, InstructionType.AddAssign },
-            { DialogLexer.OP_SUB_ASSIGN, InstructionType.SubAssign }
+            { DialogLexer.OP_MULT, OpCode.Mult },
+            { DialogLexer.OP_DIVIDE, OpCode.Div },
+            { DialogLexer.OP_ADD, OpCode.Add },
+            { DialogLexer.OP_SUB, OpCode.Sub },
+            { DialogLexer.OP_LESS_EQUALS, OpCode.LessEquals },
+            { DialogLexer.OP_GREATER_EQUALS, OpCode.GreaterEquals },
+            { DialogLexer.OP_LESS, OpCode.Less },
+            { DialogLexer.OP_GREATER, OpCode.Greater },
+            { DialogLexer.OP_EQUALS, OpCode.Equals },
+            { DialogLexer.OP_NOT_EQUALS, OpCode.NotEquals },
+            { DialogLexer.OP_AND, OpCode.And },
+            { DialogLexer.OP_OR, OpCode.Or },
+            { DialogLexer.OP_NOT, OpCode.Not },
+            { DialogLexer.OP_ASSIGN, OpCode.Assign },
+            { DialogLexer.OP_MULT_ASSIGN, OpCode.MultAssign },
+            { DialogLexer.OP_DIVIDE_ASSIGN, OpCode.DivAssign },
+            { DialogLexer.OP_ADD_ASSIGN, OpCode.AddAssign },
+            { DialogLexer.OP_SUB_ASSIGN, OpCode.SubAssign }
         };
 
     public List<int> GetInstruction(ParserRuleContext context, VarType expectedType = default)
@@ -80,7 +80,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
             return VarType.Undefined;
         }
         VarType newType = PushExp(
-            new[] { (int)InstructionLookup[context.op.Type], (int)InstructionType.Var, nameIndex },
+            new[] { (int)InstructionLookup[context.op.Type], (int)OpCode.Var, nameIndex },
             varDef.Type,
             context.right);
         if (newType == VarType.Undefined)

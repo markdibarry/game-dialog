@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
-import { workspace, ExtensionContext, WorkspaceConfiguration, commands, window, OutputChannel } from 'vscode';
+import { workspace, ExtensionContext, WorkspaceConfiguration, commands, window, OutputChannel, Uri } from 'vscode';
 import {
 	LanguageClient,
 	LanguageClientOptions,
@@ -20,6 +20,7 @@ let client: LanguageClient;
 let server: ChildProcess;
 
 export function activate(context: ExtensionContext) {
+	commands.registerCommand('extension.createConstants', createConstants);
 	let configuration = workspace.getConfiguration("gamedialog");
 	let enable = configuration.get("EnableLanguageServer");
 	const outputChannel = window.createOutputChannel("Game Dialog");
@@ -92,6 +93,27 @@ async function runServer(context: ExtensionContext, configuration: WorkspaceConf
 async function stopServer(): Promise<void> {
     await client.stop();
     server.kill();
+}
+
+async function createConstants(uri: Uri) {
+	try {
+		let filePath = path.parse(uri.fsPath);
+		let namespace = filePath.dir.replace(workspace.rootPath, '').replace(/\\/g, '.');
+		namespace = namespace.substring(1, namespace.length);
+		const data = await fs.promises.readFile(uri.fsPath, { encoding: 'utf-8' });
+		const fields = data.split('\r\n').map((line, index) => {
+			if (index === 0 || line === '')
+				return;
+			let key = line.substring(0, line.indexOf(','))
+			return `\n    public const string ${key} = \"${key}\";`;
+		}).join('');
+		let str = `namespace ${namespace};`
+			.concat(`\npublic static class ${filePath.name}`)
+			.concat("\n{", fields, "\n}");
+		await fs.promises.writeFile(`${filePath.dir}\\${filePath.name}.cs`, str);
+	} catch (err) {
+		console.log(err);
+	}
 }
 
 export function deactivate(): Thenable<void> | undefined {
