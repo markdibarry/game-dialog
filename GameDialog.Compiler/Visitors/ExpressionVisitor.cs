@@ -1,7 +1,6 @@
 ﻿using Antlr4.Runtime;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection.Metadata;
 
 namespace GameDialog.Compiler;
 
@@ -62,7 +61,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
         string varName = context.NAME().GetText();
         VarDef? varDef = _memberRegister.VarDefs.FirstOrDefault(x => x.Name == varName);
         int nameIndex = _dialogScript.InstStrings.IndexOf(varName);
-        if (nameIndex == -1)
+        if (varDef == null)
         {
             varDef = new(varName);
             _memberRegister.VarDefs.Add(varDef);

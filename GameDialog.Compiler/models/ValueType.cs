@@ -41,17 +41,16 @@ public enum OpCode
     DivAssign,
     AddAssign,
     SubAssign,
-
-    // bool
+    // toggle (bool)
     Auto,
     // string
     BBCode,
     // Section Index
     Goto,
     NewLine,
-    // float
+    // multiplier (float)
     Speed,
-    // SpeakerId (float), Name (expression), Mood (expression), Portrait (expression)
+    // SpeakerId (float), Name flag (bool), Name (expression), Portrait flag (bool), Portrait (expression), Mood flag (bool), Mood (expression)
     SpeakerSet,
     Choice
 }

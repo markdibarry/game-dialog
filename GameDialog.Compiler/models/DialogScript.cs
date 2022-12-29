@@ -10,7 +10,6 @@ public class DialogScript
     public List<List<int>> ChoiceSets { get; set; } = new();
     public List<Section> Sections { get; set; } = new();
     public List<Line> Lines { get; set; } = new();
-    public List<List<InstructionStmt>> ConditionalSets { get; set; } = new();
     public List<InstructionStmt> InstructionStmts { get; set; } = new();
     public List<List<int>> Instructions { get; set; } = new();
 }
@@ -43,18 +42,18 @@ public class Line : IResolveable
 
 public class InstructionStmt : IResolveable
 {
-    public InstructionStmt(List<int>? values)
+    public InstructionStmt(List<int> values)
         :this(values, new GoTo(default, default))
     {
     }
 
-    public InstructionStmt(List<int>? values, GoTo nextStatement)
+    public InstructionStmt(List<int> values, GoTo nextStatement)
     {
         Values = values;
         Next = nextStatement;
     }
 
-    public List<int>? Values { get; }
+    public List<int> Values { get; }
     public GoTo Next { get; set; }
 }
 
@@ -88,7 +87,8 @@ public enum StatementType
     Conditional,
     Instruction,
     Choice,
-    Section
+    Section,
+    End
 }
 
 public interface IResolveable

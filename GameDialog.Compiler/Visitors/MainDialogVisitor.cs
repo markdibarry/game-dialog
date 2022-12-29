@@ -52,7 +52,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
                 Visit(stmt);
             // Resolve all outstanding statements to the end
             if (i == context.section().Length - 1)
-                ResolveStatements(new GoTo(StatementType.Section, -1));
+                ResolveStatements(new GoTo(StatementType.End, 0));
         }
 
         return 0;
@@ -61,35 +61,36 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
     public override int VisitCond_stmt([NotNull] DialogParser.Cond_stmtContext context)
     {
         // Create new goto and conditional
-        GoTo newGoto = new(StatementType.Conditional, _dialogScript.ConditionalSets.Count);
+        GoTo newGoto = new(StatementType.Conditional, _dialogScript.InstructionStmts.Count);
         ResolveStatements(newGoto);
-
-        List<InstructionStmt> conditionalSet = new();
-        _dialogScript.ConditionalSets.Add(conditionalSet);
-
+        List<int> conditions = new();
+        InstructionStmt conditionSet = new(conditions);
+        _dialogScript.InstructionStmts.Add(conditionSet);
         _nestLevel++;
+
         // if
         InstructionStmt ifExp = new(_expressionVisitor.GetInstruction(context.if_stmt().expression()));
-        conditionalSet.Add(ifExp);
+        conditions.Add(_dialogScript.InstructionStmts.Count);
+        _dialogScript.InstructionStmts.Add(ifExp);
         _unresolvedStmts.Add((_nestLevel, ifExp));
         foreach (var stmt in context.if_stmt().stmt())
             Visit(stmt);
         LowerUnresolvedStatements();
+
         // else if
         foreach (var elseifstmt in context.elseif_stmt())
         {
             InstructionStmt elseifExp = new(_expressionVisitor.GetInstruction(elseifstmt.expression()));
-            conditionalSet.Add(elseifExp);
+            conditions.Add(_dialogScript.InstructionStmts.Count);
+            _dialogScript.InstructionStmts.Add(elseifExp);
             _unresolvedStmts.Add((_nestLevel, elseifExp));
             foreach (var stmt in elseifstmt.stmt())
                 Visit(stmt);
             LowerUnresolvedStatements();
         }
 
-        // else (always add one)
-        InstructionStmt elseExpression = new(null);
-        conditionalSet.Add(elseExpression);
-        _unresolvedStmts.Add((_nestLevel, elseExpression));
+        // else (main fallback)
+        _unresolvedStmts.Add((_nestLevel, conditionSet));
         if (context.else_stmt() != null)
         {
             foreach (var stmt in context.else_stmt().stmt())

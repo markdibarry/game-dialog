@@ -28,7 +28,8 @@ public partial class MainDialogVisitor
         if (ints[0] == (int)OpCode.Goto)
         {
             // If next is decided
-            _dialogScript.InstructionStmts.Add(new(null, new(StatementType.Section, ints[1])));
+            GoTo next = ints[1] == -1 ? new(StatementType.End, 0) : new(StatementType.Section, ints[1]);
+            _dialogScript.InstructionStmts.Add(new(new List<int>(), next));
             ResolveStatements(new(StatementType.Instruction, _dialogScript.InstructionStmts.Count - 1));
             return;
         }
@@ -51,12 +52,7 @@ public partial class MainDialogVisitor
                 bbText = '/' + bbText;
             if (context.BBCODE_EXTRA_TEXT() != null)
                 bbText += context.BBCODE_EXTRA_TEXT().GetText();
-            int bbCodeIndex = _dialogScript.InstStrings.IndexOf(bbText);
-            if (bbCodeIndex == -1)
-            {
-                _dialogScript.InstStrings.Add(bbText);
-                bbCodeIndex = _dialogScript.InstStrings.Count - 1;
-            }
+            int bbCodeIndex = _dialogScript.InstStrings.GetOrAdd(bbText);
             ints = new() { (int)OpCode.BBCode, bbCodeIndex };
         }
         else
@@ -69,7 +65,10 @@ public partial class MainDialogVisitor
 
         if (ints[0] == (int)OpCode.Goto)
         {
-            line.Next = new(StatementType.Section, ints[1]);
+            if (ints[1] == -1)
+                line.Next = new GoTo(StatementType.End, 0);
+            else
+                line.Next = new GoTo(StatementType.Section, ints[1]);
             return;
         }
         _dialogScript.Instructions.Add(ints);
@@ -113,7 +112,7 @@ public partial class MainDialogVisitor
             case BuiltIn.END:
                 return new() { (int)OpCode.Goto, -1 };
             case BuiltIn.AUTO:
-                return new() { (int)OpCode.Auto, isClose ? 0 : 1 };
+                return new() { (int)OpCode.Auto, isClose ? 0 : 1};
             case BuiltIn.NEWLINE:
                 return new() { (int)OpCode.NewLine };
             case BuiltIn.SPEED:
@@ -127,8 +126,8 @@ public partial class MainDialogVisitor
                     });
                     return null;
                 }
-                _dialogScript.InstFloats.Add(-1);
-                return new() { (int)OpCode.Speed, _dialogScript.InstFloats.Count - 1 };
+                _dialogScript.InstFloats.Add(1);
+                return new() { (int)OpCode.Speed, _dialogScript.InstFloats.Count - 1};
         }
         // Nothing matched
         _diagnostics.Add(new Diagnostic()
@@ -170,8 +169,19 @@ public partial class MainDialogVisitor
                     });
                     return null;
                 }
-                _dialogScript.InstFloats.Add(float.Parse(floatContext.GetText()));
-                return new() { (int)OpCode.Speed, _dialogScript.InstFloats.Count - 1 };
+                float speed = float.Parse(floatContext.GetText());
+                if (speed < 0)
+                {
+                    _diagnostics.Add(new Diagnostic()
+                    {
+                        Range = context.GetRange(),
+                        Message = $"Invalid value: Speed multiplier cannot be less than zero.",
+                        Severity = DiagnosticSeverity.Error,
+                    });
+                    return null;
+                }
+                _dialogScript.InstFloats.Add(speed);
+                return new() { (int)OpCode.Speed, _dialogScript.InstFloats.Count - 1};
         }
         _diagnostics.Add(new Diagnostic()
         {
@@ -233,7 +243,8 @@ public partial class MainDialogVisitor
         }
         else if (BuiltIn.IsSpeakerExpression(attContext))
         {
-            if (!_dialogScript.SpeakerIds.Contains(attName))
+            int nameIndex = _dialogScript.SpeakerIds.IndexOf(attName);
+            if (nameIndex == -1)
             {
                 _diagnostics.Add(new Diagnostic()
                 {
@@ -243,7 +254,7 @@ public partial class MainDialogVisitor
                 });
                 return null;
             }
-            return GetSpeakerUpdateInts(attContext);
+            return GetSpeakerUpdateInts(attContext, nameIndex);
         }
 
         _diagnostics.Add(new Diagnostic()
@@ -257,46 +268,47 @@ public partial class MainDialogVisitor
 
     public List<int> GetSpeakerGetInts(string name)
     {
-        int funcIndex = _dialogScript.InstStrings.IndexOf("GetName");
-        if (funcIndex == -1)
-        {
-            _dialogScript.InstStrings.Add("GetName");
-            funcIndex = _dialogScript.InstStrings.Count - 1;
-        }
-        int nameIndex = _dialogScript.InstStrings.IndexOf(name);
-        if (nameIndex == -1)
-        {
-            _dialogScript.InstStrings.Add(name);
-            nameIndex = _dialogScript.InstStrings.Count - 1;
-        }
+        int funcIndex = _dialogScript.InstStrings.GetOrAdd("GetName");
+        int nameIndex = _dialogScript.InstStrings.GetOrAdd(name);
         return new() { (int)OpCode.Func, funcIndex, 1, (int)OpCode.String, nameIndex};
     }
 
-    private List<int> GetSpeakerUpdateInts(DialogParser.Attr_expressionContext context)
+    /// <summary>
+    /// Gets instructions for speaker update tags
+    /// </summary>
+    /// <example>
+    /// [29, 5, 0, 1, 3, 0]
+    /// SpeakerSetOpCode, SpeakerId index, updateName false, updatePortrait true, instruction index, updateMood false
+    /// </example>
+    /// <param name="context"></param>
+    /// <param name="nameIndex"></param>
+    /// <returns></returns>
+    private List<int> GetSpeakerUpdateInts(DialogParser.Attr_expressionContext context, int nameIndex)
     {
-        List<int> updateInts = new() { (int)OpCode.SpeakerSet };
-        List<int> nameInst = new() { -1 };
-        List<int> moodInst = new() { -1 };
-        List<int> portraitInst = new() { -1 };
+        List<int> updateInts = new() { (int)OpCode.SpeakerSet, nameIndex};
+        List<int> nameInst = new() { 0 };
+        List<int> portraitInst = new() { 0 };
+        List<int> moodInst = new() { 0 };
         foreach (var ass in context.assignment())
         {
             List<int> values = _expressionVisitor.GetInstruction(ass.right, VarType.String);
+
             switch (ass.NAME().GetText())
             {
                 case BuiltIn.NAME:
-                    nameInst = values;
-                    break;
-                case BuiltIn.MOOD:
-                    moodInst = values;
+                    nameInst = new() { 1, _dialogScript.Instructions.GetOrAdd(values) };
                     break;
                 case BuiltIn.PORTRAIT:
-                    portraitInst = values;
+                    portraitInst = new() { 1, _dialogScript.Instructions.GetOrAdd(values) };
+                    break;
+                case BuiltIn.MOOD:
+                    moodInst = new() { 1, _dialogScript.Instructions.GetOrAdd(values) };
                     break;
             }
         }
         updateInts.AddRange(nameInst);
-        updateInts.AddRange(moodInst);
         updateInts.AddRange(portraitInst);
+        updateInts.AddRange(moodInst);
 
         return updateInts;
     }

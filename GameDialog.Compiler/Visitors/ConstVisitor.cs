@@ -71,12 +71,7 @@ public partial class ExpressionVisitor
         }
         VarType returnType = funcDefs.First().ReturnType;
         int argsFound = context.expression().Length;
-        int nameIndex = _dialogScript.InstStrings.IndexOf(funcName);
-        if (nameIndex == -1)
-        {
-            _dialogScript.InstStrings.Add(funcName);
-            nameIndex = _dialogScript.InstStrings.Count - 1;
-        }
+        int nameIndex = _dialogScript.InstStrings.GetOrAdd(funcName);
 
         PushExp(new[] { (int)OpCode.Func, nameIndex, argsFound }, default);
         List<VarType> argTypesFound = new();
