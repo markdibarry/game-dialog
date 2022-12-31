@@ -64,7 +64,7 @@
     },
     "scripts": {
         "vscode:prepublish": "npm run build",
-        "build": "concurrently --timings --kill-others-on-fail \"npm:buildExtension\" \"npm:buildServerProd\"",
+        "build": "concurrently --timings --kill-others-on-fail \"npm:buildExtension\" \"npm:buildServer\"",
         "buildExtension": "tsc -p ./tsconfig.json",
         "buildServer": "dotnet publish -c Debug -o out/server ./../GameDialog.Server/GameDialog.Server.csproj"
     },

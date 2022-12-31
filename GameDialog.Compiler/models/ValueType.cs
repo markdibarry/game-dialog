@@ -43,8 +43,6 @@ public enum OpCode
     SubAssign,
     // toggle (bool)
     Auto,
-    // string
-    BBCode,
     // Section Index
     Goto,
     NewLine,

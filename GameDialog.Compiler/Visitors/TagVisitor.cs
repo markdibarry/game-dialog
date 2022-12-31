@@ -42,23 +42,13 @@ public partial class MainDialogVisitor
 
     private void HandleLineTag(Line line, StringBuilder sb, DialogParser.TagContext context)
     {
-        List<int>? ints;
-
         if (context.BBCODE_NAME() != null)
         {
-            //Add BBCode as a string (I'm not able to provide validation)
-            string bbText = context.BBCODE_NAME().GetText();
-            if (context.TAG_ENTER().GetText().EndsWith('/'))
-                bbText = '/' + bbText;
-            if (context.BBCODE_EXTRA_TEXT() != null)
-                bbText += context.BBCODE_EXTRA_TEXT().GetText();
-            int bbCodeIndex = _dialogScript.InstStrings.GetOrAdd(bbText);
-            ints = new() { (int)OpCode.BBCode, bbCodeIndex };
+            sb.Append(context.GetText());
+            return;
         }
-        else
-        {
-            ints = GetTagInts(context);
-        }
+
+        List<int>? ints = GetTagInts(context);
 
         if (ints == null || ints.Count == 0)
             return;
@@ -235,7 +225,6 @@ public partial class MainDialogVisitor
                     return null;
                 }
                 return new() { (int)OpCode.Goto, sectionIndex };
-
         }
         if (BuiltIn.IsNameExpression(attContext))
         {

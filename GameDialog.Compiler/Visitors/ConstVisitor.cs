@@ -13,7 +13,8 @@ public partial class ExpressionVisitor
 
     public override VarType VisitConstString(DialogParser.ConstStringContext context)
     {
-        _dialogScript.InstStrings.Add(context.STRING().GetText());
+        string value = context.STRING().GetText()[1..^1];
+        _dialogScript.InstStrings.Add(value);
         PushExp(new[] { (int)VarType.String, _dialogScript.InstStrings.Count - 1 }, default);
         return VarType.String;
     }
