@@ -20,7 +20,8 @@ line_stmt
         (speaker_ids | UNDERSCORE) (line_text | ml_text) NEWLINE+
         (INDENT choice_stmt* DEDENT)?
     ;
-speaker_ids: NAME (NAME_SEPARATOR NAME)*;
+speaker_ids: speaker_id (NAME_SEPARATOR speaker_id)*;
+speaker_id: NAME (TAG_ENTER expression TAG_EXIT)?;
 ml_text: ML_EDGE (TEXT | tag)* ML_EDGE;
 line_text: LINE_ENTER (TEXT | tag)*;
 

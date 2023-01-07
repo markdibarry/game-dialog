@@ -1,4 +1,6 @@
-﻿namespace GameDialog.Compiler;
+﻿using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+
+namespace GameDialog.Compiler;
 
 public partial class MainDialogVisitor
 {
@@ -33,9 +35,45 @@ public partial class MainDialogVisitor
         Choice choice = new() { Text = choiceStmt.TEXT().GetText()};
         _dialogScript.Choices.Add(choice);
         choiceSet.AddRange(new[] { (int)OpCode.Choice, _dialogScript.Choices.Count - 1 });
-        _unresolvedStmts.Add((_nestLevel, choice));
+
+        // Check for a GoTo tag
+        if (choiceStmt.tag() == null)
+        {
+            _unresolvedStmts.Add((_nestLevel, choice));
+        }
+        else
+        {
+            List<int>? ints = GetTagInts(choiceStmt.tag());
+
+            if (ints == null || ints.Count == 0)
+            {
+                _diagnostics.Add(new Diagnostic()
+                {
+                    Range = choiceStmt.tag().GetRange(),
+                    Message = $"Goto tag needs to reference a valid section.",
+                    Severity = DiagnosticSeverity.Error,
+                });
+                return;
+            }
+
+            if (ints[0] != (int)OpCode.Goto)
+            {
+                _diagnostics.Add(new Diagnostic()
+                {
+                    Range = choiceStmt.tag().GetRange(),
+                    Message = $"Only GoTo tags are compatible with choices.",
+                    Severity = DiagnosticSeverity.Error,
+                });
+                return;
+            }
+            if (ints[1] == -1)
+                choice.Next = new GoTo(StatementType.End, 0);
+            else
+                choice.Next = new GoTo(StatementType.Section, ints[1]);
+        }
         foreach (var stmt in choiceStmt.stmt())
             Visit(stmt);
+        LowerUnresolvedStatements();
     }
 
     private void HandleChoiceCondition(DialogParser.Choice_cond_stmtContext choiceCond, List<int> choiceSet)

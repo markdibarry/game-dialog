@@ -6,12 +6,6 @@
 			"include": "#comments"
 		},
 		{
-			"include": "#strings"
-		},
-		{
-			"include": "#keywords"
-		},
-		{
 			"include": "#title"
 		},
 		{
@@ -21,16 +15,10 @@
 			"include": "#tags"
 		},
 		{
-			"include": "#variables"
-		},
-		{
 			"include": "#controls"
 		},
 		{
 			"include": "#choices"
-		},
-		{
-			"include": "#numerics"
 		}
 	],
 	"repository": {
@@ -46,7 +34,13 @@
 		},
 		"speaker": {
 			"name": "markup.bold",
-			"match": "^(\\s*\\w+)(,\\s*\\w+)*:"
+			"match": "^\\s*\\w+\\s*(\\[.*\\])?(,\\s*\\w+\\s*(\\[.*\\])?)*:",
+			"captures": {
+				"0": {
+					"patterns": [{ "include": "#tags" }]
+				}
+			}
+
 		},
 		"choices": {
 			"name": "keyword.control",
@@ -58,20 +52,22 @@
 			"end": "\\]",
 			"patterns": [
 				{
-					"name": "entity.other.attribute-name",
-					"match": "\\w+(\\=)?"
-				},
-				{
 					"include": "#variables"
 				},
 				{
 					"include": "#numerics"
+				},
+				{
+					"include": "#strings"
+				},
+				{
+					"include": "#keywords"
 				}
 			]
 		},
 		"variables": {
 			"name": "variable.other",
-			"match": "\\$[A-Za-z0-9_]+"
+			"match": "[A-Za-z][A-Za-z0-9_]*"
 		},
 		"keywords": {
 			"name": "keyword.other",
@@ -79,7 +75,7 @@
 		},
 		"controls": {
 			"name": "keyword.control",
-            "match": "\\b(?i:if|else if|else)\\b"
+            "match": "(?i:if|else if|else)"
         },
 		"strings": {
 			"name": "string.quoted.double",

@@ -105,14 +105,27 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
     public override int VisitLine_stmt([NotNull] DialogParser.Line_stmtContext context)
     {
         Line line = new();
+        StringBuilder sb = new();
         if (context.UNDERSCORE() == null)
         {
-            foreach (var speaker in context.speaker_ids().NAME())
-                line.SpeakerIndices.Add(_dialogScript.SpeakerIds.IndexOf(speaker.GetText()));
+            // Get speakers and optional mood updates for line
+            foreach (var speaker in context.speaker_ids().speaker_id())
+            {
+                int speakerIndex = _dialogScript.SpeakerIds.IndexOf(speaker.NAME().GetText());
+                line.SpeakerIndices.Add(speakerIndex);
+                if (speaker.expression() != null)
+                {
+                    List<int> moodInts = new() { (int)OpCode.SpeakerSet, speakerIndex };
+                    moodInts.AddRange(GetSpeakerUpdateAttribute(BuiltIn.MOOD, speaker.expression()));
+                    sb.Append($"[{line.InstructionIndices.Count}]");
+                    line.InstructionIndices.Add(_dialogScript.Instructions.Count);
+                    _dialogScript.Instructions.Add(moodInts);
+                }
+            }
         }
         var children = context.line_text()?.children ?? context.ml_text()?.children;
         if (children != null)
-            HandleLineText(line, children);
+            HandleLineText(line, sb, children);
         // Create new goto and line
         GoTo newGoto = new(StatementType.Line, _dialogScript.Lines.Count);
         ResolveStatements(newGoto);
@@ -130,10 +143,9 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         return 0;
     }
 
-    private void HandleLineText(Line line, IList<IParseTree> children)
+    private void HandleLineText(Line line, StringBuilder sb, IList<IParseTree> children)
     {
         // Start building a string of text and instruction identifiers
-        StringBuilder sb = new();
         foreach (var child in children)
         {
             if (child is ITerminalNode node && node.Symbol.Type == DialogParser.TEXT)

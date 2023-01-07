@@ -41,7 +41,7 @@ public partial class ExpressionVisitor
             return VarType.Undefined;
         }
         // nameIndex shouldn't be -1 here.
-        int nameIndex = _dialogScript.InstStrings.IndexOf(varName);
+        int nameIndex = _dialogScript.InstStrings.GetOrAdd(varName);
         // Should never happen?
         if (varDef.Type == VarType.Undefined)
         {

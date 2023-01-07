@@ -29,8 +29,9 @@ public partial class MainDialogVisitor
         {
             // If next is decided
             GoTo next = ints[1] == -1 ? new(StatementType.End, 0) : new(StatementType.Section, ints[1]);
-            _dialogScript.InstructionStmts.Add(new(new List<int>(), next));
-            ResolveStatements(new(StatementType.Instruction, _dialogScript.InstructionStmts.Count - 1));
+            InstructionStmt goToExp = new(new List<int>(), next);
+            _dialogScript.InstructionStmts.Add(goToExp);
+            ResolveStatements(next);
             return;
         }
 
@@ -266,8 +267,8 @@ public partial class MainDialogVisitor
     /// Gets instructions for speaker update tags
     /// </summary>
     /// <example>
-    /// [29, 5, 0, 1, 3, 0]
-    /// SpeakerSetOpCode, SpeakerId index, updateName false, updatePortrait true, instruction index, updateMood false
+    /// [28, 5, 30, 1, 29, 0]
+    /// SpeakerSetOpCode, SpeakerId index, update type code, update instruction index, etc.
     /// </example>
     /// <param name="context"></param>
     /// <param name="nameIndex"></param>
@@ -275,30 +276,23 @@ public partial class MainDialogVisitor
     private List<int> GetSpeakerUpdateInts(DialogParser.Attr_expressionContext context, int nameIndex)
     {
         List<int> updateInts = new() { (int)OpCode.SpeakerSet, nameIndex};
-        List<int> nameInst = new() { 0 };
-        List<int> portraitInst = new() { 0 };
-        List<int> moodInst = new() { 0 };
         foreach (var ass in context.assignment())
-        {
-            List<int> values = _expressionVisitor.GetInstruction(ass.right, VarType.String);
-
-            switch (ass.NAME().GetText())
-            {
-                case BuiltIn.NAME:
-                    nameInst = new() { 1, _dialogScript.Instructions.GetOrAdd(values) };
-                    break;
-                case BuiltIn.PORTRAIT:
-                    portraitInst = new() { 1, _dialogScript.Instructions.GetOrAdd(values) };
-                    break;
-                case BuiltIn.MOOD:
-                    moodInst = new() { 1, _dialogScript.Instructions.GetOrAdd(values) };
-                    break;
-            }
-        }
-        updateInts.AddRange(nameInst);
-        updateInts.AddRange(portraitInst);
-        updateInts.AddRange(moodInst);
-
+            updateInts.AddRange(GetSpeakerUpdateAttribute(ass.NAME().GetText(), ass.right));
         return updateInts;
+    }
+
+    private List<int> GetSpeakerUpdateAttribute(string type, DialogParser.ExpressionContext value)
+    {
+        return new()
+        {
+            type switch
+            {
+                BuiltIn.NAME => (int)OpCode.SpeakerSetName,
+                BuiltIn.PORTRAIT => (int)OpCode.SpeakerSetPortrait,
+                BuiltIn.MOOD => (int)OpCode.SpeakerSetMood,
+                _ => throw new NotImplementedException()
+            },
+            _dialogScript.Instructions.GetOrAdd(_expressionVisitor.GetInstruction(value, VarType.String))
+        };
     }
 }

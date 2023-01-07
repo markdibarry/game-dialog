@@ -48,7 +48,12 @@ public enum OpCode
     NewLine,
     // multiplier (float)
     Speed,
-    // SpeakerId (float), Name flag (bool), Name (expression), Portrait flag (bool), Portrait (expression), Mood flag (bool), Mood (expression)
     SpeakerSet,
+    // SpeakerId (float), Name (expression)
+    SpeakerSetName,
+    // SpeakerId (float), Mood (expression)
+    SpeakerSetMood,
+    // SpeakerId (float), Portrait (expression)
+    SpeakerSetPortrait,
     Choice
 }

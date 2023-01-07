@@ -24,6 +24,7 @@ TITLE_END: TITLE_EDGE -> type(TITLE_EDGE), popMode;
 TITLE_ANY: ANY -> type(ANY);
 
 mode SpeakerMode;
+MOOD_TAG_ENTER: WS? TAG_ENTER -> type(TAG_ENTER), pushMode(ExpressionMode);
 NAME_SEPARATOR: ',' WS;
 EXTRA_NAME: NAME -> type(NAME);
 ML_EDGE: ':' ' '+ '^^' -> popMode, pushMode(MLTextMode);
@@ -31,13 +32,13 @@ LINE_ENTER: ':' ' '+ -> popMode, pushMode(LineTextMode);
 SPEAKER_ANY: ANY -> type(ANY);
 
 mode LineTextMode;
-LINE_TAG_ENTER: TAG_ENTER (WS* '/')? -> type(TAG_ENTER), pushMode(TagMode);
+LINE_TAG_ENTER: TAG_ENTER (WS* '/')? -> type(TAG_ENTER), pushMode(ExpressionMode);
 TEXT: (STRING_ESCAPE_SEQ | ~[[\\\r\n])+;
 TEXT_NEWLINE: NEWLINE -> type(NEWLINE), popMode;
 TEXT_ANY: ANY -> type(ANY);
 
 mode MLTextMode;
-ML_TAG_ENTER: TAG_ENTER (WS* '/')? -> type(TAG_ENTER), pushMode(TagMode);
+ML_TAG_ENTER: TAG_ENTER (WS* '/')? -> type(TAG_ENTER), pushMode(ExpressionMode);
 ML_EXIT: '^^' -> type(ML_EDGE), popMode;
 ML_TEXT: (STRING_ESCAPE_SEQ | ~[[^\\\r\n])+ -> type(TEXT);
 ML_NEWLINE: NEWLINE -> skip;
@@ -49,21 +50,16 @@ CHOICE_TAG_ENTER: TAG_ENTER -> type(TAG_ENTER), pushMode(ExpressionMode);
 CHOICE_NEWLINE: NEWLINE -> type(NEWLINE), popMode;
 CHOICE_ANY: ANY -> type(ANY);
 
-mode TagMode;
-BBCODE_NAME: ('b'|'i'|'u'|'s'|'code'|'p'|'center'|'right'|'left'|'fill'|'indent'
-	|'url'|'img'|'font'|'font_size'|'opentype_features'|'table'|'cell'|'ul'
-	|'ol'|'lb'|'rb'|'color'|'bgcolor'|'fgcolor'|'outline_size'|'outline_color'
-	|'wave'|'tornado'|'fade'|'rainbow'|'shake') -> popMode, pushMode(BBCodeMode);
-TAG_BOOL: BOOL -> type(BOOL), popMode, pushMode(ExpressionMode);
-NON_BBCODE_NAME: NAME -> type(NAME), popMode, pushMode(ExpressionMode);
-TAG_ANY: ANY -> more, popMode, pushMode(ExpressionMode);
-
 mode BBCodeMode;
 BBCODE_EXTRA_TEXT: ~']'+;
 BBCODE_TAG_EXIT: ']' -> type(TAG_EXIT), popMode;
 BBCODE_ANY: ANY -> type(ANY);
 
 mode ExpressionMode;
+BBCODE_NAME: ('b'|'i'|'u'|'s'|'code'|'p'|'center'|'right'|'left'|'fill'|'indent'
+	|'url'|'img'|'font'|'font_size'|'opentype_features'|'table'|'cell'|'ul'
+	|'ol'|'lb'|'rb'|'color'|'bgcolor'|'fgcolor'|'outline_size'|'outline_color'
+	|'wave'|'tornado'|'fade'|'rainbow'|'shake') -> popMode, pushMode(BBCodeMode);
 OPEN_PAREN : '(';
 CLOSE_PAREN : ')';
 EXP_WS: WS -> skip;

@@ -60,13 +60,11 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
     {
         string varName = context.NAME().GetText();
         VarDef? varDef = _memberRegister.VarDefs.FirstOrDefault(x => x.Name == varName);
-        int nameIndex = _dialogScript.InstStrings.IndexOf(varName);
+        int nameIndex = _dialogScript.InstStrings.GetOrAdd(varName);
         if (varDef == null)
         {
             varDef = new(varName);
             _memberRegister.VarDefs.Add(varDef);
-            _dialogScript.InstStrings.Add(varName);
-            nameIndex = _dialogScript.InstStrings.Count - 1;
         }
         if (context.op.Type != DialogLexer.OP_ASSIGN && varDef.Type != VarType.Float)
         {
@@ -79,7 +77,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
             return VarType.Undefined;
         }
         VarType newType = PushExp(
-            new[] { (int)InstructionLookup[context.op.Type], (int)OpCode.Var, nameIndex },
+            new[] { (int)InstructionLookup[context.op.Type], nameIndex },
             varDef.Type,
             context.right);
         if (newType == VarType.Undefined)
