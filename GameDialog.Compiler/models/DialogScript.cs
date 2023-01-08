@@ -42,18 +42,18 @@ public class Line : IResolveable
 
 public class InstructionStmt : IResolveable
 {
-    public InstructionStmt(List<int> values)
-        :this(values, new GoTo(default, default))
+    public InstructionStmt(int index)
+        :this(index, new GoTo(default, default))
     {
     }
 
-    public InstructionStmt(List<int> values, GoTo nextStatement)
+    public InstructionStmt(int index, GoTo nextStatement)
     {
-        Values = values;
+        Index = index;
         Next = nextStatement;
     }
 
-    public List<int> Values { get; }
+    public int Index { get; }
     public GoTo Next { get; set; }
 }
 

@@ -1,4 +1,5 @@
-﻿using GameDialog.Compiler;
+﻿using CsvHelper;
+using GameDialog.Compiler;
 using MediatR;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -10,6 +11,8 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Window;
+using System.Globalization;
+using System.Linq;
 using System.Text.Json;
 using DiagnosticSeverity = OmniSharp.Extensions.LanguageServer.Protocol.Models.DiagnosticSeverity;
 
@@ -18,13 +21,15 @@ namespace GameDialog.Server;
 public class TextDocumentHandler : TextDocumentSyncHandlerBase
 {
     private readonly ILanguageServerFacade _server;
+    private readonly ILanguageServerConfiguration _configuration;
     private readonly DocumentManager _documentManager = new();
     private readonly DocumentSelector _documentSelector = new(new DocumentFilter() { Pattern = "**/*.dia" });
     public TextDocumentSyncKind Change { get; } = TextDocumentSyncKind.Full;
 
-    public TextDocumentHandler(ILanguageServerFacade languageServer)
+    public TextDocumentHandler(ILanguageServerFacade languageServer, ILanguageServerConfiguration configuration)
     {
         _server = languageServer;
+        _configuration = configuration;
     }
 
     public override TextDocumentAttributes GetTextDocumentAttributes(DocumentUri uri)
@@ -76,10 +81,17 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
 
             string uriPath = kvp.Key.GetFileSystemPath();
             string fileName = Path.GetFileNameWithoutExtension(uriPath);
-            string? pathDirectory = Path.GetDirectoryName(uriPath);
-            string jsonFilePath = $"{pathDirectory}\\{fileName}.json";
-            string jsonString = JsonSerializer.Serialize(kvp.Value.DialogScript);
-            File.WriteAllText(jsonFilePath, jsonString);
+            string pathDirectory = Path.GetDirectoryName(uriPath) ?? string.Empty;
+
+            if (bool.TryParse(_configuration["gamedialog:EnableCSVTranslation"], out bool csvEnabled) && csvEnabled)
+            {
+                string csvDirectory = _configuration["gamedialog:CSVTranslationLocation"];
+                if (string.IsNullOrEmpty(csvDirectory))
+                    csvDirectory = pathDirectory;
+                CreateTranslationCSV(fileName, csvDirectory, kvp.Value.DialogScript);
+            }
+
+            CreateJsonFile(fileName, pathDirectory, kvp.Value.DialogScript);
         }
         return Unit.Task;
     }
@@ -92,6 +104,57 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
             Change = Change,
             Save = new SaveOptions() { IncludeText = true }
         };
+    }
+
+    private static void CreateJsonFile(string fileName, string pathDirectory, DialogScript dialogScript)
+    {
+        string jsonFilePath = $"{pathDirectory}\\{fileName}.json";
+        string jsonString = JsonSerializer.Serialize(dialogScript);
+        File.WriteAllText(jsonFilePath, jsonString);
+    }
+
+    private static void CreateTranslationCSV(string fileName, string pathDirectory, DialogScript dialogScript)
+    {
+        string csvPath = $"{pathDirectory}\\DialogTranslation.csv";
+        if (!File.Exists(csvPath))
+            File.WriteAllText(csvPath, string.Empty);
+        string keyPrefix = $"Dialog_{fileName}_";
+        List<TranslationRow>? records = null;
+
+        using (StreamReader reader = new(csvPath))
+        using (CsvReader csv = new(reader, CultureInfo.InvariantCulture))
+        {
+            records = csv.GetRecords<TranslationRow>()
+                .Where(x => !x.Keys.StartsWith(keyPrefix))
+                .ToList();
+        }
+
+        using (StreamWriter writer = new(csvPath))
+        using (CsvWriter csv = new(writer, CultureInfo.InvariantCulture))
+        {
+            csv.WriteHeader<TranslationRow>();
+            csv.NextRecord();
+            int i = 0;
+            foreach (Line line in dialogScript.Lines)
+            {
+                TranslationRow row = new() { Keys = $"{keyPrefix}{i++}", En = line.Text };
+                csv.WriteRecord(row);
+                line.Text = row.Keys;
+                csv.NextRecord();
+            }
+            foreach (Choice choice in dialogScript.Choices)
+            {
+                TranslationRow row = new() { Keys = $"{keyPrefix}{i++}", En = choice.Text };
+                csv.WriteRecord(row);
+                choice.Text = row.Keys;
+                csv.NextRecord();
+            }
+            foreach (var record in records)
+            {
+                csv.WriteRecord(record);
+                csv.NextRecord();
+            }
+        }
     }
 
     private void UpdateDoc(DocumentUri uri, string text)

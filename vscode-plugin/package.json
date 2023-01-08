@@ -54,10 +54,19 @@
             "title": "Game Dialog",
             "properties": {
                 "gamedialog.EnableLanguageServer": {
-                    "order": 1,
                     "type": "boolean",
                     "default": true,
                     "description": "This turns on the language."
+                },
+                "gamedialog.EnableCSVTranslation": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When toggled, saving files also generates a translation file in .csv format."
+                },
+                "gamedialog.CSVTranslationLocation": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Location to save dialog translation .csv file. If blank, it will be created in the same directory as the dialog file."
                 }
             }
         }

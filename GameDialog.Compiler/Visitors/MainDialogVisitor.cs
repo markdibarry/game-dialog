@@ -61,17 +61,16 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
     public override int VisitCond_stmt([NotNull] DialogParser.Cond_stmtContext context)
     {
         // Create new goto and conditional
-        GoTo newGoto = new(StatementType.Conditional, _dialogScript.InstructionStmts.Count);
-        ResolveStatements(newGoto);
         List<int> conditions = new();
-        InstructionStmt conditionSet = new(conditions);
-        _dialogScript.InstructionStmts.Add(conditionSet);
+        InstructionStmt conditionSet = new(_dialogScript.Instructions.GetOrAdd(conditions));
+        GoTo newGoto = new(StatementType.Conditional, _dialogScript.InstructionStmts.GetOrAdd(conditionSet));
+        ResolveStatements(newGoto);
         _nestLevel++;
 
         // if
-        InstructionStmt ifExp = new(_expressionVisitor.GetInstruction(context.if_stmt().expression()));
-        conditions.Add(_dialogScript.InstructionStmts.Count);
-        _dialogScript.InstructionStmts.Add(ifExp);
+        var ifInstr = _expressionVisitor.GetInstruction(context.if_stmt().expression());
+        InstructionStmt ifExp = new(_dialogScript.Instructions.GetOrAdd(ifInstr));
+        conditions.Add(_dialogScript.InstructionStmts.GetOrAdd(ifExp));
         _unresolvedStmts.Add((_nestLevel, ifExp));
         foreach (var stmt in context.if_stmt().stmt())
             Visit(stmt);
@@ -80,9 +79,9 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         // else if
         foreach (var elseifstmt in context.elseif_stmt())
         {
-            InstructionStmt elseifExp = new(_expressionVisitor.GetInstruction(elseifstmt.expression()));
-            conditions.Add(_dialogScript.InstructionStmts.Count);
-            _dialogScript.InstructionStmts.Add(elseifExp);
+            var elseifInstr = _expressionVisitor.GetInstruction(elseifstmt.expression());
+            InstructionStmt elseifExp = new(_dialogScript.Instructions.GetOrAdd(elseifInstr));
+            conditions.Add(_dialogScript.InstructionStmts.GetOrAdd(elseifExp));
             _unresolvedStmts.Add((_nestLevel, elseifExp));
             foreach (var stmt in elseifstmt.stmt())
                 Visit(stmt);

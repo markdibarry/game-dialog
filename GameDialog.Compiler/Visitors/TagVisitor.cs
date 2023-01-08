@@ -29,13 +29,13 @@ public partial class MainDialogVisitor
         {
             // If next is decided
             GoTo next = ints[1] == -1 ? new(StatementType.End, 0) : new(StatementType.Section, ints[1]);
-            InstructionStmt goToExp = new(new List<int>(), next);
+            InstructionStmt goToExp = new(-1, next);
             _dialogScript.InstructionStmts.Add(goToExp);
             ResolveStatements(next);
             return;
         }
 
-        InstructionStmt exp = new(ints);
+        InstructionStmt exp = new(_dialogScript.Instructions.GetOrAdd(ints));
         _dialogScript.InstructionStmts.Add(exp);
         ResolveStatements(new(StatementType.Instruction, _dialogScript.InstructionStmts.Count - 1));
         _unresolvedStmts.Add((_nestLevel, exp));

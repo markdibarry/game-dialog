@@ -6,16 +6,16 @@ public partial class ExpressionVisitor
 {
     public override VarType VisitConstFloat(DialogParser.ConstFloatContext context)
     {
-        _dialogScript.InstFloats.Add(float.Parse(context.FLOAT().GetText()));
-        PushExp(new[] { (int)VarType.Float, _dialogScript.InstFloats.Count - 1 }, default);
+        int index = _dialogScript.InstFloats.GetOrAdd(float.Parse(context.FLOAT().GetText()));
+        PushExp(new[] { (int)VarType.Float, index }, default);
         return VarType.Float;
     }
 
     public override VarType VisitConstString(DialogParser.ConstStringContext context)
     {
         string value = context.STRING().GetText()[1..^1];
-        _dialogScript.InstStrings.Add(value);
-        PushExp(new[] { (int)VarType.String, _dialogScript.InstStrings.Count - 1 }, default);
+        int index = _dialogScript.InstStrings.GetOrAdd(value);
+        PushExp(new[] { (int)VarType.String, index }, default);
         return VarType.String;
     }
 
