@@ -1,5 +1,4 @@
-﻿using CsvHelper;
-using GameDialog.Compiler;
+﻿using GameDialog.Compiler;
 using MediatR;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -11,8 +10,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Window;
-using System.Globalization;
-using System.Linq;
+using System.Text;
 using System.Text.Json;
 using DiagnosticSeverity = OmniSharp.Extensions.LanguageServer.Protocol.Models.DiagnosticSeverity;
 
@@ -88,6 +86,11 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
                 string csvDirectory = _configuration["gamedialog:CSVTranslationLocation"];
                 if (string.IsNullOrEmpty(csvDirectory))
                     csvDirectory = pathDirectory;
+                if (!Directory.Exists(csvDirectory))
+                {
+                    _server.Window.ShowError($"CSV Translation location is invalid. Please check your settings.");
+                    continue;
+                }
                 CreateTranslationCSV(fileName, csvDirectory, kvp.Value.DialogScript);
             }
 
@@ -119,42 +122,47 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
         if (!File.Exists(csvPath))
             File.WriteAllText(csvPath, string.Empty);
         string keyPrefix = $"Dialog_{fileName}_";
-        List<TranslationRow>? records = null;
+        List<string> records = File.ReadLines(csvPath)
+            .Where(x => !x.StartsWith(keyPrefix))
+            .ToList();
 
-        using (StreamReader reader = new(csvPath))
-        using (CsvReader csv = new(reader, CultureInfo.InvariantCulture))
+        if (records.Count == 0)
+            records.Add("keys,en");
+
+        string commas = new(',', records[0].Count(x => x == ',') - 1);
+
+        for (int i = 0; i < dialogScript.Lines.Count; i++)
         {
-            records = csv.GetRecords<TranslationRow>()
-                .Where(x => !x.Keys.StartsWith(keyPrefix))
-                .ToList();
+            string key = keyPrefix + "line_" + i;
+            records.Add($"{key},{ConvertToCsvCell(dialogScript.Lines[i].Text)}{commas}");
+            dialogScript.Lines[i].Text = key;
         }
 
-        using (StreamWriter writer = new(csvPath))
-        using (CsvWriter csv = new(writer, CultureInfo.InvariantCulture))
+        for (int i = 0; i < dialogScript.Choices.Count; i++)
         {
-            csv.WriteHeader<TranslationRow>();
-            csv.NextRecord();
-            int i = 0;
-            foreach (Line line in dialogScript.Lines)
-            {
-                TranslationRow row = new() { Keys = $"{keyPrefix}{i++}", En = line.Text };
-                csv.WriteRecord(row);
-                line.Text = row.Keys;
-                csv.NextRecord();
-            }
-            foreach (Choice choice in dialogScript.Choices)
-            {
-                TranslationRow row = new() { Keys = $"{keyPrefix}{i++}", En = choice.Text };
-                csv.WriteRecord(row);
-                choice.Text = row.Keys;
-                csv.NextRecord();
-            }
-            foreach (var record in records)
-            {
-                csv.WriteRecord(record);
-                csv.NextRecord();
-            }
+            string key = keyPrefix + "choice_" + i;
+            records.Add($"{key},{ConvertToCsvCell(dialogScript.Choices[i].Text)}{commas}");
+            dialogScript.Choices[i].Text = key;
         }
+
+        File.WriteAllLines(csvPath, records);
+    }
+
+    private static string ConvertToCsvCell(string str)
+    {
+        bool mustQuote = str.Contains(',') || str.Contains('"') || str.Contains('\r') || str.Contains('\n');
+        if (!mustQuote)
+            return str;
+        StringBuilder sb = new();
+        sb.Append('"');
+        foreach (char nextChar in str)
+        {
+            sb.Append(nextChar);
+            if (nextChar == '"')
+                sb.Append('"');
+        }
+        sb.Append('"');
+        return sb.ToString();
     }
 
     private void UpdateDoc(DocumentUri uri, string text)
