@@ -32,6 +32,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         foreach (var section in context.section())
         {
             string title = section.section_title().NAME().GetText();
+
             if (title.ToLower() == BuiltIn.END)
             {
                 _diagnostics.Add(new Diagnostic()
@@ -41,15 +42,18 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
                     Severity = DiagnosticSeverity.Error,
                 });
             }
+
             _dialogScript.Sections.Add(new() { Name = title });
         }
 
         for (int i = 0; i < context.section().Length; i++)
         {
             _currentSection = _dialogScript.Sections[i];
+
             // Parse each statement
             foreach (var stmt in context.section()[i].section_body().stmt())
                 Visit(stmt);
+
             // Resolve all outstanding statements to the end
             if (i == context.section().Length - 1)
                 ResolveStatements(new GoTo(StatementType.End, 0));
@@ -72,8 +76,10 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         InstructionStmt ifExp = new(_dialogScript.Instructions.GetOrAdd(ifInstr));
         conditions.Add(_dialogScript.InstructionStmts.GetOrAdd(ifExp));
         _unresolvedStmts.Add((_nestLevel, ifExp));
+
         foreach (var stmt in context.if_stmt().stmt())
             Visit(stmt);
+
         LowerUnresolvedStatements();
 
         // else if
@@ -105,6 +111,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
     {
         Line line = new();
         StringBuilder sb = new();
+
         if (context.UNDERSCORE() == null)
         {
             // Get speakers and optional mood updates for line
@@ -112,6 +119,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
             {
                 int speakerIndex = _dialogScript.SpeakerIds.IndexOf(speaker.NAME().GetText());
                 line.SpeakerIndices.Add(speakerIndex);
+
                 if (speaker.expression() != null)
                 {
                     List<int> moodInts = new() { (int)OpCode.SpeakerSet, speakerIndex };
@@ -122,17 +130,24 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
                 }
             }
         }
+
         var children = context.line_text()?.children ?? context.ml_text()?.children;
+
         if (children != null)
             HandleLineText(line, sb, children);
+
         // Create new goto and line
         GoTo newGoto = new(StatementType.Line, _dialogScript.Lines.Count);
         ResolveStatements(newGoto);
+
         if (line.Next.Type == default)
             _unresolvedStmts.Add((_nestLevel, line));
+
         _dialogScript.Lines.Add(line);
+
         if (context.choice_stmt().Length > 0)
             HandleChoices(context.choice_stmt());
+
         return 0;
     }
 
@@ -159,8 +174,10 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
     {
         if (_currentSection.Next.Type == default)
             _currentSection.Next = next;
+
         foreach (var stmt in _unresolvedStmts.Where(x => x.Item1 >= _nestLevel))
             stmt.Item2.Next = next;
+
         _unresolvedStmts.RemoveAll(x => x.Item2.Next.Type != default);
     }
 

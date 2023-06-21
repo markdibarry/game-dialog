@@ -8,8 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis" Version="4.4.0" />
-    <PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.6" />
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="4.6.0" />
+    <PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.7" />
   </ItemGroup>
 
   <ItemGroup>

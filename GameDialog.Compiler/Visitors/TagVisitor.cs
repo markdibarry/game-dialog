@@ -62,6 +62,7 @@ public partial class MainDialogVisitor
                 line.Next = new GoTo(StatementType.Section, ints[1]);
             return;
         }
+
         _dialogScript.Instructions.Add(ints);
         line.InstructionIndices.Add(_dialogScript.Instructions.Count - 1);
         sb.Append($"[{line.InstructionIndices.Count - 1}]");
@@ -81,14 +82,17 @@ public partial class MainDialogVisitor
     private List<int>? GetExpressionTagInts([NotNull] DialogParser.TagContext context)
     {
         DialogParser.ExpressionContext expContext = context.expression();
+
         if (expContext is not DialogParser.ConstVarContext varContext)
             return _expressionVisitor.GetInstruction(expContext);
 
         string expName = varContext.NAME().GetText();
+
         if (!BuiltIn.IsBuiltIn(expName))
             return _expressionVisitor.GetInstruction(expContext);
 
         bool isClose = context.TAG_ENTER().GetText().EndsWith('/');
+
         switch (expName)
         {
             case BuiltIn.GOTO:
@@ -120,6 +124,7 @@ public partial class MainDialogVisitor
                 _dialogScript.InstFloats.Add(1);
                 return new() { (int)OpCode.Speed, _dialogScript.InstFloats.Count - 1};
         }
+
         // Nothing matched
         _diagnostics.Add(new Diagnostic()
         {
@@ -127,6 +132,7 @@ public partial class MainDialogVisitor
             Message = $"Invalid built-in tag.",
             Severity = DiagnosticSeverity.Error,
         });
+
         return null;
     }
 
@@ -134,8 +140,10 @@ public partial class MainDialogVisitor
     {
         DialogParser.AssignmentContext assContext = context.assignment();
         string expName = assContext.NAME().GetText();
+
         if (!BuiltIn.IsBuiltIn(expName))
             return _expressionVisitor.GetInstruction(assContext);
+
         switch (expName)
         {
             case BuiltIn.AUTO:
@@ -160,7 +168,9 @@ public partial class MainDialogVisitor
                     });
                     return null;
                 }
+
                 float speed = float.Parse(floatContext.GetText());
+
                 if (speed < 0)
                 {
                     _diagnostics.Add(new Diagnostic()
@@ -171,6 +181,7 @@ public partial class MainDialogVisitor
                     });
                     return null;
                 }
+
                 _dialogScript.InstFloats.Add(speed);
                 return new() { (int)OpCode.Speed, _dialogScript.InstFloats.Count - 1};
         }
@@ -180,6 +191,7 @@ public partial class MainDialogVisitor
             Message = $"Invalid built-in tag.",
             Severity = DiagnosticSeverity.Error,
         });
+
         return null;
     }
 
@@ -187,6 +199,7 @@ public partial class MainDialogVisitor
     {
         DialogParser.Attr_expressionContext attContext = context.attr_expression();
         string attName = attContext.NAME().GetText();
+
         switch (attName)
         {
             case BuiltIn.AUTO:
@@ -212,9 +225,12 @@ public partial class MainDialogVisitor
                     return null;
                 }
                 string sectionName = attContext.expression()[0].GetText();
+
                 if (sectionName.ToLower() == BuiltIn.END)
                     return new() { (int)OpCode.Goto, -1 };
+
                 int sectionIndex = _dialogScript.Sections.FindIndex(x => x.Name == sectionName);
+
                 if (sectionIndex == -1)
                 {
                     _diagnostics.Add(new Diagnostic()
@@ -225,15 +241,17 @@ public partial class MainDialogVisitor
                     });
                     return null;
                 }
+
                 return new() { (int)OpCode.Goto, sectionIndex };
         }
+
         if (BuiltIn.IsNameExpression(attContext))
-        {
             return GetSpeakerGetInts(attName);
-        }
-        else if (BuiltIn.IsSpeakerExpression(attContext))
+
+        if (BuiltIn.IsSpeakerExpression(attContext))
         {
             int nameIndex = _dialogScript.SpeakerIds.IndexOf(attName);
+
             if (nameIndex == -1)
             {
                 _diagnostics.Add(new Diagnostic()
@@ -276,8 +294,10 @@ public partial class MainDialogVisitor
     private List<int> GetSpeakerUpdateInts(DialogParser.Attr_expressionContext context, int nameIndex)
     {
         List<int> updateInts = new() { (int)OpCode.SpeakerSet, nameIndex};
+
         foreach (var ass in context.assignment())
             updateInts.AddRange(GetSpeakerUpdateAttribute(ass.NAME().GetText(), ass.right));
+
         return updateInts;
     }
 

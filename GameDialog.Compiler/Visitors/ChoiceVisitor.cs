@@ -27,12 +27,13 @@ public partial class MainDialogVisitor
             else
                 HandleChoiceCondition(choiceStmt.choice_cond_stmt(), choiceSet);
         }
+
         _nestLevel--;
     }
 
     private void AddChoice(DialogParser.Choice_stmtContext choiceStmt, List<int> choiceSet)
     {
-        Choice choice = new() { Text = choiceStmt.TEXT().GetText()};
+        Choice choice = new() { Text = choiceStmt.TEXT().GetText() };
         _dialogScript.Choices.Add(choice);
         choiceSet.AddRange(new[] { (int)OpCode.Choice, _dialogScript.Choices.Count - 1 });
 
@@ -66,11 +67,13 @@ public partial class MainDialogVisitor
                 });
                 return;
             }
+
             if (ints[1] == -1)
                 choice.Next = new GoTo(StatementType.End, 0);
             else
                 choice.Next = new GoTo(StatementType.Section, ints[1]);
         }
+
         foreach (var stmt in choiceStmt.stmt())
             Visit(stmt);
         LowerUnresolvedStatements();
@@ -87,6 +90,7 @@ public partial class MainDialogVisitor
         int unresolvedFallbackIndex = choiceSet.Count - 1;
         AddChoiceSet(ifStmt.choice_stmt(), choiceSet);
         LowerUnresolvedStatements();
+
         // else if
         foreach (var elseifStmt in choiceCond.choice_elseif_stmt())
         {
@@ -116,8 +120,10 @@ public partial class MainDialogVisitor
             AddChoiceSet(elseStmt.choice_stmt(), choiceSet);
             LowerUnresolvedStatements();
         }
+
         if (unresolvedFallbackIndex != -3)
             choiceSet[unresolvedFallbackIndex] = choiceSet.Count;
+
         foreach (var clauseIndex in unresolvedClauses)
             choiceSet[clauseIndex] = choiceSet.Count;
     }

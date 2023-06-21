@@ -44,6 +44,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
         VarType resultType = Visit(context);
         List<int> result = _currentInst;
         _currentInst = new();
+
         if (expectedType != default && resultType != expectedType)
         {
             _diagnostics.Add(new()
@@ -53,6 +54,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
                 Severity = DiagnosticSeverity.Error,
             });
         }
+
         return result;
     }
 
@@ -61,11 +63,13 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
         string varName = context.NAME().GetText();
         VarDef? varDef = _memberRegister.VarDefs.FirstOrDefault(x => x.Name == varName);
         int nameIndex = _dialogScript.InstStrings.GetOrAdd(varName);
+
         if (varDef == null)
         {
             varDef = new(varName);
             _memberRegister.VarDefs.Add(varDef);
         }
+
         if (context.op.Type != DialogLexer.OP_ASSIGN && varDef.Type != VarType.Float)
         {
             _diagnostics.Add(new()
@@ -76,15 +80,18 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
             });
             return VarType.Undefined;
         }
+
         VarType newType = PushExp(
             new[] { (int)InstructionLookup[context.op.Type], nameIndex },
             varDef.Type,
             context.right);
+
         if (newType == VarType.Undefined)
         {
             _memberRegister.VarDefs.Remove(varDef);
             return VarType.Undefined;
         }
+
         if (varDef.Type == VarType.Undefined)
             varDef.Type = newType;
 
@@ -134,8 +141,10 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
         {
             // Visit inner expression
             VarType resultType = Visit(exp);
+
             if (expectedType == VarType.Undefined)
                 expectedType = resultType;
+
             if (resultType != expectedType)
             {
                 _diagnostics.Add(new()
