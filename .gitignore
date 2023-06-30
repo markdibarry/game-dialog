@@ -18,6 +18,7 @@ bld/
 [Ll]ogs/
 
 .antlr
+*.vsix
 
 */bin/*
 */obj/*
