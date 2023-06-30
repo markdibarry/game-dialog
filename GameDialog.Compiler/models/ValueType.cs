@@ -15,12 +15,9 @@ public enum OpCode
     Float,
     String,
     Bool,
-    // name string
-    Var,
-    // name string, number of arguments (float), expressions...
-    Func,
-    // float, float
-    Mult,
+    Var, // name string
+    Func, // name string, number of arguments (float), expressions...
+    Mult, // float, float
     Div,
     Add,
     Sub,
@@ -28,32 +25,24 @@ public enum OpCode
     GreaterEquals,
     Less,
     Greater,
-    // expression, expression
-    Equals,
+    Equals, // expression, expression
     NotEquals,
-    // bool, bool
-    And,
+    And, // bool, bool
     Or,
     Not,
-    // Variable index, expression
-    Assign,
+    Assign, // Variable index, expression
     MultAssign,
     DivAssign,
     AddAssign,
     SubAssign,
-    // toggle (bool)
-    Auto,
-    // Section Index
-    Goto,
+    Auto, // toggle (bool)
+    Goto, // Section Index
     NewLine,
-    // multiplier (float)
-    Speed,
+    Speed, // multiplier (float)
+    Pause, // time (float)
     SpeakerSet,
-    // SpeakerId (float), Name (expression)
-    SpeakerSetName,
-    // SpeakerId (float), Mood (expression)
-    SpeakerSetMood,
-    // SpeakerId (float), Portrait (expression)
-    SpeakerSetPortrait,
+    SpeakerSetName, // SpeakerId (float), Name (expression)
+    SpeakerSetMood, // SpeakerId (float), Mood (expression)
+    SpeakerSetPortrait, // SpeakerId (float), Portrait (expression)
     Choice
 }

@@ -158,7 +158,7 @@ public partial class MainDialogVisitor
                 });
                 return null;
             case BuiltIn.SPEED:
-                if (assContext.right is not DialogParser.ConstFloatContext floatContext)
+                if (assContext.right is not DialogParser.ConstFloatContext speedFloatContext)
                 {
                     _diagnostics.Add(new Diagnostic()
                     {
@@ -169,14 +169,14 @@ public partial class MainDialogVisitor
                     return null;
                 }
 
-                float speed = float.Parse(floatContext.GetText());
+                float speed = float.Parse(speedFloatContext.GetText());
 
-                if (speed < 0)
+                if (speed <= 0)
                 {
                     _diagnostics.Add(new Diagnostic()
                     {
                         Range = context.GetRange(),
-                        Message = $"Invalid value: Speed multiplier cannot be less than zero.",
+                        Message = $"Invalid value: Speed multiplier cannot be zero or lesser.",
                         Severity = DiagnosticSeverity.Error,
                     });
                     return null;
@@ -184,6 +184,33 @@ public partial class MainDialogVisitor
 
                 _dialogScript.InstFloats.Add(speed);
                 return new() { (int)OpCode.Speed, _dialogScript.InstFloats.Count - 1};
+            case BuiltIn.PAUSE:
+                if (assContext.right is not DialogParser.ConstFloatContext pauseFloatContext)
+                {
+                    _diagnostics.Add(new Diagnostic()
+                    {
+                        Range = context.GetRange(),
+                        Message = $"Type Mismatch: Expected Float.",
+                        Severity = DiagnosticSeverity.Error,
+                    });
+                    return null;
+                }
+
+                float time = float.Parse(pauseFloatContext.GetText());
+
+                if (time < 0)
+                {
+                    _diagnostics.Add(new Diagnostic()
+                    {
+                        Range = context.GetRange(),
+                        Message = $"Invalid value: Pause timeout cannot be less than zero.",
+                        Severity = DiagnosticSeverity.Error,
+                    });
+                    return null;
+                }
+
+                _dialogScript.InstFloats.Add(time);
+                return new() { (int)OpCode.Pause, _dialogScript.InstFloats.Count - 1 };
         }
         _diagnostics.Add(new Diagnostic()
         {
