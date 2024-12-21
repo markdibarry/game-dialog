@@ -7,7 +7,7 @@ namespace GameDialog.Compiler;
 
 public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
 {
-    private readonly DialogScript _dialogScript;
+    private readonly ScriptData _dialogScript;
     private readonly List<Diagnostic> _diagnostics;
     private readonly MemberRegister _memberRegister;
     private readonly ExpressionVisitor _expressionVisitor;
@@ -15,7 +15,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
     private Section _currentSection = new();
     private int _nestLevel;
 
-    public MainDialogVisitor(DialogScript dialogScript, List<Diagnostic> diagnostics, MemberRegister memberRegister)
+    public MainDialogVisitor(ScriptData dialogScript, List<Diagnostic> diagnostics, MemberRegister memberRegister)
     {
         _dialogScript = dialogScript;
         _diagnostics = diagnostics;
@@ -33,15 +33,8 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         {
             string title = section.section_title().NAME().GetText();
 
-            if (title.ToLower() == BuiltIn.END)
-            {
-                _diagnostics.Add(new Diagnostic()
-                {
-                    Range = section.section_title().GetRange(),
-                    Message = $"\"end\" is a reserved name.",
-                    Severity = DiagnosticSeverity.Error,
-                });
-            }
+            if (string.Equals(title, BuiltIn.END, StringComparison.OrdinalIgnoreCase))
+                _diagnostics.Add(section.section_title().GetError("\"end\" is a reserved name."));
 
             _dialogScript.Sections.Add(new() { Name = title });
         }
@@ -65,7 +58,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
     public override int VisitCond_stmt([NotNull] DialogParser.Cond_stmtContext context)
     {
         // Create new goto and conditional
-        List<int> conditions = new();
+        List<int> conditions = [];
         InstructionStmt conditionSet = new(_dialogScript.Instructions.GetOrAdd(conditions));
         GoTo newGoto = new(StatementType.Conditional, _dialogScript.InstructionStmts.GetOrAdd(conditionSet));
         ResolveStatements(newGoto);
@@ -89,17 +82,21 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
             InstructionStmt elseifExp = new(_dialogScript.Instructions.GetOrAdd(elseifInstr));
             conditions.Add(_dialogScript.InstructionStmts.GetOrAdd(elseifExp));
             _unresolvedStmts.Add((_nestLevel, elseifExp));
+
             foreach (var stmt in elseifstmt.stmt())
                 Visit(stmt);
+
             LowerUnresolvedStatements();
         }
 
         // else (main fallback)
         _unresolvedStmts.Add((_nestLevel, conditionSet));
+
         if (context.else_stmt() != null)
         {
             foreach (var stmt in context.else_stmt().stmt())
                 Visit(stmt);
+
             LowerUnresolvedStatements();
         }
 
@@ -122,8 +119,12 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
 
                 if (speaker.expression() != null)
                 {
-                    List<int> moodInts = new() { (int)OpCode.SpeakerSet, speakerIndex };
-                    moodInts.AddRange(GetSpeakerUpdateAttribute(BuiltIn.MOOD, speaker.expression()));
+                    List<int> moodInts = 
+                    [
+                        (int)OpCode.SpeakerSet,
+                        speakerIndex,
+                        ..GetSpeakerUpdateAttribute(BuiltIn.MOOD, speaker.expression())
+                    ];
                     sb.Append($"[{line.InstructionIndices.Count}]");
                     line.InstructionIndices.Add(_dialogScript.Instructions.Count);
                     _dialogScript.Instructions.Add(moodInts);
@@ -167,6 +168,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
             else if (child is DialogParser.TagContext tag)
                 HandleLineTag(line, sb, tag);
         }
+
         line.Text = sb.ToString();
     }
 

@@ -1,13 +1,11 @@
-﻿using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-
-namespace GameDialog.Compiler;
+﻿namespace GameDialog.Compiler;
 
 public partial class ExpressionVisitor
 {
     public override VarType VisitConstFloat(DialogParser.ConstFloatContext context)
     {
         int index = _dialogScript.InstFloats.GetOrAdd(float.Parse(context.FLOAT().GetText()));
-        PushExp(new[] { (int)VarType.Float, index }, default);
+        PushExp([(int)VarType.Float, index], default);
         return VarType.Float;
     }
 
@@ -15,14 +13,14 @@ public partial class ExpressionVisitor
     {
         string value = context.STRING().GetText()[1..^1];
         int index = _dialogScript.InstStrings.GetOrAdd(value);
-        PushExp(new[] { (int)VarType.String, index }, default);
+        PushExp([(int)VarType.String, index], default);
         return VarType.String;
     }
 
     public override VarType VisitConstBool(DialogParser.ConstBoolContext context)
     {
         int val = context.BOOL().GetText() == "true" ? 1 : 0;
-        PushExp(new[] { (int)VarType.Bool, val }, default);
+        PushExp([(int)VarType.Bool, val], default);
         return VarType.Bool;
     }
 
@@ -33,12 +31,7 @@ public partial class ExpressionVisitor
 
         if (varDef == null)
         {
-            _diagnostics.Add(new()
-            {
-                Range = context.GetRange(),
-                Message = $"Variables must be defined before use.",
-                Severity = DiagnosticSeverity.Error,
-            });
+            _diagnostics.Add(context.GetError("Variables must be defined before use."));
             return VarType.Undefined;
         }
 
@@ -48,15 +41,10 @@ public partial class ExpressionVisitor
         // Should never happen?
         if (varDef.Type == VarType.Undefined)
         {
-            _diagnostics.Add(new()
-            {
-                Range = context.GetRange(),
-                Message = $"Type Error: Cannot infer expression result type.",
-                Severity = DiagnosticSeverity.Error,
-            });
+            _diagnostics.Add(context.GetError("Type Error: Cannot infer expression result type."));
         }
 
-        PushExp(new[] { (int)OpCode.Var, nameIndex }, varDef.Type);
+        PushExp([(int)OpCode.Var, nameIndex], varDef.Type);
         return varDef.Type;
     }
 
@@ -67,12 +55,7 @@ public partial class ExpressionVisitor
 
         if (!funcDefs.Any())
         {
-            _diagnostics.Add(new()
-            {
-                Range = context.GetRange(),
-                Message = $"Function not found: Functions must be defined in the Dialog Bridge before use.",
-                Severity = DiagnosticSeverity.Error,
-            });
+            _diagnostics.Add(context.GetError("Function not found: Functions must be defined in the Dialog Bridge before use."));
             return VarType.Undefined;
         }
 
@@ -80,8 +63,8 @@ public partial class ExpressionVisitor
         int argsFound = context.expression().Length;
         int nameIndex = _dialogScript.InstStrings.GetOrAdd(funcName);
 
-        PushExp(new[] { (int)OpCode.Func, nameIndex, argsFound }, default);
-        List<VarType> argTypesFound = new();
+        PushExp([(int)OpCode.Func, nameIndex, argsFound], default);
+        List<VarType> argTypesFound = [];
 
         for (int i = 0; i < argsFound; i++)
         {
@@ -93,12 +76,7 @@ public partial class ExpressionVisitor
 
         if (funcDef == null)
         {
-            _diagnostics.Add(new()
-            {
-                Range = context.GetRange(),
-                Message = $"Function not found: Functions must be defined in the Dialog Bridge before use.",
-                Severity = DiagnosticSeverity.Error,
-            });
+            _diagnostics.Add(context.GetError("Function not found: Functions must be defined in the Dialog Bridge before use."));
             return VarType.Undefined;
         }
 

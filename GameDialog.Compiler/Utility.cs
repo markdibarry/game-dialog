@@ -3,7 +3,7 @@ using Antlr4.Runtime.Tree;
 
 namespace GameDialog.Compiler;
 
-public class Utility
+public static class Utility
 {
     public static void PrintTokens(CommonTokenStream stream)
     {
@@ -22,7 +22,9 @@ public class Utility
     {
         if (context.children == null)
             return;
+
         Console.WriteLine();
+
         for (int i = 0; i < context.children.Count; i++)
             GetBranch(context.children[i], "", i == context.ChildCount - 1);
     }
@@ -30,6 +32,7 @@ public class Utility
     private static void GetBranch(IParseTree branch, string indent, bool last)
     {
         Console.Write(indent);
+
         if (last)
         {
             Console.Write("\\--");
@@ -40,10 +43,12 @@ public class Utility
             Console.Write("|--");
             indent += "|  ";
         }
+
         if (branch is ParserRuleContext)
             Console.WriteLine(branch.GetType().Name.Replace("Context", ""));
         else
             Console.WriteLine($"[{branch.GetText().Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t")}]");
+
         for (int i = 0; i < branch.ChildCount; i++)
             GetBranch(branch.GetChild(i), indent, i == branch.ChildCount - 1);
     }

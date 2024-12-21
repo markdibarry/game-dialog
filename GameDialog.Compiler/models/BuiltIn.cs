@@ -12,7 +12,7 @@ public class BuiltIn
         SPEED
     };
 
-    private static readonly string[] _validSpeakerAttributes = { MOOD, NAME, PORTRAIT };
+    private static readonly string[] _validSpeakerAttributes = [MOOD, NAME, PORTRAIT];
 
     public const string AUTO = "auto";
     public const string END = "end";
@@ -23,8 +23,6 @@ public class BuiltIn
     public const string NAME = "name";
     public const string PORTRAIT = "portrait";
     public const string MOOD = "mood";
-    public const string UPDATE_SPEAKER = "UpdateSpeaker";
-    public const string GET_NAME = "GetName";
 
     public static bool IsBuiltIn(string text)
     {
@@ -42,7 +40,7 @@ public class BuiltIn
     public static bool IsSpeakerExpression(DialogParser.Attr_expressionContext context)
     {
         bool namesValid = false;
-        if (context.assignment().Any() && context.expression().Length == 0)
+        if (context.assignment().Length > 0 && context.expression().Length == 0)
         {
             var names = context.assignment().Select(x => x.NAME().GetText());
             namesValid = names.Distinct().Count() == names.Count();

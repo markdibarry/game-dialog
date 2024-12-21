@@ -16,9 +16,11 @@ public class DialogCompiler
 
     public Dictionary<DocumentUri, CompilationResult> Compile(ConcurrentDictionary<DocumentUri, DialogDocument> documents)
     {
-        Dictionary<DocumentUri, CompilationResult> results = new();
-        foreach(var kvp in documents)
+        Dictionary<DocumentUri, CompilationResult> results = [];
+
+        foreach (var kvp in documents)
             results.Add(kvp.Value.Uri, Compile(kvp.Value));
+
         return results;
     }
 
@@ -27,8 +29,8 @@ public class DialogCompiler
         ParserRuleContext context = document.Parser.script();
         //Utility.PrintTokens((CommonTokenStream)document.Parser.TokenStream);
         //Utility.PrintTree(context);
-        DialogScript dialogScript = new();
-        List<Diagnostic> diagnostics = new();
+        ScriptData dialogScript = new();
+        List<Diagnostic> diagnostics = [];
         // Get all speaker ids
         SpeakerIdVisitor speakerNameVisitor = new(dialogScript);
         speakerNameVisitor.Visit(context);

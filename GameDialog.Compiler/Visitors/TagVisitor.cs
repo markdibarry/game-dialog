@@ -1,5 +1,4 @@
 ﻿using Antlr4.Runtime.Misc;
-using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using System.Text;
 
 namespace GameDialog.Compiler;
@@ -11,12 +10,7 @@ public partial class MainDialogVisitor
         // Line tags are handled separately.
         if (context.BBCODE_NAME() != null)
         {
-            _diagnostics.Add(new Diagnostic()
-            {
-                Range = context.GetRange(),
-                Message = $"BBCode cannot be used in stand-alone expressions.",
-                Severity = DiagnosticSeverity.Error,
-            });
+            _diagnostics.Add(context.GetError("BBCode cannot be used in stand-alone expressions."));
             return;
         }
 
@@ -97,42 +91,26 @@ public partial class MainDialogVisitor
         {
             case BuiltIn.GOTO:
             case BuiltIn.PAUSE:
-                _diagnostics.Add(new Diagnostic()
-                {
-                    Range = context.GetRange(),
-                    Message = $"Built-in tag cannot be used as an expression.",
-                    Severity = DiagnosticSeverity.Error,
-                });
+                _diagnostics.Add(context.GetError("Built-in tag cannot be used as an expression."));
                 return null;
             case BuiltIn.END:
-                return new() { (int)OpCode.Goto, -1 };
+                return [(int)OpCode.Goto, -1];
             case BuiltIn.AUTO:
-                return new() { (int)OpCode.Auto, isClose ? 0 : 1};
+                return [(int)OpCode.Auto, isClose ? 0 : 1];
             case BuiltIn.NEWLINE:
-                return new() { (int)OpCode.NewLine };
+                return [(int)OpCode.NewLine];
             case BuiltIn.SPEED:
                 if (!isClose)
                 {
-                    _diagnostics.Add(new Diagnostic()
-                    {
-                        Range = context.GetRange(),
-                        Message = $"Reserved tag \"speed\" can only be assigned to or be part of a closing tag.",
-                        Severity = DiagnosticSeverity.Error,
-                    });
+                    _diagnostics.Add(context.GetError("Reserved tag \"speed\" can only be assigned to or be part of a closing tag."));
                     return null;
                 }
                 _dialogScript.InstFloats.Add(1);
-                return new() { (int)OpCode.Speed, _dialogScript.InstFloats.Count - 1};
+                return [(int)OpCode.Speed, _dialogScript.InstFloats.Count - 1];
         }
 
         // Nothing matched
-        _diagnostics.Add(new Diagnostic()
-        {
-            Range = context.GetRange(),
-            Message = $"Invalid built-in tag.",
-            Severity = DiagnosticSeverity.Error,
-        });
-
+        _diagnostics.Add(context.GetError("Invalid built-in tag."));
         return null;
     }
 
@@ -150,22 +128,12 @@ public partial class MainDialogVisitor
             case BuiltIn.END:
             case BuiltIn.GOTO:
             case BuiltIn.NEWLINE:
-                _diagnostics.Add(new Diagnostic()
-                {
-                    Range = context.GetRange(),
-                    Message = $"Built-in tag is not assignable.",
-                    Severity = DiagnosticSeverity.Error,
-                });
+                _diagnostics.Add(context.GetError("Built-in tag is not assignable."));
                 return null;
             case BuiltIn.SPEED:
                 if (assContext.right is not DialogParser.ConstFloatContext speedFloatContext)
                 {
-                    _diagnostics.Add(new Diagnostic()
-                    {
-                        Range = context.GetRange(),
-                        Message = $"Type Mismatch: Expected Float.",
-                        Severity = DiagnosticSeverity.Error,
-                    });
+                    _diagnostics.Add(context.GetError("Type Mismatch: Expected Float."));
                     return null;
                 }
 
@@ -173,26 +141,16 @@ public partial class MainDialogVisitor
 
                 if (speed <= 0)
                 {
-                    _diagnostics.Add(new Diagnostic()
-                    {
-                        Range = context.GetRange(),
-                        Message = $"Invalid value: Speed multiplier cannot be zero or lesser.",
-                        Severity = DiagnosticSeverity.Error,
-                    });
+                    _diagnostics.Add(context.GetError("Invalid value: Speed multiplier cannot be zero or lesser."));
                     return null;
                 }
 
                 _dialogScript.InstFloats.Add(speed);
-                return new() { (int)OpCode.Speed, _dialogScript.InstFloats.Count - 1};
+                return [(int)OpCode.Speed, _dialogScript.InstFloats.Count - 1];
             case BuiltIn.PAUSE:
                 if (assContext.right is not DialogParser.ConstFloatContext pauseFloatContext)
                 {
-                    _diagnostics.Add(new Diagnostic()
-                    {
-                        Range = context.GetRange(),
-                        Message = $"Type Mismatch: Expected Float.",
-                        Severity = DiagnosticSeverity.Error,
-                    });
+                    _diagnostics.Add(context.GetError("Type Mismatch: Expected Float."));
                     return null;
                 }
 
@@ -200,25 +158,15 @@ public partial class MainDialogVisitor
 
                 if (time < 0)
                 {
-                    _diagnostics.Add(new Diagnostic()
-                    {
-                        Range = context.GetRange(),
-                        Message = $"Invalid value: Pause timeout cannot be less than zero.",
-                        Severity = DiagnosticSeverity.Error,
-                    });
+                    _diagnostics.Add(context.GetError("Invalid value: Pause timeout cannot be less than zero."));
                     return null;
                 }
 
                 _dialogScript.InstFloats.Add(time);
-                return new() { (int)OpCode.Pause, _dialogScript.InstFloats.Count - 1 };
+                return [(int)OpCode.Pause, _dialogScript.InstFloats.Count - 1];
         }
-        _diagnostics.Add(new Diagnostic()
-        {
-            Range = context.GetRange(),
-            Message = $"Invalid built-in tag.",
-            Severity = DiagnosticSeverity.Error,
-        });
 
+        _diagnostics.Add(context.GetError("Invalid built-in tag."));
         return null;
     }
 
@@ -233,43 +181,29 @@ public partial class MainDialogVisitor
             case BuiltIn.END:
             case BuiltIn.NEWLINE:
             case BuiltIn.PAUSE:
-                _diagnostics.Add(new Diagnostic()
-                {
-                    Range = context.GetRange(),
-                    Message = $"Built-in tag does not have attributes.",
-                    Severity = DiagnosticSeverity.Error,
-                });
+                _diagnostics.Add(context.GetError("Built-in tag does not have attributes."));
                 return null;
             case BuiltIn.GOTO:
                 if (attContext.assignment().Length > 0 || attContext.expression().Length != 1)
                 {
-                    _diagnostics.Add(new Diagnostic()
-                    {
-                        Range = context.GetRange(),
-                        Message = $"Built-in tag has incorrect number of attributes.",
-                        Severity = DiagnosticSeverity.Error,
-                    });
+                    _diagnostics.Add(context.GetError("Built-in tag has incorrect number of attributes."));
                     return null;
                 }
+
                 string sectionName = attContext.expression()[0].GetText();
 
-                if (sectionName.ToLower() == BuiltIn.END)
-                    return new() { (int)OpCode.Goto, -1 };
+                if (string.Equals(sectionName, BuiltIn.END, StringComparison.OrdinalIgnoreCase))
+                    return [(int)OpCode.Goto, -1];
 
                 int sectionIndex = _dialogScript.Sections.FindIndex(x => x.Name == sectionName);
 
                 if (sectionIndex == -1)
                 {
-                    _diagnostics.Add(new Diagnostic()
-                    {
-                        Range = context.GetRange(),
-                        Message = $"Section not found.",
-                        Severity = DiagnosticSeverity.Error,
-                    });
+                    _diagnostics.Add(context.GetError("Section not found."));
                     return null;
                 }
 
-                return new() { (int)OpCode.Goto, sectionIndex };
+                return [(int)OpCode.Goto, sectionIndex];
         }
 
         if (BuiltIn.IsNameExpression(attContext))
@@ -281,23 +215,14 @@ public partial class MainDialogVisitor
 
             if (nameIndex == -1)
             {
-                _diagnostics.Add(new Diagnostic()
-                {
-                    Range = context.GetRange(),
-                    Message = $"Can only edit speakers that appear in this dialog script.",
-                    Severity = DiagnosticSeverity.Error,
-                });
+                _diagnostics.Add(context.GetError("Can only edit speakers that appear in this dialog script."));
                 return null;
             }
+
             return GetSpeakerUpdateInts(attContext, nameIndex);
         }
 
-        _diagnostics.Add(new Diagnostic()
-        {
-            Range = context.GetRange(),
-            Message = $"Unrecognized expression.",
-            Severity = DiagnosticSeverity.Error,
-        });
+        _diagnostics.Add(context.GetError("Unrecognized expression."));
         return null;
     }
 
@@ -305,7 +230,7 @@ public partial class MainDialogVisitor
     {
         int funcIndex = _dialogScript.InstStrings.GetOrAdd("GetName");
         int nameIndex = _dialogScript.InstStrings.GetOrAdd(name);
-        return new() { (int)OpCode.Func, funcIndex, 1, (int)OpCode.String, nameIndex};
+        return [(int)OpCode.Func, funcIndex, 1, (int)OpCode.String, nameIndex];
     }
 
     /// <summary>
@@ -320,7 +245,7 @@ public partial class MainDialogVisitor
     /// <returns></returns>
     private List<int> GetSpeakerUpdateInts(DialogParser.Attr_expressionContext context, int nameIndex)
     {
-        List<int> updateInts = new() { (int)OpCode.SpeakerSet, nameIndex};
+        List<int> updateInts = [(int)OpCode.SpeakerSet, nameIndex];
 
         foreach (var ass in context.assignment())
             updateInts.AddRange(GetSpeakerUpdateAttribute(ass.NAME().GetText(), ass.right));
@@ -330,8 +255,8 @@ public partial class MainDialogVisitor
 
     private List<int> GetSpeakerUpdateAttribute(string type, DialogParser.ExpressionContext value)
     {
-        return new()
-        {
+        return
+        [
             type switch
             {
                 BuiltIn.NAME => (int)OpCode.SpeakerSetName,
@@ -340,6 +265,6 @@ public partial class MainDialogVisitor
                 _ => throw new NotImplementedException()
             },
             _dialogScript.Instructions.GetOrAdd(_expressionVisitor.GetInstruction(value, VarType.String))
-        };
+        ];
     }
 }

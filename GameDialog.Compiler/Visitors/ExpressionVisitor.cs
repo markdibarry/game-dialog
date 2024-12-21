@@ -6,17 +6,17 @@ namespace GameDialog.Compiler;
 
 public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
 {
-    public ExpressionVisitor(DialogScript dialogScript, List<Diagnostic> diagnostics, MemberRegister memberRegister)
+    public ExpressionVisitor(ScriptData dialogScript, List<Diagnostic> diagnostics, MemberRegister memberRegister)
     {
         _dialogScript = dialogScript;
         _diagnostics = diagnostics;
         _memberRegister = memberRegister;
     }
 
-    private readonly DialogScript _dialogScript;
+    private readonly ScriptData _dialogScript;
     private readonly List<Diagnostic> _diagnostics;
     private readonly MemberRegister _memberRegister;
-    private List<int> _currentInst = new();
+    private List<int> _currentInst = [];
     private static readonly Dictionary<int, OpCode> InstructionLookup = new()
         {
             { DialogLexer.OP_MULT, OpCode.Mult },
@@ -43,7 +43,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
     {
         VarType resultType = Visit(context);
         List<int> result = _currentInst;
-        _currentInst = new();
+        _currentInst = [];
 
         if (expectedType != default && resultType != expectedType)
         {
@@ -72,17 +72,12 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
 
         if (context.op.Type != DialogLexer.OP_ASSIGN && varDef.Type != VarType.Float)
         {
-            _diagnostics.Add(new()
-            {
-                Range = context.GetRange(),
-                Message = $"Operator requires variable to be of type {VarType.Float} and already have a value.",
-                Severity = DiagnosticSeverity.Error,
-            });
+            _diagnostics.Add(context.GetError($"Operator requires variable to be of type {VarType.Float} and already have a value."));
             return VarType.Undefined;
         }
 
         VarType newType = PushExp(
-            new[] { (int)InstructionLookup[context.op.Type], nameIndex },
+            [(int)InstructionLookup[context.op.Type], nameIndex],
             varDef.Type,
             context.right);
 
@@ -128,12 +123,12 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
         return VarType.Bool;
     }
 
-    private VarType PushExp(IToken op, VarType checkType, params ParserRuleContext[] exps)
+    private VarType PushExp(IToken op, VarType checkType, params ReadOnlySpan<ParserRuleContext> exps)
     {
-        return PushExp(new[] { (int)InstructionLookup[op.Type] }, checkType, exps);
+        return PushExp([(int)InstructionLookup[op.Type]], checkType, exps);
     }
 
-    private VarType PushExp(int[] values, VarType expectedType, params ParserRuleContext[] exps)
+    private VarType PushExp(ReadOnlySpan<int> values, VarType expectedType, params ReadOnlySpan<ParserRuleContext> exps)
     {
         _currentInst.AddRange(values);
 
@@ -147,12 +142,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
 
             if (resultType != expectedType)
             {
-                _diagnostics.Add(new()
-                {
-                    Range = exp.GetRange(),
-                    Message = $"Type Mismatch: Expected {expectedType}, but returned {resultType}.",
-                    Severity = DiagnosticSeverity.Error,
-                });
+                _diagnostics.Add(exp.GetError($"Type Mismatch: Expected {expectedType}, but returned {resultType}."));
             }
         }
 

@@ -21,7 +21,7 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
     private readonly ILanguageServerFacade _server;
     private readonly ILanguageServerConfiguration _configuration;
     private readonly DocumentManager _documentManager = new();
-    private readonly DocumentSelector _documentSelector = new(new DocumentFilter() { Pattern = "**/*.dia" });
+    private readonly TextDocumentSelector _documentSelector = new(new TextDocumentFilter() { Pattern = "**/*.dia" });
     public TextDocumentSyncKind Change { get; } = TextDocumentSyncKind.Full;
 
     public TextDocumentHandler(ILanguageServerFacade languageServer, ILanguageServerConfiguration configuration)
@@ -32,7 +32,7 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
 
     public override TextDocumentAttributes GetTextDocumentAttributes(DocumentUri uri)
     {
-        return new TextDocumentAttributes(uri, "gamedialog");
+        return new(uri, "gamedialog");
     }
 
     public override Task<Unit> Handle(DidOpenTextDocumentParams notification, CancellationToken cancellationToken)
@@ -51,6 +51,7 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
     {
         if (!notification.ContentChanges.Any())
             return Unit.Task;
+
         UpdateDoc(notification.TextDocument.Uri, notification.ContentChanges.First().Text);
         Dictionary<DocumentUri, CompilationResult> results = _documentManager.Compile();
         PublishDiagnostics(results);
@@ -66,8 +67,10 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
     {
         if (string.IsNullOrEmpty(notification.Text))
             return Unit.Task;
+
         UpdateDoc(notification.TextDocument.Uri, notification.Text);
         Dictionary<DocumentUri, CompilationResult> results = _documentManager.Compile();
+
         foreach (var kvp in results)
         {
             // Do not generate files with errors
@@ -84,22 +87,26 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
             if (bool.TryParse(_configuration["gamedialog:EnableCSVTranslation"], out bool csvEnabled) && csvEnabled)
             {
                 string csvDirectory = _configuration["gamedialog:CSVTranslationLocation"];
+
                 if (string.IsNullOrEmpty(csvDirectory))
                     csvDirectory = pathDirectory;
+
                 if (!Directory.Exists(csvDirectory))
                 {
                     _server.Window.ShowError($"CSV Translation location is invalid. Please check your settings.");
                     continue;
                 }
+
                 CreateTranslationCSV(fileName, csvDirectory, kvp.Value.DialogScript);
             }
 
             CreateJsonFile(fileName, pathDirectory, kvp.Value.DialogScript);
         }
+
         return Unit.Task;
     }
 
-    protected override TextDocumentSyncRegistrationOptions CreateRegistrationOptions(SynchronizationCapability capability, ClientCapabilities clientCapabilities)
+    protected override TextDocumentSyncRegistrationOptions CreateRegistrationOptions(TextSynchronizationCapability capability, ClientCapabilities clientCapabilities)
     {
         return new TextDocumentSyncRegistrationOptions()
         {
@@ -109,18 +116,20 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
         };
     }
 
-    private static void CreateJsonFile(string fileName, string pathDirectory, DialogScript dialogScript)
+    private static void CreateJsonFile(string fileName, string pathDirectory, ScriptData dialogScript)
     {
-        string jsonFilePath = $"{pathDirectory}\\{fileName}.json";
+        string jsonFilePath = $"{pathDirectory}{Path.DirectorySeparatorChar}{fileName}.json";
         string jsonString = JsonSerializer.Serialize(dialogScript);
         File.WriteAllText(jsonFilePath, jsonString);
     }
 
-    private static void CreateTranslationCSV(string fileName, string pathDirectory, DialogScript dialogScript)
+    private static void CreateTranslationCSV(string fileName, string pathDirectory, ScriptData dialogScript)
     {
-        string csvPath = $"{pathDirectory}\\DialogTranslation.csv";
+        string csvPath = $"{pathDirectory}{Path.DirectorySeparatorChar}DialogTranslation.csv";
+
         if (!File.Exists(csvPath))
             File.WriteAllText(csvPath, string.Empty);
+
         string keyPrefix = $"Dialog_{fileName}_";
         List<string> records = File.ReadLines(csvPath)
             .Where(x => !x.StartsWith(keyPrefix))
@@ -151,16 +160,21 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
     private static string ConvertToCsvCell(string str)
     {
         bool mustQuote = str.Contains(',') || str.Contains('"') || str.Contains('\r') || str.Contains('\n');
+
         if (!mustQuote)
             return str;
+
         StringBuilder sb = new();
         sb.Append('"');
+
         foreach (char nextChar in str)
         {
             sb.Append(nextChar);
+
             if (nextChar == '"')
                 sb.Append('"');
         }
+
         sb.Append('"');
         return sb.ToString();
     }
@@ -192,22 +206,29 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
     private void SetCustomMembersFromFile(string fileName)
     {
         var rootPath = _server.ClientSettings.RootPath;
+
         if (string.IsNullOrEmpty(rootPath))
             return;
+
         var files = Directory.GetFiles(rootPath, fileName, SearchOption.AllDirectories);
+
         if (files.Length != 1)
             return;
+
         string code = new StreamReader(files[0]).ReadToEnd();
         SyntaxTree tree = CSharpSyntaxTree.ParseText(code);
         CompilationUnitSyntax? root = tree.GetCompilationUnitRoot();
         var members = root.DescendantNodes().OfType<MemberDeclarationSyntax>();
+
         foreach (var member in members)
         {
             if (member is PropertyDeclarationSyntax propDeclaration)
             {
                 VarType varType = GetVarType(propDeclaration.Type.ToString());
+
                 if (varType == VarType.Undefined)
                     continue;
+
                 VarDef varDef = new(propDeclaration.Identifier.Text, varType);
                 _documentManager.MemberRegister.VarDefs.Add(varDef);
             }
@@ -216,7 +237,9 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
                 // ignore override methods
                 if (methodDeclaration.Modifiers.Any(x => x.Text == "override"))
                     continue;
+
                 FuncDef? funcDef = GetFuncDef(methodDeclaration);
+
                 if (funcDef != null)
                     _documentManager.MemberRegister.FuncDefs.Add(funcDef);
             }
@@ -238,22 +261,30 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
     private FuncDef? GetFuncDef(MethodDeclarationSyntax node)
     {
         VarType returnType = GetVarType(node.ReturnType.ToString());
+
         if (returnType == VarType.Undefined)
             return null;
+
         string funcName = node.Identifier.Text;
-        List<Argument> args = new();
+        List<Argument> args = [];
         bool argsValid = true;
+
         foreach (var parameter in node.ParameterList.Parameters)
         {
             if (parameter.Type == null)
                 return null;
+
             VarType paramType = GetVarType(parameter.Type.ToString());
+
             if (paramType == VarType.Undefined)
                 return null;
+
             args.Add(new(paramType, parameter.Default != null));
         }
+
         if (!argsValid)
             return null;
+
         FuncDef funcDef = new(funcName, returnType, args);
         return funcDef;
     }

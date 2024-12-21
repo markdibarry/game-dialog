@@ -4,8 +4,8 @@ namespace GameDialog.Compiler;
 
 public abstract class DialogLexerBase : Lexer
 {
-    private readonly Stack<int> _indents = new Stack<int>();
-    private readonly Queue<IToken> _pendingTokens = new Queue<IToken>();
+    private readonly Stack<int> _indents = new();
+    private readonly Queue<IToken> _pendingTokens = new();
     private IToken? _prevToken;
 
     public DialogLexerBase(ICharStream input, TextWriter output, TextWriter errorOutput)
@@ -29,6 +29,7 @@ public abstract class DialogLexerBase : Lexer
             HitEOF = true;
             return new CommonToken(Eof, "<EOF>");
         }
+
         return GetNextToken();
     }
 
@@ -42,18 +43,23 @@ public abstract class DialogLexerBase : Lexer
         }
 
         IToken currentToken = base.NextToken();
+
         // If EOF, handle Newline and Dedenting
         if (currentToken.Type == Eof)
         {
             HandleEOFToken(currentToken);
             return _pendingTokens.Dequeue();
         }
+
         IToken? prevToken = _prevToken;
         _prevToken = currentToken;
+
         if (prevToken == null || prevToken.Type != DialogLexer.NEWLINE)
             return currentToken;
+
         if (currentToken.Type == DialogLexer.NEWLINE)
             return currentToken;
+
         // If the previous token was a NEWLINE, and the current isn't, check for indentation
         int currentIndent = GetNewLineLength(prevToken);
         int previousIndent = _indents.Count > 0 ? _indents.Peek() : 0;
@@ -72,6 +78,7 @@ public abstract class DialogLexerBase : Lexer
                 previousIndent = _indents.Count > 0 ? _indents.Peek() : 0;
             }
         }
+
         _pendingTokens.Enqueue(currentToken);
         return _pendingTokens.Dequeue();
     }
@@ -86,6 +93,7 @@ public abstract class DialogLexerBase : Lexer
             var indent = _indents.Pop();
             InsertToken($"DEDENT: {indent}", DialogLexer.DEDENT);
         }
+
         _pendingTokens.Enqueue(currentToken);
     }
 
@@ -117,6 +125,7 @@ public abstract class DialogLexerBase : Lexer
 
         if (containsSpaces && containsTabs)
             throw new ArgumentException("Indentation contains tabs and spaces");
+
         return length;
     }
 

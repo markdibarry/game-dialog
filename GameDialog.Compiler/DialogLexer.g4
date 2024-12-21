@@ -56,8 +56,8 @@ BBCODE_TAG_EXIT: ']' -> type(TAG_EXIT), popMode;
 BBCODE_ANY: ANY -> type(ANY);
 
 mode ExpressionMode;
-BBCODE_NAME: ('b'|'i'|'u'|'s'|'code'|'p'|'center'|'right'|'left'|'fill'|'indent'
-	|'url'|'img'|'font'|'font_size'|'opentype_features'|'table'|'cell'|'ul'
+BBCODE_NAME: ('b'|'i'|'u'|'s'|'code'|'char'|'p'|'center'|'right'|'left'|'fill'|'indent'|'url'|'hint'
+	|'img'|'font'|'font_size'|'dropcap'|'opentype_features'|'lang'|'table'|'cell'|'ul'
 	|'ol'|'lb'|'rb'|'color'|'bgcolor'|'fgcolor'|'outline_size'|'outline_color'
 	|'wave'|'tornado'|'fade'|'rainbow'|'shake') -> popMode, pushMode(BBCodeMode);
 OPEN_PAREN : '(';

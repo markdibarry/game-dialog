@@ -11,12 +11,19 @@ public class ParserErrorListener : BaseErrorListener
     }
 
     private readonly string _filename;
-    private readonly List<Diagnostic> _diagnostics = new();
+    private readonly List<Diagnostic> _diagnostics = [];
     public IReadOnlyCollection<Diagnostic> Diagnostics => _diagnostics.AsReadOnly();
 
     public void Clear() => _diagnostics.Clear();
 
-    public override void SyntaxError(TextWriter output, IRecognizer recognizer, IToken offendingSymbol, int line, int charPositionInLine, string msg, RecognitionException e)
+    public override void SyntaxError(
+        TextWriter output,
+        IRecognizer recognizer,
+        IToken offendingSymbol,
+        int line,
+        int charPositionInLine,
+        string msg,
+        RecognitionException e)
     {
         Diagnostic diagnostic = new()
         {

@@ -4,9 +4,9 @@ namespace GameDialog.Compiler;
 
 public class SpeakerIdVisitor : DialogParserBaseVisitor<int>
 {
-    private readonly DialogScript _dialogScript;
+    private readonly ScriptData _dialogScript;
 
-    public SpeakerIdVisitor(DialogScript dialogScript)
+    public SpeakerIdVisitor(ScriptData dialogScript)
     {
         _dialogScript = dialogScript;
     }
@@ -15,8 +15,10 @@ public class SpeakerIdVisitor : DialogParserBaseVisitor<int>
     {
         foreach(var nameContext in context.speaker_id())
         {
-            if (!_dialogScript.SpeakerIds.Contains(nameContext.NAME().GetText()))
-                _dialogScript.SpeakerIds.Add(nameContext.NAME().GetText());
+            string nameText = nameContext.NAME().GetText();
+
+            if (!_dialogScript.SpeakerIds.Contains(nameText))
+                _dialogScript.SpeakerIds.Add(nameText);
         }
 
         return 0;

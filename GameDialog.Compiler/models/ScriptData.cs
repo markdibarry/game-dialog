@@ -1,17 +1,17 @@
 ﻿namespace GameDialog.Compiler;
 
 [Serializable]
-public class DialogScript
+public class ScriptData
 {
-    public List<string> SpeakerIds { get; set; } = new();
-    public List<float> InstFloats { get; set; } = new();
-    public List<string> InstStrings { get; set; } = new();
-    public List<Choice> Choices { get; set; } = new();
-    public List<List<int>> ChoiceSets { get; set; } = new();
-    public List<Section> Sections { get; set; } = new();
-    public List<Line> Lines { get; set; } = new();
-    public List<InstructionStmt> InstructionStmts { get; set; } = new();
-    public List<List<int>> Instructions { get; set; } = new();
+    public List<string> SpeakerIds { get; set; } = [];
+    public List<float> InstFloats { get; set; } = [];
+    public List<string> InstStrings { get; set; } = [];
+    public List<Choice> Choices { get; set; } = [];
+    public List<List<int>> ChoiceSets { get; set; } = [];
+    public List<Section> Sections { get; set; } = [];
+    public List<Line> Lines { get; set; } = [];
+    public List<InstructionStmt> InstructionStmts { get; set; } = [];
+    public List<List<int>> Instructions { get; set; } = [];
 }
 
 public class Section
@@ -34,9 +34,9 @@ public readonly struct GoTo
 
 public class Line : IResolveable
 {
-    public List<int> InstructionIndices { get; set; } = new();
+    public List<int> InstructionIndices { get; set; } = [];
     public GoTo Next { get; set; }
-    public List<int> SpeakerIndices { get; set; } = new();
+    public List<int> SpeakerIndices { get; set; } = [];
     public string Text { get; set; } = string.Empty;
 }
 

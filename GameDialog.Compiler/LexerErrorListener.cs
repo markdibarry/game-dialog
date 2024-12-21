@@ -11,12 +11,19 @@ public class LexerErrorListener : IAntlrErrorListener<int>
     }
 
     private readonly string _filename;
-    private readonly List<Diagnostic> _diagnostics = new();
+    private readonly List<Diagnostic> _diagnostics = [];
     public IReadOnlyCollection<Diagnostic> Diagnostics => _diagnostics.AsReadOnly();
 
     public void Clear() => _diagnostics.Clear();
 
-    public void SyntaxError(TextWriter output, IRecognizer recognizer, int offendingSymbol, int line, int charPositionInLine, string msg, RecognitionException e)
+    public void SyntaxError(
+        TextWriter output,
+        IRecognizer recognizer,
+        int offendingSymbol,
+        int line,
+        int charPositionInLine,
+        string msg,
+        RecognitionException e)
     {
         Diagnostic diagnostic = new()
         {
