@@ -8,12 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Update="test.txt">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
     <Antlr4 Include="DialogLexer.g4">
       <Listener>True</Listener>
       <Visitor>True</Visitor>

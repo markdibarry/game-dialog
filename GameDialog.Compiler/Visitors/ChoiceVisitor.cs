@@ -1,124 +1,73 @@
-﻿namespace GameDialog.Compiler;
+﻿using System.Text;
+using static GameDialog.Compiler.DialogParser;
+
+namespace GameDialog.Compiler;
 
 public partial class MainDialogVisitor
 {
-    private void HandleChoices(DialogParser.Choice_stmtContext[] context)
+    private void HandleChoices(Choice_stmtContext[] context)
     {
-        List<int> choiceSet = [];
-        _dialogScript.ChoiceSets.Add(choiceSet);
-        ResolveStatements(new GoTo(StatementType.Choice, _dialogScript.ChoiceSets.Count - 1));
+        List<int> choiceSet = [(int)InstructionType.Choice];
+        _scriptData.Instructions.Add(choiceSet);
+        ResolveStatements(_scriptData.Instructions.Count - 1);
         AddChoiceSet(context, choiceSet);
     }
 
-    private void AddChoiceSet(DialogParser.Choice_stmtContext[] context, List<int> choiceSet)
+    private void AddChoiceSet(Choice_stmtContext[] context, List<int> choiceSet)
     {
         _nestLevel++;
 
-        // follows pattern
-        // Choice = choice index
-        // GoTo = go to index
-        // -3 = unresolved index
-        // other = instruction index, next is go to if condition fails
-        foreach (var choiceStmt in context)
+        foreach (Choice_stmtContext choiceStmt in context)
         {
-            if (choiceStmt.TEXT() != null)
+            if (choiceStmt.CHOICE() != null)
                 AddChoice(choiceStmt, choiceSet);
             else
                 HandleChoiceCondition(choiceStmt.choice_cond_stmt(), choiceSet);
         }
 
+        _unresolvedStmts.Add((_nestLevel, choiceSet));
         _nestLevel--;
     }
 
-    private void AddChoice(DialogParser.Choice_stmtContext choiceStmt, List<int> choiceSet)
+    private void AddChoice(Choice_stmtContext choiceStmt, List<int> choiceSet)
     {
-        Choice choice = new() { Text = choiceStmt.TEXT().GetText() };
-        _dialogScript.Choices.Add(choice);
-        choiceSet.AddRange([(int)OpCode.Choice, _dialogScript.Choices.Count - 1]);
+        StringBuilder sb = new();
+        HandleLineText(sb, choiceStmt.choice_text().children);
+        int stringIndex = _scriptData.Strings.GetOrAdd(sb.ToString());
+        _scriptData.ChoiceIndices.Add(stringIndex);
+        List<int> choice = [(int)ChoiceOp.Choice, -1, stringIndex];
+        _unresolvedStmts.Add((_nestLevel, choice));
 
-        // Check for a GoTo tag
-        if (choiceStmt.tag() == null)
-        {
-            _unresolvedStmts.Add((_nestLevel, choice));
-
-            foreach (var stmt in choiceStmt.stmt())
-                Visit(stmt);
-
-            LowerUnresolvedStatements();
-            return;
-        }
-
-        List<int>? ints = GetTagInts(choiceStmt.tag());
-
-        if (ints == null || ints.Count == 0)
-        {
-            _diagnostics.Add(choiceStmt.tag().GetError("Goto tag needs to reference a valid section."));
-            return;
-        }
-
-        if (ints[0] != (int)OpCode.Goto)
-        {
-            _diagnostics.Add(choiceStmt.tag().GetError("Only GoTo tags are compatible with choices."));
-            return;
-        }
-
-        if (ints[1] == -1)
-            choice.Next = new GoTo(StatementType.End, 0);
-        else
-            choice.Next = new GoTo(StatementType.Section, ints[1]);
-
-        foreach (var stmt in choiceStmt.stmt())
+        foreach (StmtContext stmt in choiceStmt.stmt())
             Visit(stmt);
 
-        LowerUnresolvedStatements();
+        choiceSet.AddRange(choice);
     }
 
-    private void HandleChoiceCondition(DialogParser.Choice_cond_stmtContext choiceCond, List<int> choiceSet)
+    private void HandleChoiceCondition(Choice_cond_stmtContext choiceCond, List<int> choiceSet)
     {
         // if
-        var ifStmt = choiceCond.choice_if_stmt();
-        List<int> ifExp = _expressionVisitor.GetInstruction(ifStmt.expression(), VarType.Bool);
-        List<int> unresolvedClauses = [];
-        _dialogScript.Instructions.Add(ifExp);
-        choiceSet.AddRange([_dialogScript.Instructions.Count - 1, -3]);
-        int unresolvedFallbackIndex = choiceSet.Count - 1;
+        Choice_if_stmtContext ifStmt = choiceCond.choice_if_stmt();
+        choiceSet.AddRange([(int)ChoiceOp.If, _scriptData.Instructions.Count]);
+        _scriptData.Instructions.Add(GetInstrStmt(ifStmt.expression(), VarType.Bool));
         AddChoiceSet(ifStmt.choice_stmt(), choiceSet);
-        LowerUnresolvedStatements();
 
         // else if
-        foreach (var elseifStmt in choiceCond.choice_elseif_stmt())
+        foreach (Choice_elseif_stmtContext elseifStmt in choiceCond.choice_elseif_stmt())
         {
-            // close if clause with go-to
-            choiceSet.AddRange([(int)OpCode.Goto, -3]);
-            unresolvedClauses.Add(choiceSet.Count - 1);
-
-            var elseifExp = _expressionVisitor.GetInstruction(elseifStmt.expression(), VarType.Bool);
-            _dialogScript.Instructions.Add(elseifExp);
-            choiceSet[unresolvedFallbackIndex] = choiceSet.Count;
-            choiceSet.AddRange([_dialogScript.Instructions.Count - 1, -3]);
-            unresolvedFallbackIndex = choiceSet.Count - 1;
+            choiceSet.AddRange([(int)ChoiceOp.ElseIf, _scriptData.Instructions.Count]);
+            _scriptData.Instructions.Add(GetInstrStmt(ifStmt.expression(), VarType.Bool));
             AddChoiceSet(elseifStmt.choice_stmt(), choiceSet);
-            LowerUnresolvedStatements();
         }
 
         // else
         if (choiceCond.choice_else_stmt() != null)
         {
-            // close elseif clause with go-to
-            choiceSet.AddRange([(int)OpCode.Goto, -3]);
-            unresolvedClauses.Add(choiceSet.Count - 1);
-
-            var elseStmt = choiceCond.choice_else_stmt();
-            choiceSet[unresolvedFallbackIndex] = choiceSet.Count;
-            unresolvedFallbackIndex = -3;
+            choiceSet.AddRange([(int)ChoiceOp.Else]);
+            Choice_else_stmtContext elseStmt = choiceCond.choice_else_stmt();
             AddChoiceSet(elseStmt.choice_stmt(), choiceSet);
-            LowerUnresolvedStatements();
         }
 
-        if (unresolvedFallbackIndex != -3)
-            choiceSet[unresolvedFallbackIndex] = choiceSet.Count;
-
-        foreach (int clauseIndex in unresolvedClauses)
-            choiceSet[clauseIndex] = choiceSet.Count;
+        choiceSet.AddRange([(int)ChoiceOp.EndIf]);
     }
 }

@@ -2,99 +2,109 @@
 using Antlr4.Runtime.Tree;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using System.Text;
+using static GameDialog.Compiler.DialogParser;
 
 namespace GameDialog.Compiler;
 
 public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
 {
-    private readonly ScriptData _dialogScript;
+    private readonly ScriptDataExtended _scriptData;
     private readonly List<Diagnostic> _diagnostics;
     private readonly MemberRegister _memberRegister;
     private readonly ExpressionVisitor _expressionVisitor;
-    private readonly List<(int, IResolveable)> _unresolvedStmts = new();
-    private Section _currentSection = new();
+    private readonly List<(int NestLevel, List<int> Stmt)> _unresolvedStmts = [];
     private int _nestLevel;
+    private int _endIndex;
+    private readonly List<string> _sections = [];
 
-    public MainDialogVisitor(ScriptData dialogScript, List<Diagnostic> diagnostics, MemberRegister memberRegister)
+    /// <summary>
+    /// </summary>
+    /// <param name="scriptData"></param>
+    /// <param name="diagnostics"></param>
+    /// <param name="memberRegister"></param>
+    public MainDialogVisitor(ScriptDataExtended scriptData, List<Diagnostic> diagnostics, MemberRegister memberRegister)
     {
-        _dialogScript = dialogScript;
+        _scriptData = scriptData;
         _diagnostics = diagnostics;
         _memberRegister = memberRegister;
-        _expressionVisitor = new(dialogScript, diagnostics, memberRegister);
+        _expressionVisitor = new(scriptData, diagnostics, memberRegister);
     }
 
-    public override int VisitScript([NotNull] DialogParser.ScriptContext context)
+    public override int VisitScript(ScriptContext context)
     {
+        _sections.Clear();
+
         if (context.section() == null)
             return 0;
 
         // Initialize all sections
-        foreach (var section in context.section())
+        foreach (SectionContext section in context.section())
         {
             string title = section.section_title().NAME().GetText();
 
             if (string.Equals(title, BuiltIn.END, StringComparison.OrdinalIgnoreCase))
                 _diagnostics.Add(section.section_title().GetError("\"end\" is a reserved name."));
 
-            _dialogScript.Sections.Add(new() { Name = title });
+            _scriptData.Instructions.Add([(int)InstructionType.Section, 0]);
+            _sections.Add(title);
         }
 
-        for (int i = 0; i < context.section().Length; i++)
+        _scriptData.Instructions.Add([(int)InstructionType.End]);
+        _endIndex = _scriptData.Instructions.Count - 1;
+        int length = context.section().Length;
+
+        for (int i = 0; i < length; i++)
         {
-            _currentSection = _dialogScript.Sections[i];
+            // Set section "next" to first statement in next section
+            _scriptData.Instructions[i][1] = _scriptData.Instructions.Count;
 
             // Parse each statement
             foreach (var stmt in context.section()[i].section_body().stmt())
                 Visit(stmt);
 
             // Resolve all outstanding statements to the end
-            if (i == context.section().Length - 1)
-                ResolveStatements(new GoTo(StatementType.End, 0));
+            ResolveStatements(_endIndex);
         }
 
         return 0;
     }
 
-    public override int VisitCond_stmt([NotNull] DialogParser.Cond_stmtContext context)
+    public override int VisitCond_stmt(Cond_stmtContext context)
     {
-        // Create new goto and conditional
-        List<int> conditions = [];
-        InstructionStmt conditionSet = new(_dialogScript.Instructions.GetOrAdd(conditions));
-        GoTo newGoto = new(StatementType.Conditional, _dialogScript.InstructionStmts.GetOrAdd(conditionSet));
-        ResolveStatements(newGoto);
+        List<int> conditions = [(int)InstructionType.Conditional, 0];
+        int condIndex = _scriptData.Instructions.GetOrAdd(conditions);
+        ResolveStatements(condIndex);
         _nestLevel++;
 
         // if
-        var ifInstr = _expressionVisitor.GetInstruction(context.if_stmt().expression());
-        InstructionStmt ifExp = new(_dialogScript.Instructions.GetOrAdd(ifInstr));
-        conditions.Add(_dialogScript.InstructionStmts.GetOrAdd(ifExp));
-        _unresolvedStmts.Add((_nestLevel, ifExp));
+        _unresolvedStmts.Add((_nestLevel, conditions));
 
-        foreach (var stmt in context.if_stmt().stmt())
+        foreach (StmtContext stmt in context.if_stmt().stmt())
             Visit(stmt);
 
+        conditions.AddRange(_expressionVisitor.GetInstruction(context.if_stmt().expression()));
+        conditions.AddRange(conditions[1]);
         LowerUnresolvedStatements();
 
         // else if
         foreach (var elseifstmt in context.elseif_stmt())
         {
-            var elseifInstr = _expressionVisitor.GetInstruction(elseifstmt.expression());
-            InstructionStmt elseifExp = new(_dialogScript.Instructions.GetOrAdd(elseifInstr));
-            conditions.Add(_dialogScript.InstructionStmts.GetOrAdd(elseifExp));
-            _unresolvedStmts.Add((_nestLevel, elseifExp));
+            _unresolvedStmts.Add((_nestLevel, conditions));
 
-            foreach (var stmt in elseifstmt.stmt())
+            foreach (StmtContext stmt in elseifstmt.stmt())
                 Visit(stmt);
 
+            conditions.AddRange(_expressionVisitor.GetInstruction(elseifstmt.expression()));
+            conditions.AddRange(conditions[1]);
             LowerUnresolvedStatements();
         }
 
-        // else (main fallback)
-        _unresolvedStmts.Add((_nestLevel, conditionSet));
+        _unresolvedStmts.Add((_nestLevel, conditions));
 
+        // else
         if (context.else_stmt() != null)
         {
-            foreach (var stmt in context.else_stmt().stmt())
+            foreach (StmtContext stmt in context.else_stmt().stmt())
                 Visit(stmt);
 
             LowerUnresolvedStatements();
@@ -104,47 +114,39 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         return 0;
     }
 
-    public override int VisitLine_stmt([NotNull] DialogParser.Line_stmtContext context)
+    public override int VisitLine_stmt(Line_stmtContext context)
     {
-        Line line = new();
         StringBuilder sb = new();
+        List<int> line = [(int)InstructionType.Line, 0, 0];
+        int lineIndex = _scriptData.Instructions.Count;
+        _scriptData.Instructions.Add(line);
 
+        // Add speakers
         if (context.UNDERSCORE() == null)
         {
-            // Get speakers and optional mood updates for line
-            foreach (var speaker in context.speaker_ids().speaker_id())
-            {
-                int speakerIndex = _dialogScript.SpeakerIds.IndexOf(speaker.NAME().GetText());
-                line.SpeakerIndices.Add(speakerIndex);
+            var speakerIds = context.speaker_ids().speaker_id();
+            line[^1] = speakerIds.Length;
 
-                if (speaker.expression() != null)
-                {
-                    List<int> moodInts = 
-                    [
-                        (int)OpCode.SpeakerSet,
-                        speakerIndex,
-                        ..GetSpeakerUpdateAttribute(BuiltIn.MOOD, speaker.expression())
-                    ];
-                    sb.Append($"[{line.InstructionIndices.Count}]");
-                    line.InstructionIndices.Add(_dialogScript.Instructions.Count);
-                    _dialogScript.Instructions.Add(moodInts);
-                }
+            // Get speakers
+            foreach (var speaker in speakerIds)
+            {
+                int speakerIndex = _scriptData.SpeakerIds.IndexOf(speaker.NAME().GetText());
+                line.Add(speakerIndex);
             }
         }
 
         var children = context.line_text()?.children ?? context.ml_text()?.children;
 
         if (children != null)
-            HandleLineText(line, sb, children);
+        {
+            HandleLineText(sb, children);
+            int textIndex = _scriptData.Strings.GetOrAdd(sb.ToString());
+            line.Add(textIndex);
+            _scriptData.LineIndices.Add(textIndex);
+        }
 
-        // Create new goto and line
-        GoTo newGoto = new(StatementType.Line, _dialogScript.Lines.Count);
-        ResolveStatements(newGoto);
-
-        if (line.Next.Type == default)
-            _unresolvedStmts.Add((_nestLevel, line));
-
-        _dialogScript.Lines.Add(line);
+        ResolveStatements(lineIndex);
+        _unresolvedStmts.Add((_nestLevel, line));
 
         if (context.choice_stmt().Length > 0)
             HandleChoices(context.choice_stmt());
@@ -152,43 +154,66 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         return 0;
     }
 
-    public override int VisitTag([NotNull] DialogParser.TagContext context)
+    public override int VisitTag(TagContext context)
     {
         HandleStmtTag(context);
         return 0;
     }
 
-    private void HandleLineText(Line line, StringBuilder sb, IList<IParseTree> children)
+    private void HandleLineText(StringBuilder sb, IList<IParseTree> children)
     {
         // Start building a string of text and instruction identifiers
         foreach (var child in children)
         {
-            if (child is ITerminalNode node && node.Symbol.Type == DialogParser.TEXT)
+            if (child is ITerminalNode node && node.Symbol.Type == TEXT)
                 sb.Append(node.GetText());
-            else if (child is DialogParser.TagContext tag)
-                HandleLineTag(line, sb, tag);
+            else if (child is TagContext tag)
+                HandleLineTag(sb, tag);
         }
-
-        line.Text = sb.ToString();
     }
 
-    private void ResolveStatements(GoTo next)
+    private void ResolveStatements(int index)
     {
-        if (_currentSection.Next.Type == default)
-            _currentSection.Next = next;
+        for (int i = _unresolvedStmts.Count - 1; i >= 0; i--)
+        {
+            (int NestLevel, List<int> Stmt) = _unresolvedStmts[i];
 
-        foreach (var stmt in _unresolvedStmts.Where(x => x.Item1 >= _nestLevel))
-            stmt.Item2.Next = next;
+            if (NestLevel >= _nestLevel)
+            {
+                if (Stmt[0] == (int)InstructionType.Choice)
+                {
+                    for (int j = 0; j < Stmt.Count; j++)
+                    {
+                        if (Stmt[j] == -1)
+                            Stmt[j] = index;
+                    }
+                }
+                else
+                {
+                    Stmt[1] = index;
+                }
 
-        _unresolvedStmts.RemoveAll(x => x.Item2.Next.Type != default);
+                _unresolvedStmts.RemoveAt(i);
+            }
+        }
     }
 
     private void LowerUnresolvedStatements()
     {
         for (int i = 0; i < _unresolvedStmts.Count; i++)
         {
-            if (_unresolvedStmts[i].Item1 >= _nestLevel)
-                _unresolvedStmts[i] = (_nestLevel - 1, _unresolvedStmts[i].Item2);
+            if (_unresolvedStmts[i].NestLevel >= _nestLevel)
+                _unresolvedStmts[i] = _unresolvedStmts[i] with { NestLevel = _nestLevel - 1 };
         }
+    }
+
+    private List<int> GetInstrStmt(ExpressionContext context, VarType varType)
+    {
+        return
+        [
+            (int)InstructionType.Instruction,
+            0,
+            .._expressionVisitor.GetInstruction(context, varType)
+        ];
     }
 }

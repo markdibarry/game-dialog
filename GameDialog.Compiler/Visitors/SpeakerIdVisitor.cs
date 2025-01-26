@@ -1,19 +1,19 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using static GameDialog.Compiler.DialogParser;
 
 namespace GameDialog.Compiler;
 
 public class SpeakerIdVisitor : DialogParserBaseVisitor<int>
 {
-    private readonly ScriptData _dialogScript;
+    private readonly ScriptDataExtended _dialogScript;
 
-    public SpeakerIdVisitor(ScriptData dialogScript)
+    public SpeakerIdVisitor(ScriptDataExtended dialogScript)
     {
         _dialogScript = dialogScript;
     }
 
-    public override int VisitSpeaker_ids([NotNull] DialogParser.Speaker_idsContext context)
+    public override int VisitSpeaker_ids(Speaker_idsContext context)
     {
-        foreach(var nameContext in context.speaker_id())
+        foreach (var nameContext in context.speaker_id())
         {
             string nameText = nameContext.NAME().GetText();
 

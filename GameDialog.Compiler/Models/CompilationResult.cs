@@ -5,7 +5,14 @@ namespace GameDialog.Compiler;
 
 public class CompilationResult
 {
+    public CompilationResult(DocumentUri uri, ScriptDataExtended data, List<Diagnostic> diagnostics)
+    {
+        Uri = uri;
+        ScriptData = data;
+        Diagnostics = diagnostics;
+    }
+
     public DocumentUri Uri { get; set; }
-    public ScriptData DialogScript { get; set; }
+    public ScriptDataExtended ScriptData { get; set; }
     public List<Diagnostic> Diagnostics { get; set; }
 }

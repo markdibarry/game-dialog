@@ -1,19 +1,19 @@
 ﻿using Antlr4.Runtime;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using System.Diagnostics.CodeAnalysis;
+using static GameDialog.Compiler.DialogParser;
 
 namespace GameDialog.Compiler;
 
 public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
 {
-    public ExpressionVisitor(ScriptData dialogScript, List<Diagnostic> diagnostics, MemberRegister memberRegister)
+    public ExpressionVisitor(ScriptDataExtended scriptData, List<Diagnostic> diagnostics, MemberRegister memberRegister)
     {
-        _dialogScript = dialogScript;
+        _scriptData = scriptData;
         _diagnostics = diagnostics;
         _memberRegister = memberRegister;
     }
 
-    private readonly ScriptData _dialogScript;
+    private readonly ScriptDataExtended _scriptData;
     private readonly List<Diagnostic> _diagnostics;
     private readonly MemberRegister _memberRegister;
     private List<int> _currentInst = [];
@@ -46,23 +46,16 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
         _currentInst = [];
 
         if (expectedType != default && resultType != expectedType)
-        {
-            _diagnostics.Add(new()
-            {
-                Range = context.GetRange(),
-                Message = $"Type Mismatch: Expected {expectedType}, but returned {resultType}.",
-                Severity = DiagnosticSeverity.Error,
-            });
-        }
+            context.GetError($"Type Mismatch: Expected {expectedType}, but returned {resultType}.");
 
         return result;
     }
 
-    public override VarType VisitAssignment([NotNull] DialogParser.AssignmentContext context)
+    public override VarType VisitAssignment(AssignmentContext context)
     {
         string varName = context.NAME().GetText();
         VarDef? varDef = _memberRegister.VarDefs.FirstOrDefault(x => x.Name == varName);
-        int nameIndex = _dialogScript.InstStrings.GetOrAdd(varName);
+        int nameIndex = _scriptData.Strings.GetOrAdd(varName);
 
         if (varDef == null)
         {
@@ -93,31 +86,31 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
         return VarType.Undefined;
     }
 
-    public override VarType VisitExpMultDiv(DialogParser.ExpMultDivContext context)
+    public override VarType VisitExpMultDiv(ExpMultDivContext context)
     {
         PushExp(context.op, VarType.Float, context.left, context.right);
         return VarType.Float;
     }
 
-    public override VarType VisitExpAddSub(DialogParser.ExpAddSubContext context)
+    public override VarType VisitExpAddSub(ExpAddSubContext context)
     {
         PushExp(context.op, VarType.Float, context.left, context.right);
         return VarType.Float;
     }
 
-    public override VarType VisitExpComp(DialogParser.ExpCompContext context)
+    public override VarType VisitExpComp(ExpCompContext context)
     {
         PushExp(context.op, VarType.Float, context.left, context.right);
         return VarType.Bool;
     }
 
-    public override VarType VisitExpNot([NotNull] DialogParser.ExpNotContext context)
+    public override VarType VisitExpNot(ExpNotContext context)
     {
         PushExp(context.op, VarType.Bool, context.right);
         return VarType.Bool;
     }
 
-    public override VarType VisitExpEqual(DialogParser.ExpEqualContext context)
+    public override VarType VisitExpEqual(ExpEqualContext context)
     {
         PushExp(context.op, default, context.left, context.right);
         return VarType.Bool;

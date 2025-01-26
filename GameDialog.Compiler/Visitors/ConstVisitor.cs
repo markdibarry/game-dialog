@@ -1,42 +1,44 @@
-﻿namespace GameDialog.Compiler;
+﻿using static GameDialog.Compiler.DialogParser;
+
+namespace GameDialog.Compiler;
 
 public partial class ExpressionVisitor
 {
-    public override VarType VisitConstFloat(DialogParser.ConstFloatContext context)
+    public override VarType VisitConstFloat(ConstFloatContext context)
     {
-        int index = _dialogScript.InstFloats.GetOrAdd(float.Parse(context.FLOAT().GetText()));
+        int index = _scriptData.Floats.GetOrAdd(float.Parse(context.FLOAT().GetText()));
         PushExp([(int)VarType.Float, index], default);
         return VarType.Float;
     }
 
-    public override VarType VisitConstString(DialogParser.ConstStringContext context)
+    public override VarType VisitConstString(ConstStringContext context)
     {
         string value = context.STRING().GetText()[1..^1];
-        int index = _dialogScript.InstStrings.GetOrAdd(value);
+        int index = _scriptData.Strings.GetOrAdd(value);
         PushExp([(int)VarType.String, index], default);
         return VarType.String;
     }
 
-    public override VarType VisitConstBool(DialogParser.ConstBoolContext context)
+    public override VarType VisitConstBool(ConstBoolContext context)
     {
         int val = context.BOOL().GetText() == "true" ? 1 : 0;
         PushExp([(int)VarType.Bool, val], default);
         return VarType.Bool;
     }
 
-    public override VarType VisitConstVar(DialogParser.ConstVarContext context)
+    public override VarType VisitConstVar(ConstVarContext context)
     {
         string varName = context.NAME().GetText();
         VarDef? varDef = _memberRegister.VarDefs.FirstOrDefault(x => x.Name == varName);
 
         if (varDef == null)
         {
-            _diagnostics.Add(context.GetError("Variables must be defined before use."));
+            _diagnostics.Add(context.GetError($"Variable \"{varName}\" must be defined before use."));
             return VarType.Undefined;
         }
 
         // nameIndex shouldn't be -1 here.
-        int nameIndex = _dialogScript.InstStrings.GetOrAdd(varName);
+        int nameIndex = _scriptData.Strings.GetOrAdd(varName);
 
         // Should never happen?
         if (varDef.Type == VarType.Undefined)
@@ -48,7 +50,7 @@ public partial class ExpressionVisitor
         return varDef.Type;
     }
 
-    public override VarType VisitFunction(DialogParser.FunctionContext context)
+    public override VarType VisitFunction(FunctionContext context)
     {
         string funcName = context.NAME().GetText();
         var funcDefs = _memberRegister.FuncDefs.Where(x => x.Name == funcName);
@@ -61,7 +63,7 @@ public partial class ExpressionVisitor
 
         VarType returnType = funcDefs.First().ReturnType;
         int argsFound = context.expression().Length;
-        int nameIndex = _dialogScript.InstStrings.GetOrAdd(funcName);
+        int nameIndex = _scriptData.Strings.GetOrAdd(funcName);
 
         PushExp([(int)OpCode.Func, nameIndex, argsFound], default);
         List<VarType> argTypesFound = [];
@@ -108,5 +110,4 @@ public partial class ExpressionVisitor
             return true;
         }
     }
-
 }

@@ -22,6 +22,7 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
     private readonly ILanguageServerConfiguration _configuration;
     private readonly DocumentManager _documentManager = new();
     private readonly TextDocumentSelector _documentSelector = new(new TextDocumentFilter() { Pattern = "**/*.dia" });
+    private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
     public TextDocumentSyncKind Change { get; } = TextDocumentSyncKind.Full;
 
     public TextDocumentHandler(ILanguageServerFacade languageServer, ILanguageServerConfiguration configuration)
@@ -84,7 +85,7 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
             string fileName = Path.GetFileNameWithoutExtension(uriPath);
             string pathDirectory = Path.GetDirectoryName(uriPath) ?? string.Empty;
 
-            if (bool.TryParse(_configuration["gamedialog:EnableCSVTranslation"], out bool csvEnabled) && csvEnabled)
+            if (!bool.TryParse(_configuration["gamedialog:EnableCSVTranslation"], out bool csvEnabled) && csvEnabled)
             {
                 string csvDirectory = _configuration["gamedialog:CSVTranslationLocation"];
 
@@ -97,16 +98,18 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
                     continue;
                 }
 
-                CreateTranslationCSV(fileName, csvDirectory, kvp.Value.DialogScript);
+                CreateTranslationCSV(fileName, csvDirectory, kvp.Value.ScriptData);
             }
 
-            CreateJsonFile(fileName, pathDirectory, kvp.Value.DialogScript);
+            CreateJsonFile(fileName, pathDirectory, kvp.Value.ScriptData);
         }
 
         return Unit.Task;
     }
 
-    protected override TextDocumentSyncRegistrationOptions CreateRegistrationOptions(TextSynchronizationCapability capability, ClientCapabilities clientCapabilities)
+    protected override TextDocumentSyncRegistrationOptions CreateRegistrationOptions(
+        TextSynchronizationCapability capability,
+        ClientCapabilities clientCapabilities)
     {
         return new TextDocumentSyncRegistrationOptions()
         {
@@ -116,14 +119,14 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
         };
     }
 
-    private static void CreateJsonFile(string fileName, string pathDirectory, ScriptData dialogScript)
+    private static void CreateJsonFile(string fileName, string pathDirectory, ScriptData scriptData)
     {
         string jsonFilePath = $"{pathDirectory}{Path.DirectorySeparatorChar}{fileName}.json";
-        string jsonString = JsonSerializer.Serialize(dialogScript);
+        string jsonString = JsonSerializer.Serialize(scriptData, _jsonOptions);
         File.WriteAllText(jsonFilePath, jsonString);
     }
 
-    private static void CreateTranslationCSV(string fileName, string pathDirectory, ScriptData dialogScript)
+    private static void CreateTranslationCSV(string fileName, string pathDirectory, ScriptDataExtended scriptData)
     {
         string csvPath = $"{pathDirectory}{Path.DirectorySeparatorChar}DialogTranslation.csv";
 
@@ -140,18 +143,22 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
 
         string commas = new(',', records[0].Count(x => x == ',') - 1);
 
-        for (int i = 0; i < dialogScript.Lines.Count; i++)
+        for (int i = 0; i < scriptData.LineIndices.Count; i++)
         {
+            int textIndex = scriptData.LineIndices[i];
             string key = keyPrefix + "line_" + i;
-            records.Add($"{key},{ConvertToCsvCell(dialogScript.Lines[i].Text)}{commas}");
-            dialogScript.Lines[i].Text = key;
+            string text = scriptData.Strings[textIndex];
+            records.Add($"{key},{ConvertToCsvCell(text)}{commas}");
+            scriptData.Strings[textIndex] = key;
         }
 
-        for (int i = 0; i < dialogScript.Choices.Count; i++)
+        for (int i = 0; i < scriptData.ChoiceIndices.Count; i++)
         {
+            int textIndex = scriptData.ChoiceIndices[i];
             string key = keyPrefix + "choice_" + i;
-            records.Add($"{key},{ConvertToCsvCell(dialogScript.Choices[i].Text)}{commas}");
-            dialogScript.Choices[i].Text = key;
+            string text = scriptData.Strings[textIndex];
+            records.Add($"{key},{ConvertToCsvCell(text)}{commas}");
+            scriptData.Strings[textIndex] = key;
         }
 
         File.WriteAllLines(csvPath, records);
@@ -246,7 +253,7 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
         }
     }
 
-    private VarType GetVarType(string typeName)
+    private static VarType GetVarType(string typeName)
     {
         return typeName switch
         {
@@ -258,7 +265,7 @@ public class TextDocumentHandler : TextDocumentSyncHandlerBase
         };
     }
 
-    private FuncDef? GetFuncDef(MethodDeclarationSyntax node)
+    private static FuncDef? GetFuncDef(MethodDeclarationSyntax node)
     {
         VarType returnType = GetVarType(node.ReturnType.ToString());
 

@@ -29,21 +29,17 @@ public class DialogCompiler
         ParserRuleContext context = document.Parser.script();
         //Utility.PrintTokens((CommonTokenStream)document.Parser.TokenStream);
         //Utility.PrintTree(context);
-        ScriptData dialogScript = new();
+        ScriptDataExtended scriptData = new();
         List<Diagnostic> diagnostics = [];
+        MemberRegister memberRegister = new(_memberRegister);
         // Get all speaker ids
-        SpeakerIdVisitor speakerNameVisitor = new(dialogScript);
+        SpeakerIdVisitor speakerNameVisitor = new(scriptData);
         speakerNameVisitor.Visit(context);
 
-        MainDialogVisitor visitor = new(dialogScript, diagnostics, _memberRegister);
+        MainDialogVisitor visitor = new(scriptData, diagnostics, memberRegister);
         visitor.Visit(context);
         diagnostics.AddRange(document.GetDiagnostics());
-        CompilationResult result = new()
-        {
-            Uri = document.Uri,
-            DialogScript = dialogScript,
-            Diagnostics = diagnostics
-        };
+        CompilationResult result = new(document.Uri, scriptData, diagnostics);
         return result;
     }
 }

@@ -1,11 +1,11 @@
-﻿using Antlr4.Runtime.Misc;
-using System.Text;
+﻿using System.Text;
+using static GameDialog.Compiler.DialogParser;
 
 namespace GameDialog.Compiler;
 
 public partial class MainDialogVisitor
 {
-    private void HandleStmtTag(DialogParser.TagContext context)
+    private void HandleStmtTag(TagContext context)
     {
         // Line tags are handled separately.
         if (context.BBCODE_NAME() != null)
@@ -14,28 +14,32 @@ public partial class MainDialogVisitor
             return;
         }
 
-        List<int>? ints = GetTagInts(context);
+        List<int>? ints = GetTagStmt(context);
 
         if (ints == null || ints.Count == 0)
             return;
 
-        if (ints[0] == (int)OpCode.Goto)
+        if (ints[0] == (int)InstructionType.Instruction)
         {
-            // If next is decided
-            GoTo next = ints[1] == -1 ? new(StatementType.End, 0) : new(StatementType.Section, ints[1]);
-            InstructionStmt goToExp = new(-1, next);
-            _dialogScript.InstructionStmts.Add(goToExp);
-            ResolveStatements(next);
-            return;
+            if (ints.Count == 2)
+                return;
+
+            if (ints[2] == (int)OpCode.Goto)
+            {
+                if (ints[3] == -1)
+                    ResolveStatements(_endIndex);
+                else
+                    ResolveStatements(ints[3]);
+                return;
+            }
         }
 
-        InstructionStmt exp = new(_dialogScript.Instructions.GetOrAdd(ints));
-        _dialogScript.InstructionStmts.Add(exp);
-        ResolveStatements(new(StatementType.Instruction, _dialogScript.InstructionStmts.Count - 1));
-        _unresolvedStmts.Add((_nestLevel, exp));
+        _scriptData.Instructions.Add(ints);
+        ResolveStatements(_scriptData.Instructions.Count - 1);
+        _unresolvedStmts.Add((_nestLevel, ints));
     }
 
-    private void HandleLineTag(Line line, StringBuilder sb, DialogParser.TagContext context)
+    private void HandleLineTag(StringBuilder sb, TagContext context)
     {
         if (context.BBCODE_NAME() != null)
         {
@@ -43,228 +47,241 @@ public partial class MainDialogVisitor
             return;
         }
 
-        List<int>? ints = GetTagInts(context);
+        List<int>? ints = GetTagStmt(context);
 
         if (ints == null || ints.Count == 0)
             return;
 
-        if (ints[0] == (int)OpCode.Goto)
+        if (ints[0] == (int)InstructionType.Instruction && ints[2] == (int)OpCode.Goto)
         {
-            if (ints[1] == -1)
-                line.Next = new GoTo(StatementType.End, 0);
-            else
-                line.Next = new GoTo(StatementType.Section, ints[1]);
+            _diagnostics.Add(context.GetError("Goto is only available on a separate line."));
             return;
+            // List<int> lineInstr = _scriptData.Instructions[lineIndex];
+            // lineInstr[3] = ints[3] == -1 ? _endIndex : ints[3];
+            // return;
         }
 
-        _dialogScript.Instructions.Add(ints);
-        line.InstructionIndices.Add(_dialogScript.Instructions.Count - 1);
-        sb.Append($"[{line.InstructionIndices.Count - 1}]");
+        _scriptData.Instructions.Add(ints);
+        sb.Append($"[{_scriptData.Instructions.Count - 1}]");
     }
 
-    private List<int>? GetTagInts([NotNull] DialogParser.TagContext context)
+    private List<int>? GetTagStmt(TagContext context)
     {
         if (context.expression() != null)
-            return GetExpressionTagInts(context);
+            return GetExpressionStmt(context);
         else if (context.assignment() != null)
-            return GetAssignTagInts(context);
+            return GetAssignTagStmt(context.assignment());
         else if (context.attr_expression() != null)
-            return GetAttrTagInts(context);
+            return GetAttrTagStmt(context.attr_expression());
+        else if (context.hash_collection() != null)
+            return GetHashCollectionStmt(context.hash_collection());
+        else if (context.speaker_collection() != null)
+            return GetSpeakerCollectionStmt(context.speaker_collection());
         return null;
     }
 
-    private List<int>? GetExpressionTagInts([NotNull] DialogParser.TagContext context)
+    private List<int>? GetExpressionStmt(TagContext context)
     {
-        DialogParser.ExpressionContext expContext = context.expression();
+        ExpressionContext expContext = context.expression();
+        List<int> ints = [(int)InstructionType.Instruction, 0];
 
-        if (expContext is not DialogParser.ConstVarContext varContext)
-            return _expressionVisitor.GetInstruction(expContext);
+        // If isn't single word
+        if (expContext is not ConstVarContext varContext)
+        {
+            ints.AddRange(_expressionVisitor.GetInstruction(expContext));
+            return ints;
+        }
 
         string expName = varContext.NAME().GetText();
 
+        // if single Speaker name
+        if (_scriptData.SpeakerIds.Contains(expName))
+        {
+            int nameIndex = _scriptData.SpeakerIds.GetOrAdd(expName);
+            ints.AddRange([(int)OpCode.GetName, nameIndex]);
+            return ints;
+        }
+
         if (!BuiltIn.IsBuiltIn(expName))
-            return _expressionVisitor.GetInstruction(expContext);
+        {
+            ints.AddRange(_expressionVisitor.GetInstruction(varContext));
+            return ints;
+        }
 
         bool isClose = context.TAG_ENTER().GetText().EndsWith('/');
 
+        if (isClose && expName != BuiltIn.SPEED)
+        {
+            _diagnostics.Add(context.GetError($"Tag {expName} is not supported as a closing tag."));
+            return null;
+        }
+        else if (!isClose && expName == BuiltIn.SPEED)
+        {
+            _diagnostics.Add(context.GetError($"Tag {expName} can only be assigned to or be part of a closing tag."));
+            return null;
+        }
+
         switch (expName)
         {
-            case BuiltIn.GOTO:
-            case BuiltIn.PAUSE:
-                _diagnostics.Add(context.GetError("Built-in tag cannot be used as an expression."));
-                return null;
             case BuiltIn.END:
-                return [(int)OpCode.Goto, -1];
-            case BuiltIn.AUTO:
-                return [(int)OpCode.Auto, isClose ? 0 : 1];
+                if (isClose)
+                {
+                    _diagnostics.Add(context.GetError($"Tag {expName} is not supported as a closing tag."));
+                    return null;
+                }
+
+                ints.AddRange([(int)OpCode.Goto, -1]);
+                return ints;
             case BuiltIn.NEWLINE:
-                return [(int)OpCode.NewLine];
+                if (isClose)
+                {
+                    _diagnostics.Add(context.GetError($"Tag {expName} is not supported as a closing tag."));
+                    return null;
+                }
+
+                ints.Add((int)OpCode.NewLine);
+                return ints;
+            case BuiltIn.AUTO:
+                ints.AddRange([(int)OpCode.Auto, _scriptData.Floats.GetOrAdd(isClose ? -2 : -1)]);
+                return ints;
             case BuiltIn.SPEED:
                 if (!isClose)
                 {
-                    _diagnostics.Add(context.GetError("Reserved tag \"speed\" can only be assigned to or be part of a closing tag."));
+                    _diagnostics.Add(context.GetError($"Tag {expName} can only be assigned to or be part of a closing tag."));
                     return null;
                 }
-                _dialogScript.InstFloats.Add(1);
-                return [(int)OpCode.Speed, _dialogScript.InstFloats.Count - 1];
+
+                ints.AddRange([(int)OpCode.Speed, _scriptData.Floats.GetOrAdd(1)]);
+                return ints;
         }
 
         // Nothing matched
-        _diagnostics.Add(context.GetError("Invalid built-in tag."));
+        _diagnostics.Add(context.GetError($"Built-in tag \"{expName}\" cannot be used as an expression."));
         return null;
     }
 
-    private List<int>? GetAssignTagInts([NotNull] DialogParser.TagContext context)
+    private List<int>? GetAssignTagStmt(AssignmentContext context)
     {
-        DialogParser.AssignmentContext assContext = context.assignment();
-        string expName = assContext.NAME().GetText();
+        List<int> ints = [(int)InstructionType.Instruction, 0];
+        string expName = context.NAME().GetText();
 
         if (!BuiltIn.IsBuiltIn(expName))
-            return _expressionVisitor.GetInstruction(assContext);
-
-        switch (expName)
         {
-            case BuiltIn.AUTO:
-            case BuiltIn.END:
-            case BuiltIn.GOTO:
-            case BuiltIn.NEWLINE:
-                _diagnostics.Add(context.GetError("Built-in tag is not assignable."));
-                return null;
-            case BuiltIn.SPEED:
-                if (assContext.right is not DialogParser.ConstFloatContext speedFloatContext)
-                {
-                    _diagnostics.Add(context.GetError("Type Mismatch: Expected Float."));
-                    return null;
-                }
-
-                float speed = float.Parse(speedFloatContext.GetText());
-
-                if (speed <= 0)
-                {
-                    _diagnostics.Add(context.GetError("Invalid value: Speed multiplier cannot be zero or lesser."));
-                    return null;
-                }
-
-                _dialogScript.InstFloats.Add(speed);
-                return [(int)OpCode.Speed, _dialogScript.InstFloats.Count - 1];
-            case BuiltIn.PAUSE:
-                if (assContext.right is not DialogParser.ConstFloatContext pauseFloatContext)
-                {
-                    _diagnostics.Add(context.GetError("Type Mismatch: Expected Float."));
-                    return null;
-                }
-
-                float time = float.Parse(pauseFloatContext.GetText());
-
-                if (time < 0)
-                {
-                    _diagnostics.Add(context.GetError("Invalid value: Pause timeout cannot be less than zero."));
-                    return null;
-                }
-
-                _dialogScript.InstFloats.Add(time);
-                return [(int)OpCode.Pause, _dialogScript.InstFloats.Count - 1];
+            ints.AddRange(_expressionVisitor.GetInstruction(context));
+            return ints;
         }
 
-        _diagnostics.Add(context.GetError("Invalid built-in tag."));
-        return null;
-    }
-
-    private List<int>? GetAttrTagInts([NotNull] DialogParser.TagContext context)
-    {
-        DialogParser.Attr_expressionContext attContext = context.attr_expression();
-        string attName = attContext.NAME().GetText();
-
-        switch (attName)
+        if (expName is BuiltIn.SPEED or BuiltIn.PAUSE or BuiltIn.AUTO)
         {
-            case BuiltIn.AUTO:
-            case BuiltIn.END:
-            case BuiltIn.NEWLINE:
-            case BuiltIn.PAUSE:
-                _diagnostics.Add(context.GetError("Built-in tag does not have attributes."));
-                return null;
-            case BuiltIn.GOTO:
-                if (attContext.assignment().Length > 0 || attContext.expression().Length != 1)
-                {
-                    _diagnostics.Add(context.GetError("Built-in tag has incorrect number of attributes."));
-                    return null;
-                }
-
-                string sectionName = attContext.expression()[0].GetText();
-
-                if (string.Equals(sectionName, BuiltIn.END, StringComparison.OrdinalIgnoreCase))
-                    return [(int)OpCode.Goto, -1];
-
-                int sectionIndex = _dialogScript.Sections.FindIndex(x => x.Name == sectionName);
-
-                if (sectionIndex == -1)
-                {
-                    _diagnostics.Add(context.GetError("Section not found."));
-                    return null;
-                }
-
-                return [(int)OpCode.Goto, sectionIndex];
-        }
-
-        if (BuiltIn.IsNameExpression(attContext))
-            return GetSpeakerGetInts(attName);
-
-        if (BuiltIn.IsSpeakerExpression(attContext))
-        {
-            int nameIndex = _dialogScript.SpeakerIds.IndexOf(attName);
-
-            if (nameIndex == -1)
+            if (context.right is not ConstFloatContext floatContext)
             {
-                _diagnostics.Add(context.GetError("Can only edit speakers that appear in this dialog script."));
+                _diagnostics.Add(context.GetError("Type Mismatch: Expected Float."));
                 return null;
             }
 
-            return GetSpeakerUpdateInts(attContext, nameIndex);
+            float value = float.Parse(floatContext.GetText());
+
+            if (value <= 0)
+            {
+                if (expName == BuiltIn.SPEED)
+                    _diagnostics.Add(context.GetError("Invalid value: Speed multiplier cannot be zero or lesser."));
+                else if (expName == BuiltIn.PAUSE)
+                    _diagnostics.Add(context.GetError("Invalid value: Pause timeout cannot be zero or lesser."));
+                else if (expName == BuiltIn.AUTO)
+                    _diagnostics.Add(context.GetError("Invalid value: Auto timeout cannot be zero or lesser."));
+                return null;
+            }
+
+            OpCode opCode = expName switch
+            {
+                BuiltIn.SPEED => OpCode.Speed,
+                BuiltIn.PAUSE => OpCode.Pause,
+                BuiltIn.AUTO => OpCode.Auto,
+                _ => throw new NotImplementedException()
+            };
+
+            ints.AddRange((int)opCode, _scriptData.Floats.GetOrAdd(value));
+            return ints;
         }
 
-        _diagnostics.Add(context.GetError("Unrecognized expression."));
+        _diagnostics.Add(context.GetError($"Built-in tag \"{expName}\" is not assignable."));
         return null;
     }
 
-    public List<int> GetSpeakerGetInts(string name)
+    private List<int>? GetAttrTagStmt(Attr_expressionContext context)
     {
-        int funcIndex = _dialogScript.InstStrings.GetOrAdd("GetName");
-        int nameIndex = _dialogScript.InstStrings.GetOrAdd(name);
-        return [(int)OpCode.Func, funcIndex, 1, (int)OpCode.String, nameIndex];
-    }
+        string attName = context.NAME().GetText();
 
-    /// <summary>
-    /// Gets instructions for speaker update tags
-    /// </summary>
-    /// <example>
-    /// [28, 5, 30, 1, 29, 0]
-    /// SpeakerSetOpCode, SpeakerId index, update type code, update instruction index, etc.
-    /// </example>
-    /// <param name="context"></param>
-    /// <param name="nameIndex"></param>
-    /// <returns></returns>
-    private List<int> GetSpeakerUpdateInts(DialogParser.Attr_expressionContext context, int nameIndex)
-    {
-        List<int> updateInts = [(int)OpCode.SpeakerSet, nameIndex];
-
-        foreach (var ass in context.assignment())
-            updateInts.AddRange(GetSpeakerUpdateAttribute(ass.NAME().GetText(), ass.right));
-
-        return updateInts;
-    }
-
-    private List<int> GetSpeakerUpdateAttribute(string type, DialogParser.ExpressionContext value)
-    {
-        return
-        [
-            type switch
+        if (attName == BuiltIn.GOTO)
+        {
+            if (context.assignment().Length > 0 || context.expression().Length != 1)
             {
-                BuiltIn.NAME => (int)OpCode.SpeakerSetName,
-                BuiltIn.PORTRAIT => (int)OpCode.SpeakerSetPortrait,
-                BuiltIn.MOOD => (int)OpCode.SpeakerSetMood,
-                _ => throw new NotImplementedException()
-            },
-            _dialogScript.Instructions.GetOrAdd(_expressionVisitor.GetInstruction(value, VarType.String))
-        ];
+                _diagnostics.Add(context.GetError("Built-in tag has incorrect number of attributes."));
+                return null;
+            }
+
+            List<int> ints = [(int)InstructionType.Instruction, 0];
+
+            string sectionName = context.expression()[0].GetText();
+
+            if (string.Equals(sectionName, BuiltIn.END, StringComparison.OrdinalIgnoreCase))
+            {
+                ints.AddRange([(int)OpCode.Goto, -1]);
+                return ints;
+            }
+
+            int sectionIndex = _sections.IndexOf(sectionName);
+
+            if (sectionIndex == -1)
+            {
+                _diagnostics.Add(context.GetError("Section not found."));
+                return null;
+            }
+
+            ints.AddRange([(int)OpCode.Goto, sectionIndex]);
+            return ints;
+        }
+
+        _diagnostics.Add(context.GetError($"Built-in tag \"{attName}\" does not have attributes."));
+        return null;
+    }
+
+    private List<int>? GetHashCollectionStmt(Hash_collectionContext context)
+    {
+        List<int> ints = [(int)InstructionType.Hash, 0];
+        return GetHashCollectionInts(context, ints);
+    }
+
+    private List<int>? GetHashCollectionInts(Hash_collectionContext context, List<int> ints)
+    {
+        foreach (Hash_nameContext hash in context.hash_name())
+        {
+            int index = _scriptData.Strings.GetOrAdd(hash.NAME().GetText());
+            ints.AddRange([1, index]);
+        }
+
+        foreach (Hash_assignmentContext hashAssignment in context.hash_assignment())
+        {
+            string name = hashAssignment.hash_name().NAME().GetText();
+            int index = _scriptData.Strings.GetOrAdd(name);
+            List<int> expInts = _expressionVisitor.GetInstruction(hashAssignment.expression());
+            ints.AddRange([2, index, ..expInts]);
+        }
+
+        return ints;
+    }
+
+    private List<int>? GetSpeakerCollectionStmt(Speaker_collectionContext context)
+    {
+        int nameIndex = _scriptData.SpeakerIds.IndexOf(context.NAME().GetText());
+
+        if (nameIndex == -1)
+        {
+            _diagnostics.Add(context.GetError("Can only edit speakers that appear in this dialog script."));
+            return null;
+        }
+
+        List<int> ints = [(int)InstructionType.Speaker, 0, nameIndex];
+        return GetHashCollectionInts(context.hash_collection(), ints);
     }
 }
