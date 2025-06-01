@@ -14,15 +14,16 @@ import {
 } from 'vscode-languageclient/node';
 import * as fs from 'fs';
 import { ChildProcess, spawn } from 'child_process';
-const serverPath = "out/server/GameDialog.Server.dll"
+const serverPath = "out/server/GameDialog.Server.dll";
+const extensionId = "gamedialog";
 
 let client: LanguageClient;
 let server: ChildProcess;
 
 export function activate(context: ExtensionContext) {
     commands.registerCommand('extension.createConstants', createConstants);
-    let configuration = workspace.getConfiguration("gamedialog");
-    let enable = configuration.get("EnableLanguageServer");
+    let configuration = workspace.getConfiguration(extensionId);
+    let enable = configuration.get("enabled");
     const outputChannel = window.createOutputChannel("Game Dialog");
 
     if (enable)
@@ -37,7 +38,7 @@ async function runServer(context: ExtensionContext, configuration: WorkspaceConf
             'dotnet.acquire',
             {
                 version: '9.0',
-                requestingExtensionId: 'game-dialog'
+                requestingExtensionId: extensionId
             }
         );
         const dotnetPath = dotnetAcquisition?.dotnetPath ?? null;
@@ -71,15 +72,15 @@ async function runServer(context: ExtensionContext, configuration: WorkspaceConf
         outputChannel: outputChannel,
         traceOutputChannel: outputChannel,
         initializationOptions: [configuration],
-        documentSelector: [{ scheme: 'file', language: 'gamedialog' }],
+        documentSelector: [{ scheme: 'file', language: extensionId }],
         synchronize: {
-            configurationSection: 'gamedialog',
+            configurationSection: extensionId,
             fileEvents: [workspace.createFileSystemWatcher("**/*.dia")]
         }
     };
 
     client = new LanguageClient(
-        'gamedialog',
+        extensionId,
         'Game Dialog',
         serverOptions,
         clientOptions,
@@ -103,7 +104,7 @@ async function stopServer(): Promise<void> {
 async function createConstants(uri: Uri) {
     try {
         let filePath = path.parse(uri.fsPath);
-        let namespace = filePath.dir.replace(workspace.rootPath, '').replace(/\\/g, '.');
+        let namespace = filePath.dir.replace(workspace.workspaceFolders[0].uri.fsPath, '').replace(/\\/g, '.');
         namespace = namespace.substring(1, namespace.length);
         const data = await fs.promises.readFile(uri.fsPath, { encoding: 'utf-8' });
         const fields = data

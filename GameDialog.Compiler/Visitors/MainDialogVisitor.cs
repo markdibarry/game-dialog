@@ -1,34 +1,32 @@
-﻿using Antlr4.Runtime.Misc;
+﻿using System.Text;
 using Antlr4.Runtime.Tree;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using System.Text;
+
 using static GameDialog.Compiler.DialogParser;
 
 namespace GameDialog.Compiler;
 
 public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
 {
-    private readonly ScriptDataExtended _scriptData;
-    private readonly List<Diagnostic> _diagnostics;
-    private readonly MemberRegister _memberRegister;
-    private readonly ExpressionVisitor _expressionVisitor;
-    private readonly List<(int NestLevel, List<int> Stmt)> _unresolvedStmts = [];
-    private int _nestLevel;
-    private int _endIndex;
-    private readonly List<string> _sections = [];
-
     /// <summary>
     /// </summary>
     /// <param name="scriptData"></param>
     /// <param name="diagnostics"></param>
     /// <param name="memberRegister"></param>
-    public MainDialogVisitor(ScriptDataExtended scriptData, List<Diagnostic> diagnostics, MemberRegister memberRegister)
+    public MainDialogVisitor(ScriptData scriptData, List<Diagnostic> diagnostics, MemberRegister memberRegister)
     {
         _scriptData = scriptData;
         _diagnostics = diagnostics;
-        _memberRegister = memberRegister;
         _expressionVisitor = new(scriptData, diagnostics, memberRegister);
     }
+
+    private readonly ScriptData _scriptData;
+    private readonly List<Diagnostic> _diagnostics;
+    private readonly ExpressionVisitor _expressionVisitor;
+    private readonly List<(int NestLevel, List<int> Stmt)> _unresolvedStmts = [];
+    private int _nestLevel;
+    private int _endIndex;
+    private readonly List<string> _sections = [];
 
     public override int VisitScript(ScriptContext context)
     {
@@ -142,7 +140,6 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
             HandleLineText(sb, children);
             int textIndex = _scriptData.Strings.GetOrAdd(sb.ToString());
             line.Add(textIndex);
-            _scriptData.LineIndices.Add(textIndex);
         }
 
         ResolveStatements(lineIndex);
@@ -178,23 +175,23 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         {
             (int NestLevel, List<int> Stmt) = _unresolvedStmts[i];
 
-            if (NestLevel >= _nestLevel)
-            {
-                if (Stmt[0] == (int)InstructionType.Choice)
-                {
-                    for (int j = 0; j < Stmt.Count; j++)
-                    {
-                        if (Stmt[j] == -1)
-                            Stmt[j] = index;
-                    }
-                }
-                else
-                {
-                    Stmt[1] = index;
-                }
+            if (NestLevel < _nestLevel)
+                continue;
 
-                _unresolvedStmts.RemoveAt(i);
+            if (Stmt[0] == (int)InstructionType.Choice)
+            {
+                for (int j = 0; j < Stmt.Count; j++)
+                {
+                    if (Stmt[j] == -1)
+                        Stmt[j] = index;
+                }
             }
+            else
+            {
+                Stmt[1] = index;
+            }
+
+            _unresolvedStmts.RemoveAt(i);
         }
     }
 

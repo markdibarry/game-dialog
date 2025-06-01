@@ -1,4 +1,5 @@
 ﻿using System.Text;
+
 using static GameDialog.Compiler.DialogParser;
 
 namespace GameDialog.Compiler;
@@ -23,6 +24,8 @@ public partial class MainDialogVisitor
                 AddChoice(choiceStmt, choiceSet);
             else
                 HandleChoiceCondition(choiceStmt.choice_cond_stmt(), choiceSet);
+
+            LowerUnresolvedStatements();
         }
 
         _unresolvedStmts.Add((_nestLevel, choiceSet));
@@ -34,7 +37,6 @@ public partial class MainDialogVisitor
         StringBuilder sb = new();
         HandleLineText(sb, choiceStmt.choice_text().children);
         int stringIndex = _scriptData.Strings.GetOrAdd(sb.ToString());
-        _scriptData.ChoiceIndices.Add(stringIndex);
         List<int> choice = [(int)ChoiceOp.Choice, -1, stringIndex];
         _unresolvedStmts.Add((_nestLevel, choice));
 

@@ -4,12 +4,12 @@ namespace GameDialog.Compiler;
 
 public class SpeakerIdVisitor : DialogParserBaseVisitor<int>
 {
-    private readonly ScriptDataExtended _dialogScript;
-
-    public SpeakerIdVisitor(ScriptDataExtended dialogScript)
+    public SpeakerIdVisitor(ScriptData dialogScript)
     {
         _dialogScript = dialogScript;
     }
+
+    private readonly ScriptData _dialogScript;
 
     public override int VisitSpeaker_ids(Speaker_idsContext context)
     {

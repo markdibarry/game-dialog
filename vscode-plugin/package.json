@@ -1,11 +1,11 @@
 {
-    "name": "game-dialog",
+    "name": "gamedialog",
     "displayName": "Game Dialog",
     "description": "A game dialog language",
     "version": "0.0.1",
     "license": "MIT",
     "engines": {
-        "vscode": "^1.96.0"
+        "vscode": "^1.100.0"
     },
     "categories": [
         "Programming Languages"
@@ -50,27 +50,33 @@
         "configuration": {
             "title": "Game Dialog",
             "properties": {
-                "gamedialog.EnableLanguageServer": {
+                "gamedialog.enabled": {
                     "type": "boolean",
+                    "order": "0",
                     "default": true,
-                    "description": "This turns on the language."
+                    "description": "Controls if the Game Dialog language server is enabled."
                 },
-                "gamedialog.EnableCSVTranslation": {
+                "gamedialog.csvTranslation.enabled": {
                     "type": "boolean",
                     "default": false,
-                    "description": "When toggled, saving files also generates a translation file in .csv format."
+                    "description": "Controls whether saving files should also generate a translation file in .csv format."
                 },
-                "gamedialog.CSVTranslationLocation": {
+                "gamedialog.csvTranslation.location": {
                     "type": "string",
                     "default": "",
                     "description": "Location to save dialog translation .csv file. If blank, it will be created in the same directory as the dialog file."
+                },
+                "gamedialog.csvTranslation.separateFiles": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Controls whether a central translation file should be created on save or separate files per dialog file."
                 }
             }
         }
     },
     "scripts": {
         "vscode:prepublish": "npm run build",
-        "build": "concurrently --timings --kill-others-on-fail \"npm:buildExtension\" \"npm:buildServer\"",
+        "build": "npm run buildServer && npm run buildExtension",
         "buildExtension": "tsc -p ./tsconfig.json",
         "buildServer": "dotnet publish -c Debug -o out/server ./../GameDialog.Server/GameDialog.Server.csproj"
     },
@@ -80,14 +86,11 @@
     },
     "devDependencies": {
         "@types/node": "20.x",
-        "@types/vscode": "^1.96.0",
+        "@types/vscode": "^1.100.0",
         "@typescript-eslint/eslint-plugin": "^8.17.0",
         "@typescript-eslint/parser": "^8.17.0",
-        "concurrently": "^9.1.0",
         "eslint": "^9.16.0",
-        "typescript": "^5.7.2",
-        "webpack": "^5.95.0",
-        "webpack-cli": "^5.1.4"
+        "typescript": "^5.7.2"
     },
     "extensionDependencies": [
         "ms-dotnettools.vscode-dotnet-runtime"

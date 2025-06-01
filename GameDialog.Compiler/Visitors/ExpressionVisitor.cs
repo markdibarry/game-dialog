@@ -1,19 +1,20 @@
 ﻿using Antlr4.Runtime;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+
 using static GameDialog.Compiler.DialogParser;
 
 namespace GameDialog.Compiler;
 
 public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
 {
-    public ExpressionVisitor(ScriptDataExtended scriptData, List<Diagnostic> diagnostics, MemberRegister memberRegister)
+    public ExpressionVisitor(ScriptData scriptData, List<Diagnostic> diagnostics, MemberRegister memberRegister)
     {
         _scriptData = scriptData;
         _diagnostics = diagnostics;
         _memberRegister = memberRegister;
     }
 
-    private readonly ScriptDataExtended _scriptData;
+    private readonly ScriptData _scriptData;
     private readonly List<Diagnostic> _diagnostics;
     private readonly MemberRegister _memberRegister;
     private List<int> _currentInst = [];

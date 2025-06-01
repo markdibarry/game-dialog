@@ -19,22 +19,16 @@ public class DialogDocument
         Parser.AddErrorListener(ParserErrorListener);
     }
 
-    public DialogDocument(DocumentUri uri)
-        :this(uri, string.Empty)
-    {
-    }
-
     public LexerErrorListener LexerErrorListener { get; private set; }
     public ParserErrorListener ParserErrorListener { get; private set; }
     public DialogLexer Lexer { get; set; }
     public DialogParser Parser { get; set; }
-    public string Text { get; set; } = string.Empty;
     public DocumentUri Uri { get; set; }
+    private readonly List<Diagnostic> _diagnostics = [];
 
     public void UpdateText(string text)
     {
-        Text = text;
-        AntlrInputStream stream = new(Text);
+        AntlrInputStream stream = new(text);
         Lexer.SetInputStream(stream);
         CommonTokenStream tokens = new(Lexer);
         Parser.TokenStream = tokens;
@@ -42,9 +36,11 @@ public class DialogDocument
 
     public List<Diagnostic> GetDiagnostics()
     {
-        List<Diagnostic> diagnostics = ParserErrorListener.Diagnostics.Concat(LexerErrorListener.Diagnostics).ToList();
+        _diagnostics.Clear();
+        _diagnostics.AddRange(ParserErrorListener.Diagnostics);
+        _diagnostics.AddRange(LexerErrorListener.Diagnostics);
         ParserErrorListener.Clear();
         LexerErrorListener.Clear();
-        return diagnostics;
+        return _diagnostics;
     }
 }
