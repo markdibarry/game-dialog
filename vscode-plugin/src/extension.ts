@@ -12,6 +12,7 @@ import {
     ErrorAction,
     CloseAction
 } from 'vscode-languageclient/node';
+import * as os from 'os';
 import * as fs from 'fs';
 import { ChildProcess, spawn } from 'child_process';
 const serverPath = "out/server/GameDialog.Server.dll";
@@ -101,26 +102,41 @@ async function stopServer(): Promise<void> {
     server.kill();
 }
 
-async function createConstants(uri: Uri) {
+/**
+ * Reads a CSV file specified by the provided URI, extracts the translation keys,
+ * and generates a C# static class containing constant string fields for each key. The generated
+ * class is saved in the same directory as the CSV file.
+ *
+ * @param {Uri} uri - The URI of the CSV file from which to extract translation keys.
+ * @throws {Error} Throws an error if the file cannot be read or written.
+ * 
+ * @returns {Promise<void>} A promise that resolves when the file has been successfully created.
+ */
+async function createConstants(uri: Uri): Promise<void> {
     try {
         let filePath = path.parse(uri.fsPath);
-        let namespace = filePath.dir.replace(workspace.workspaceFolders[0].uri.fsPath, '').replace(/\\/g, '.');
-        namespace = namespace.substring(1, namespace.length);
-        const data = await fs.promises.readFile(uri.fsPath, { encoding: 'utf-8' });
-        const fields = data
-            .split('\r\n')
-            .map((line, index) => {
-                if (index === 0 || line === '')
-                    return;
-
-                let key = line.substring(0, line.indexOf(','))
-                return `\n    public const string ${key} = \"${key}\";`;
-            })
-            .join('');
-        let str = `namespace ${namespace};`
-            .concat(`\npublic static class ${filePath.name}`)
-            .concat("\n{", fields, "\n}");
-        await fs.promises.writeFile(`${filePath.dir}\\${filePath.name}.cs`, str);
+        let namespace = filePath.dir
+            .replace(workspace.workspaceFolders[0].uri.fsPath, '')
+            .replace(new RegExp(`\\${path.sep}`, 'g'), '.')
+            .slice(1);
+        const keys = (await fs.promises.readFile(uri.fsPath, { encoding: 'utf-8' }))
+            .split(os.EOL)
+            .slice(1, -1)
+            .filter(line => line.trim() !== '')
+            .map(x => x.substring(0, x.indexOf(',')));
+        let fields = keys
+            .map(key => `    public const string ${key} = "${key}";`)
+            .join(os.EOL);
+        let fileContent = [
+            `namespace ${namespace};`,
+            '',
+            `public static class ${filePath.name}`,
+            `{`,
+            fields,
+            `}`
+        ].join(os.EOL);
+        let newFileName = `${filePath.dir}${path.sep}${filePath.name}.cs`;
+        await fs.promises.writeFile(newFileName, fileContent);
     } catch (err) {
         console.log(err);
     }
