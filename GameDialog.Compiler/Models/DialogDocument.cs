@@ -28,6 +28,7 @@ public class DialogDocument
 
     public void UpdateText(string text)
     {
+        Lexer.IndentMode = DialogLexerBase.IndentType.Unset;
         AntlrInputStream stream = new(text);
         Lexer.SetInputStream(stream);
         CommonTokenStream tokens = new(Lexer);

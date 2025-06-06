@@ -36,18 +36,25 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
             return 0;
 
         // Initialize all sections
+        HashSet<string> titles = [];
+
         foreach (SectionContext section in context.section())
         {
             string title = section.section_title().NAME().GetText();
 
+            if (titles.Contains(title))
+                _diagnostics.Add(section.section_title().GetError($"Title \"{title}\" already used in this script."));
+
+            titles.Add(title);
+
             if (string.Equals(title, BuiltIn.END, StringComparison.OrdinalIgnoreCase))
                 _diagnostics.Add(section.section_title().GetError("\"end\" is a reserved name."));
 
-            _scriptData.Instructions.Add([(int)InstructionType.Section, 0]);
+            _scriptData.Instructions.Add([InstructionType.Section, 0]);
             _sections.Add(title);
         }
 
-        _scriptData.Instructions.Add([(int)InstructionType.End]);
+        _scriptData.Instructions.Add([InstructionType.End]);
         _endIndex = _scriptData.Instructions.Count - 1;
         int length = context.section().Length;
 
@@ -64,12 +71,13 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
             ResolveStatements(_endIndex);
         }
 
+        _unresolvedStmts.Clear();
         return 0;
     }
 
     public override int VisitCond_stmt(Cond_stmtContext context)
     {
-        List<int> conditions = [(int)InstructionType.Conditional, 0];
+        List<int> conditions = [InstructionType.Conditional, 0];
         int condIndex = _scriptData.Instructions.GetOrAdd(conditions);
         ResolveStatements(condIndex);
         _nestLevel++;
@@ -115,13 +123,19 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
     public override int VisitLine_stmt(Line_stmtContext context)
     {
         StringBuilder sb = new();
-        List<int> line = [(int)InstructionType.Line, 0, 0];
+        List<int> line = [InstructionType.Line, 0, 0];
         int lineIndex = _scriptData.Instructions.Count;
         _scriptData.Instructions.Add(line);
 
         // Add speakers
         if (context.UNDERSCORE() == null)
         {
+            if (context.speaker_ids() == null)
+            {
+                _diagnostics.Add(context.GetError("No speaker provided."));
+                return 0;
+            }
+
             var speakerIds = context.speaker_ids().speaker_id();
             line[^1] = speakerIds.Length;
 
@@ -140,6 +154,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
             HandleLineText(sb, children);
             int textIndex = _scriptData.Strings.GetOrAdd(sb.ToString());
             line.Add(textIndex);
+            _scriptData.DialogStringIndices.Add(textIndex);
         }
 
         ResolveStatements(lineIndex);
@@ -178,7 +193,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
             if (NestLevel < _nestLevel)
                 continue;
 
-            if (Stmt[0] == (int)InstructionType.Choice)
+            if (Stmt[0] == InstructionType.Choice)
             {
                 for (int j = 0; j < Stmt.Count; j++)
                 {
@@ -208,7 +223,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
     {
         return
         [
-            (int)InstructionType.Instruction,
+            InstructionType.Instruction,
             0,
             .._expressionVisitor.GetInstruction(context, varType)
         ];

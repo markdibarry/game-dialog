@@ -1,11 +1,14 @@
-﻿using Antlr4.Runtime;
+﻿using System.Text;
+using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 
 namespace GameDialog.Compiler;
 
 public static class Utility
 {
-    public static void PrintTokens(CommonTokenStream stream)
+    private static readonly StringBuilder s_sb = new();
+
+    public static string PrintTokens(CommonTokenStream stream)
     {
         foreach (var token in stream.GetTokens())
         {
@@ -14,40 +17,48 @@ public static class Utility
                 .Replace("\n", @"\r")
                 .Replace("\t", @"\t");
             var tName = DialogLexer.DefaultVocabulary.GetSymbolicName(token.Type);
-            Console.WriteLine($"pos:{token.Line},{token.Column,-10} {tName,-20} '{text}'");
+            s_sb.AppendLine($"pos:{token.Line},{token.Column,-10} {tName,-20} '{text}'");
         }
+
+        string result = s_sb.ToString();
+        s_sb.Clear();
+        return result;
     }
 
-    public static void PrintTree(ParserRuleContext context)
+    public static string PrintTree(ParserRuleContext context)
     {
         if (context.children == null)
-            return;
+            return string.Empty;
 
-        Console.WriteLine();
+        s_sb.AppendLine();
 
         for (int i = 0; i < context.children.Count; i++)
             GetBranch(context.children[i], "", i == context.ChildCount - 1);
+
+        string result = s_sb.ToString();
+        s_sb.Clear();
+        return result;
     }
 
     private static void GetBranch(IParseTree branch, string indent, bool last)
     {
-        Console.Write(indent);
+        s_sb.Append(indent);
 
         if (last)
         {
-            Console.Write("\\--");
+            s_sb.Append("\\--");
             indent += "   ";
         }
         else
         {
-            Console.Write("|--");
+            s_sb.Append("|--");
             indent += "|  ";
         }
 
         if (branch is ParserRuleContext)
-            Console.WriteLine(branch.GetType().Name.Replace("Context", ""));
+            s_sb.AppendLine(branch.GetType().Name.Replace("Context", ""));
         else
-            Console.WriteLine($"[{branch.GetText().Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t")}]");
+            s_sb.AppendLine($"[{branch.GetText().Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t")}]");
 
         for (int i = 0; i < branch.ChildCount; i++)
             GetBranch(branch.GetChild(i), indent, i == branch.ChildCount - 1);

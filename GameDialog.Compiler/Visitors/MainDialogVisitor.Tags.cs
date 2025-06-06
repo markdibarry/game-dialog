@@ -1,4 +1,5 @@
 ﻿using System.Text;
+
 using static GameDialog.Compiler.DialogParser;
 
 namespace GameDialog.Compiler;
@@ -19,12 +20,12 @@ public partial class MainDialogVisitor
         if (ints == null || ints.Count == 0)
             return;
 
-        if (ints[0] == (int)InstructionType.Instruction)
+        if (ints[0] == InstructionType.Instruction)
         {
             if (ints.Count == 2)
                 return;
 
-            if (ints[2] == (int)OpCode.Goto)
+            if (ints[2] == OpCode.Goto)
             {
                 if (ints[3] == -1)
                     ResolveStatements(_endIndex);
@@ -52,7 +53,7 @@ public partial class MainDialogVisitor
         if (ints == null || ints.Count == 0)
             return;
 
-        if (ints[0] == (int)InstructionType.Instruction && ints[2] == (int)OpCode.Goto)
+        if (ints[0] == InstructionType.Instruction && ints[2] == OpCode.Goto)
         {
             _diagnostics.Add(context.GetError("Goto is only available on a separate line."));
             return;
@@ -83,7 +84,7 @@ public partial class MainDialogVisitor
     private List<int>? GetExpressionStmt(TagContext context)
     {
         ExpressionContext expContext = context.expression();
-        List<int> ints = [(int)InstructionType.Instruction, 0];
+        List<int> ints = [InstructionType.Instruction, 0];
 
         // If isn't single word
         if (expContext is not ConstVarContext varContext)
@@ -98,7 +99,7 @@ public partial class MainDialogVisitor
         if (_scriptData.SpeakerIds.Contains(expName))
         {
             int nameIndex = _scriptData.SpeakerIds.GetOrAdd(expName);
-            ints.AddRange([(int)OpCode.GetName, nameIndex]);
+            ints.AddRange([OpCode.GetName, nameIndex]);
             return ints;
         }
 
@@ -108,7 +109,7 @@ public partial class MainDialogVisitor
             return ints;
         }
 
-        bool isClose = context.TAG_ENTER().GetText().EndsWith('/');
+        bool isClose = context.OPEN_BRACKET().GetText().EndsWith('/');
 
         if (isClose && expName != BuiltIn.SPEED)
         {
@@ -130,7 +131,7 @@ public partial class MainDialogVisitor
                     return null;
                 }
 
-                ints.AddRange([(int)OpCode.Goto, -1]);
+                ints.AddRange([OpCode.Goto, -1]);
                 return ints;
             case BuiltIn.NEWLINE:
                 if (isClose)
@@ -139,10 +140,10 @@ public partial class MainDialogVisitor
                     return null;
                 }
 
-                ints.Add((int)OpCode.NewLine);
+                ints.Add(OpCode.NewLine);
                 return ints;
             case BuiltIn.AUTO:
-                ints.AddRange([(int)OpCode.Auto, _scriptData.Floats.GetOrAdd(isClose ? -2 : -1)]);
+                ints.AddRange([OpCode.Auto, _scriptData.Floats.GetOrAdd(isClose ? -2 : -1)]);
                 return ints;
             case BuiltIn.SPEED:
                 if (!isClose)
@@ -151,7 +152,7 @@ public partial class MainDialogVisitor
                     return null;
                 }
 
-                ints.AddRange([(int)OpCode.Speed, _scriptData.Floats.GetOrAdd(1)]);
+                ints.AddRange([OpCode.Speed, _scriptData.Floats.GetOrAdd(1)]);
                 return ints;
         }
 
@@ -162,7 +163,7 @@ public partial class MainDialogVisitor
 
     private List<int>? GetAssignTagStmt(AssignmentContext context)
     {
-        List<int> ints = [(int)InstructionType.Instruction, 0];
+        List<int> ints = [InstructionType.Instruction, 0];
         string expName = context.NAME().GetText();
 
         if (!BuiltIn.IsBuiltIn(expName))
@@ -192,7 +193,7 @@ public partial class MainDialogVisitor
                 return null;
             }
 
-            OpCode opCode = expName switch
+            ushort opCode = expName switch
             {
                 BuiltIn.SPEED => OpCode.Speed,
                 BuiltIn.PAUSE => OpCode.Pause,
@@ -200,7 +201,7 @@ public partial class MainDialogVisitor
                 _ => throw new NotImplementedException()
             };
 
-            ints.AddRange((int)opCode, _scriptData.Floats.GetOrAdd(value));
+            ints.AddRange(opCode, _scriptData.Floats.GetOrAdd(value));
             return ints;
         }
 
@@ -220,13 +221,13 @@ public partial class MainDialogVisitor
                 return null;
             }
 
-            List<int> ints = [(int)InstructionType.Instruction, 0];
+            List<int> ints = [InstructionType.Instruction, 0];
 
             string sectionName = context.expression()[0].GetText();
 
             if (string.Equals(sectionName, BuiltIn.END, StringComparison.OrdinalIgnoreCase))
             {
-                ints.AddRange([(int)OpCode.Goto, -1]);
+                ints.AddRange([OpCode.Goto, -1]);
                 return ints;
             }
 
@@ -238,7 +239,7 @@ public partial class MainDialogVisitor
                 return null;
             }
 
-            ints.AddRange([(int)OpCode.Goto, sectionIndex]);
+            ints.AddRange([OpCode.Goto, sectionIndex]);
             return ints;
         }
 
@@ -248,7 +249,7 @@ public partial class MainDialogVisitor
 
     private List<int>? GetHashCollectionStmt(Hash_collectionContext context)
     {
-        List<int> ints = [(int)InstructionType.Hash, 0];
+        List<int> ints = [InstructionType.Hash, 0];
         return GetHashCollectionInts(context, ints);
     }
 
@@ -281,7 +282,7 @@ public partial class MainDialogVisitor
             return null;
         }
 
-        List<int> ints = [(int)InstructionType.Speaker, 0, nameIndex];
+        List<int> ints = [InstructionType.Speaker, 0, nameIndex];
         return GetHashCollectionInts(context.hash_collection(), ints);
     }
 }

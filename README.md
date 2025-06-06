@@ -4,19 +4,34 @@ A free game dialog language I'm making to work with my personal game framework.
 
 # Keywords
 
-To start a new section of dialog, write the title in PascalCase in between pairs of dashes: 
+Each `.dia` file is made up of one or more sections. To start a new section of dialog, write the title in PascalCase in between pairs of dashes:
 ```
 --TestSection--
 ```
 
 ## Speakers
-To have a character in your game say a line, use the following format:
+Each section is made up of one or more lines of dialog. To define one, type the speaking character's name with a colon, and the text they'll say after. Here's what an example of a basic section:
 ```
-Stalone: Hello. I'm speaking text.
+--Greeting--
+Stalone: Hello World!
 ```
 
+The first section defined will always be the first used. If you have two sections, it's important to connect them or the dialog will exit at the end of the current section.
+
+```
+--Greeting--
+Stalone: Hello Wrold!
+[goto Goodbye]
+
+--Goodbye--
+Stalone: See you later!
+```
+
+## Comments
+You can add comments using two forward slashes `//`. Anything after
+
 ## Speed
-You can change the speed of the text displaying by using the `speed` keyword:
+You can change the speed of the text being written by using the `speed` keyword:
 ```
 Twosen: I'm talking normally...[speed = 3] Now I'm talking much faster!
 ```

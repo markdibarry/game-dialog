@@ -8,7 +8,7 @@ public partial class MainDialogVisitor
 {
     private void HandleChoices(Choice_stmtContext[] context)
     {
-        List<int> choiceSet = [(int)InstructionType.Choice];
+        List<int> choiceSet = [InstructionType.Choice];
         _scriptData.Instructions.Add(choiceSet);
         ResolveStatements(_scriptData.Instructions.Count - 1);
         AddChoiceSet(context, choiceSet);
@@ -37,7 +37,8 @@ public partial class MainDialogVisitor
         StringBuilder sb = new();
         HandleLineText(sb, choiceStmt.choice_text().children);
         int stringIndex = _scriptData.Strings.GetOrAdd(sb.ToString());
-        List<int> choice = [(int)ChoiceOp.Choice, -1, stringIndex];
+        _scriptData.DialogStringIndices.Add(stringIndex);
+        List<int> choice = [ChoiceOp.Choice, -1, stringIndex];
         _unresolvedStmts.Add((_nestLevel, choice));
 
         foreach (StmtContext stmt in choiceStmt.stmt())
@@ -50,14 +51,14 @@ public partial class MainDialogVisitor
     {
         // if
         Choice_if_stmtContext ifStmt = choiceCond.choice_if_stmt();
-        choiceSet.AddRange([(int)ChoiceOp.If, _scriptData.Instructions.Count]);
+        choiceSet.AddRange([ChoiceOp.If, _scriptData.Instructions.Count]);
         _scriptData.Instructions.Add(GetInstrStmt(ifStmt.expression(), VarType.Bool));
         AddChoiceSet(ifStmt.choice_stmt(), choiceSet);
 
         // else if
         foreach (Choice_elseif_stmtContext elseifStmt in choiceCond.choice_elseif_stmt())
         {
-            choiceSet.AddRange([(int)ChoiceOp.ElseIf, _scriptData.Instructions.Count]);
+            choiceSet.AddRange([ChoiceOp.ElseIf, _scriptData.Instructions.Count]);
             _scriptData.Instructions.Add(GetInstrStmt(ifStmt.expression(), VarType.Bool));
             AddChoiceSet(elseifStmt.choice_stmt(), choiceSet);
         }
@@ -65,11 +66,11 @@ public partial class MainDialogVisitor
         // else
         if (choiceCond.choice_else_stmt() != null)
         {
-            choiceSet.AddRange([(int)ChoiceOp.Else]);
+            choiceSet.AddRange([ChoiceOp.Else]);
             Choice_else_stmtContext elseStmt = choiceCond.choice_else_stmt();
             AddChoiceSet(elseStmt.choice_stmt(), choiceSet);
         }
 
-        choiceSet.AddRange([(int)ChoiceOp.EndIf]);
+        choiceSet.AddRange([ChoiceOp.EndIf]);
     }
 }

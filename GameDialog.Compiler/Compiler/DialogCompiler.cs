@@ -30,8 +30,6 @@ public class DialogCompiler
     {
         document.Parser.Reset();
         ParserRuleContext context = document.Parser.script();
-        //Utility.PrintTokens((CommonTokenStream)document.Parser.TokenStream);
-        //Utility.PrintTree(context);
         ScriptData scriptData = new();
         List<Diagnostic> diagnostics = [];
         MemberRegister memberRegister = new(MemberRegister);
@@ -43,6 +41,8 @@ public class DialogCompiler
         visitor.Visit(context);
         diagnostics.AddRange(document.GetDiagnostics());
         CompilationResult result = new(document.Uri, scriptData, diagnostics);
+        File.WriteAllText("/mnt/general_storage/Coding/godot/Projects/Longterm/Dialog/game-dialog/tokens.txt", Utility.PrintTokens((CommonTokenStream)document.Parser.TokenStream));
+        File.WriteAllText("/mnt/general_storage/Coding/godot/Projects/Longterm/Dialog/game-dialog/logger.txt", Utility.PrintTree(context));
         return result;
     }
 

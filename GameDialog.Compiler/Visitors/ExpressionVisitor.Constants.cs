@@ -46,7 +46,7 @@ public partial class ExpressionVisitor
             _diagnostics.Add(context.GetError("Type Error: Cannot infer expression result type."));
         }
 
-        PushExp([(int)OpCode.Var, nameIndex], varDef.Type);
+        PushExp([OpCode.Var, nameIndex], varDef.Type);
         return varDef.Type;
     }
 
@@ -65,7 +65,7 @@ public partial class ExpressionVisitor
         int argsFound = context.expression().Length;
         int nameIndex = _scriptData.Strings.GetOrAdd(funcName);
 
-        PushExp([(int)OpCode.Func, nameIndex, argsFound], default);
+        PushExp([OpCode.Func, nameIndex, argsFound], default);
         List<VarType> argTypesFound = [];
 
         for (int i = 0; i < argsFound; i++)

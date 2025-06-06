@@ -8,14 +8,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Antlr4 Include="DialogLexer.g4">
+    <Antlr4 Include="Compiler/DialogLexer.g4">
+      <Language>CSharp</Language>
+      <OutputDirectory>Generated</OutputDirectory>
       <Listener>True</Listener>
       <Visitor>True</Visitor>
       <GAtn>true</GAtn>
       <Package>GameDialog.Compiler</Package>
       <Error>true</Error>
     </Antlr4>
-    <Antlr4 Include="DialogParser.g4">
+    <Antlr4 Include="Compiler/DialogParser.g4">
+      <Language>CSharp</Language>
+      <OutputDirectory>Generated</OutputDirectory>
       <Listener>True</Listener>
       <Visitor>True</Visitor>
       <GAtn>true</GAtn>

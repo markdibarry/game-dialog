@@ -25,7 +25,10 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
     private readonly ILanguageServerConfiguration _configuration;
     private readonly DialogCompiler _compiler = new();
     private readonly TextDocumentSelector _documentSelector = new(new TextDocumentFilter() { Pattern = "**/*.dia" });
-    private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
     public TextDocumentSyncKind Change { get; } = TextDocumentSyncKind.Full;
 
     public override TextDocumentAttributes GetTextDocumentAttributes(DocumentUri uri)
@@ -160,12 +163,13 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
 
         string commas = new(',', header.Count(x => x == ',') - 1);
 
-        for (int i = 0; i < scriptData.Strings.Count; i++)
+        for (int i = 0; i < scriptData.DialogStringIndices.Count; i++)
         {
             string key = keyPrefix + i;
-            string text = scriptData.Strings[i];
+            int index = scriptData.DialogStringIndices[i];
+            string text = scriptData.Strings[index];
             records.Add($"{key},{ConvertToCsvCell(text)}{commas}");
-            scriptData.Strings[i] = key;
+            scriptData.Strings[index] = key;
         }
 
         records.Sort(new NumericStringComparer());
@@ -178,6 +182,9 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
             return mustQuote ? $"\"{str.Replace("\"", "\"\"")}\"" : str;
         }
     }
+
+    [GeneratedRegex("[,\"\\r\\n]")]
+    private static partial Regex RegexCsvEscapable();
 
     private void PublishDiagnostics(Dictionary<DocumentUri, CompilationResult> results)
     {
@@ -192,10 +199,10 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
         }
     }
 
-    [GeneratedRegex("[,\"\\r\\n]")]
-    private static partial Regex RegexCsvEscapable();
-
-    public class NumericStringComparer : IComparer<string>
+    /// <summary>
+    /// Temporary until Numeric String sorting is introduced in .NET 10.
+    /// </summary>
+    private class NumericStringComparer : IComparer<string>
     {
         public int Compare(string? x, string? y)
         {
@@ -203,9 +210,8 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
             if (x == null) return -1;
             if (y == null) return 1;
 
-            // Split the strings into parts (numbers and non-numbers)
-            var xParts = System.Text.RegularExpressions.Regex.Split(x, @"(\d+)");
-            var yParts = System.Text.RegularExpressions.Regex.Split(y, @"(\d+)");
+            var xParts = Regex.Split(x, @"(\d+)");
+            var yParts = Regex.Split(y, @"(\d+)");
 
             for (int i = 0; i < Math.Min(xParts.Length, yParts.Length); i++)
             {

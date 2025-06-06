@@ -18,7 +18,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
     private readonly List<Diagnostic> _diagnostics;
     private readonly MemberRegister _memberRegister;
     private List<int> _currentInst = [];
-    private static readonly Dictionary<int, OpCode> InstructionLookup = new()
+    private static readonly Dictionary<int, ushort> InstructionLookup = new()
         {
             { DialogLexer.OP_MULT, OpCode.Mult },
             { DialogLexer.OP_DIVIDE, OpCode.Div },
@@ -28,7 +28,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
             { DialogLexer.OP_GREATER_EQUALS, OpCode.GreaterEquals },
             { DialogLexer.OP_LESS, OpCode.Less },
             { DialogLexer.OP_GREATER, OpCode.Greater },
-            { DialogLexer.OP_EQUALS, OpCode.Equals },
+            { DialogLexer.OP_EQUALS, OpCode.Equal },
             { DialogLexer.OP_NOT_EQUALS, OpCode.NotEquals },
             { DialogLexer.OP_AND, OpCode.And },
             { DialogLexer.OP_OR, OpCode.Or },
@@ -71,7 +71,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
         }
 
         VarType newType = PushExp(
-            [(int)InstructionLookup[context.op.Type], nameIndex],
+            [InstructionLookup[context.op.Type], nameIndex],
             varDef.Type,
             context.right);
 

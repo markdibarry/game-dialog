@@ -30,16 +30,21 @@
                 {
                     "name": "comment.line.double-slash",
                     "match": "//.*"
+                },
+                {
+                    "name": "comment.block",
+                    "begin": "/\\*",
+                    "end": "\\*/"
                 }
             ]
         },
         "title": {
             "name": "support.function",
-            "match": "^\\s*--\\s*\\w+\\s*--\\s*$"
+            "match": "^\\s*--\\s*\\w+\\s*--\\s*"
         },
         "speaker": {
             "name": "markup.bold",
-            "match": "^\\s*\\w+\\s*:"
+            "match": "^\\s*(\\w+(?:\\s*,\\s*\\w+)*)\\s*:\\s*"
         },
         "choices": {
             "name": "keyword.control",
