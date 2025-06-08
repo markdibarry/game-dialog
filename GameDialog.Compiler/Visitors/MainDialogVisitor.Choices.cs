@@ -35,7 +35,7 @@ public partial class MainDialogVisitor
     private void AddChoice(Choice_stmtContext choiceStmt, List<int> choiceSet)
     {
         StringBuilder sb = new();
-        HandleLineText(sb, choiceStmt.choice_text().children);
+        HandleTextContent(sb, choiceStmt.text_content());
         int stringIndex = _scriptData.Strings.GetOrAdd(sb.ToString());
         _scriptData.DialogStringIndices.Add(stringIndex);
         List<int> choice = [ChoiceOp.Choice, -1, stringIndex];

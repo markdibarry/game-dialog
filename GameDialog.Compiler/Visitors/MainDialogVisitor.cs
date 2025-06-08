@@ -40,7 +40,8 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
 
         foreach (SectionContext section in context.section())
         {
-            string title = section.section_title().NAME().GetText();
+            string title = section.section_title().TITLE().GetText();
+            title = title[2..^2];
 
             if (titles.Contains(title))
                 _diagnostics.Add(section.section_title().GetError($"Title \"{title}\" already used in this script."));
@@ -136,26 +137,37 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
                 return 0;
             }
 
-            var speakerIds = context.speaker_ids().speaker_id();
+            Speaker_idContext[] speakerIds = context.speaker_ids().speaker_id();
             line[^1] = speakerIds.Length;
+            List<string> speakers = speakerIds.Select(x => x.NAME().GetText()).ToList();
+
+            if (speakerIds.Length > 1)
+            {
+                HashSet<string> distinctSpeakers = new(speakers);
+
+                if (distinctSpeakers.Count != speakerIds.Length)
+                {
+                    _diagnostics.Add(context.GetError("Duplicate speakers."));
+                    return 0;
+                }
+            }
 
             // Get speakers
-            foreach (var speaker in speakerIds)
+            foreach (var speaker in speakers)
             {
-                int speakerIndex = _scriptData.SpeakerIds.IndexOf(speaker.NAME().GetText());
+                int speakerIndex = _scriptData.SpeakerIds.IndexOf(speaker);
                 line.Add(speakerIndex);
             }
         }
 
-        var children = context.line_text()?.children ?? context.ml_text()?.children;
+        if (context.line_text()?.text_content() != null)
+            HandleTextContent(sb, context.line_text().text_content());
+        else
+            HandleTextContent(sb, context.ml_text().text_content());
 
-        if (children != null)
-        {
-            HandleLineText(sb, children);
-            int textIndex = _scriptData.Strings.GetOrAdd(sb.ToString());
-            line.Add(textIndex);
-            _scriptData.DialogStringIndices.Add(textIndex);
-        }
+        int textIndex = _scriptData.Strings.GetOrAdd(sb.ToString());
+        line.Add(textIndex);
+        _scriptData.DialogStringIndices.Add(textIndex);
 
         ResolveStatements(lineIndex);
         _unresolvedStmts.Add((_nestLevel, line));
@@ -172,14 +184,22 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         return 0;
     }
 
-    private void HandleLineText(StringBuilder sb, IList<IParseTree> children)
+    private void HandleTextContent(StringBuilder sb, Text_contentContext[] content)
+    {
+        foreach (var part in content)
+            HandleTextContent(sb, part);
+    }
+
+    private void HandleTextContent(StringBuilder sb, Text_contentContext content)
     {
         // Start building a string of text and instruction identifiers
-        foreach (var child in children)
+        for (int i = 0; i < content.children.Count; i++)
         {
-            if (child is ITerminalNode node && node.Symbol.Type == TEXT)
-                sb.Append(node.GetText());
-            else if (child is TagContext tag)
+            IParseTree parseTree = content.children[i];
+
+            if (parseTree is ITerminalNode node && node.Symbol.Type == LINE_TEXT)
+                sb.Append(parseTree.GetText());
+            else if (parseTree is TagContext tag)
                 HandleLineTag(sb, tag);
         }
     }

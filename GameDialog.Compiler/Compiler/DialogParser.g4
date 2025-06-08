@@ -1,11 +1,10 @@
 parser grammar DialogParser;
 
-@parser::header {#pragma warning disable 3021}
 options { tokenVocab=DialogLexer; }
 
 script: section+ EOF;
 section: section_title section_body;
-section_title: TITLE_ENTER NAME TITLE_EXIT NEWLINE+;
+section_title: TITLE NEWLINE+;
 section_body: stmt+;
 
 stmt
@@ -16,20 +15,29 @@ stmt
 
 line_stmt:
     (speaker_ids | UNDERSCORE) line_text NEWLINE+
-    (INDENT choice_stmt* DEDENT)?
+        choice_stmt*
     | (speaker_ids | UNDERSCORE) ml_text NEWLINE+
-    (DEDENT? | (choice_stmt* DEDENT)?);
+        DEDENT choice_stmt*;
+
+text_content: (LINE_TEXT | tag)*;
+
+line_text
+    : LINE_ENTER text_content
+    | ML_ENTER text_content ML_CLOSE;
+ml_text:
+    ML_ENTER
+        text_content NEWLINE
+        INDENT text_content
+        (NEWLINE text_content)*
+    ML_CLOSE;
+
 hash_name: HASH NAME;
 hash_assignment: hash_name OP_ASSIGN expression;
 hash_collection: (hash_name | hash_assignment)+;
+
 speaker_collection: NAME hash_collection;
-speaker_ids: speaker_id (NAME_SEPARATOR speaker_id)*;
 speaker_id: NAME;
-ml_text:
-    ML_ENTER (TEXT | tag)*
-    NEWLINE INDENT (TEXT | tag)*
-    (ML_EXTRA_EXIT | (NEWLINE (TEXT | tag)*)* ML_EXTRA_EXIT);
-line_text: LINE_ENTER (TEXT | tag)* | ML_ENTER (TEXT | tag)* ML_FIRST_EXIT;
+speaker_ids: speaker_id (NAME_SEPARATOR speaker_id)*;
 
 cond_stmt: if_stmt elseif_stmt* else_stmt?;
 if_stmt:
@@ -57,8 +65,7 @@ attr_expression: NAME (expression | assignment)+;
 
 choice_stmt:
     choice_cond_stmt
-    | CHOICE choice_text NEWLINE+ (INDENT stmt* DEDENT)?;
-choice_text: (TEXT | tag)*;
+    | CHOICE text_content NEWLINE+ (INDENT stmt* DEDENT)?;
 choice_cond_stmt: choice_if_stmt choice_elseif_stmt* choice_else_stmt?;
 choice_if_stmt:
     IF OPEN_BRACKET expression CLOSE_BRACKET NEWLINE+

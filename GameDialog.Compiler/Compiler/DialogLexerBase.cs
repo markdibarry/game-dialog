@@ -7,7 +7,6 @@ public abstract class DialogLexerBase : Lexer
     private readonly Stack<int> _indents = new();
     private readonly Queue<IToken> _pendingTokens = new();
     private IToken? _prevToken;
-    private const int TabSize = 8;
 
     public IndentType IndentMode { get; set; }
 
@@ -46,29 +45,27 @@ public abstract class DialogLexerBase : Lexer
         if (currentToken.Type == Eof)
             return HandleEOFToken(_prevToken, currentToken);
 
-        IToken? prevToken = _prevToken;
-        _prevToken = currentToken;
-
-        if (prevToken != null && prevToken.Type != DialogLexer.NEWLINE)
+        if (currentToken.Type != DialogLexer.NEWLINE)
+        {
+            _prevToken = currentToken;
             return currentToken;
+        }
 
         IToken nextToken = base.NextToken();
 
-        // Skip over any extra NEWLINE and WS NEWLINE combos
-        while (currentToken.Type == DialogLexer.NEWLINE || nextToken.Type == DialogLexer.NEWLINE)
+        // Skip ahead to the first newline that has something on it.
+        while (nextToken.Type == DialogLexer.NEWLINE)
         {
             currentToken = nextToken;
             nextToken = base.NextToken();
         }
 
-        if (currentToken.Type == Eof)
-            return HandleEOFToken(_prevToken, currentToken);
-
-        _prevToken = nextToken;
         int currentIndent = GetCurrentIndentation(currentToken);
-        HandleIndentation(currentIndent);
+        _prevToken = currentToken;
         _pendingTokens.Enqueue(currentToken);
+        HandleIndentation(currentIndent);
         _pendingTokens.Enqueue(nextToken);
+
         return _pendingTokens.Dequeue();
     }
 
@@ -103,36 +100,28 @@ public abstract class DialogLexerBase : Lexer
             InsertToken($"DEDENT: {indent}", DialogLexer.DEDENT);
         }
 
+        _prevToken = null;
         _pendingTokens.Enqueue(currentToken);
         return _pendingTokens.Dequeue();
     }
 
-    private int GetCurrentIndentation(IToken currentToken)
+    private int GetCurrentIndentation(IToken token)
     {
-        if (currentToken.Type != DialogLexer.WS)
-            return 0;
-
         int length = 0;
         bool containsSpaces = false;
         bool containsTabs = false;
 
-        foreach (char c in currentToken.Text)
+        foreach (char c in token.Text)
         {
             if (c == ' ')
             {
-                if (IndentMode == IndentType.Unset)
-                    IndentMode = IndentType.Spaces;
-
                 containsSpaces = true;
-                length += 1;
+                length++;
             }
             else if (c == '\t')
             {
-                if (IndentMode == IndentType.Unset)
-                    IndentMode = IndentType.Tabs;
-
                 containsTabs = true;
-                length += TabSize;
+                length++;
             }
         }
 
@@ -142,6 +131,9 @@ public abstract class DialogLexerBase : Lexer
             throw new ArgumentException("Indentation contains spaces, but previously used tabs.");
         else if (containsTabs && IndentMode == IndentType.Spaces)
             throw new ArgumentException("Indentation contains tabs, but previously used spaces.");
+
+        if (IndentMode == IndentType.Unset)
+            IndentMode = containsTabs ? IndentType.Tabs : IndentType.Spaces;
 
         return length;
     }
@@ -154,9 +146,9 @@ public abstract class DialogLexerBase : Lexer
 
     private void InsertToken(int startIndex, int stopIndex, string text, int type, int line, int column)
     {
-        var tokenFactorySourcePair = Tuple.Create((ITokenSource)this, (ICharStream)InputStream);
+        var tokenFactoryTuple = Tuple.Create((ITokenSource)this, (ICharStream)InputStream);
 
-        CommonToken token = new(tokenFactorySourcePair, type, DefaultTokenChannel, startIndex, stopIndex)
+        CommonToken token = new(tokenFactoryTuple, type, DefaultTokenChannel, startIndex, stopIndex)
         {
             Text = text,
             Line = line,
