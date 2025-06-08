@@ -44,7 +44,7 @@
             {
                 "language": "gamedialog",
                 "scopeName": "source.gamedialog",
-                "path": "./syntaxes/gamedialog.tmLanguage.json"
+                "path": "./gamedialog.tmLanguage.json"
             }
         ],
         "configuration": {
