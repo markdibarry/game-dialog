@@ -1,6 +1,10 @@
 {
     "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-    "name": "Game Dialog",
+    "name": "gamedialog",
+    "fileTypes": [
+        "dia"
+    ],
+    "scopeName": "source.gamedialog",
     "patterns": [
         {
             "include": "#comments"
@@ -278,6 +282,5 @@
                 }
             }
         }
-    },
-    "scopeName": "source.gamedialog"
+    }
 }

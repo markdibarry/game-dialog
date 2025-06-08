@@ -30,13 +30,8 @@
         "languages": [
             {
                 "id": "gamedialog",
-                "aliases": [
-                    "Game Dialog",
-                    "gamedialog"
-                ],
-                "extensions": [
-                    ".dia"
-                ],
+                "aliases": ["Game Dialog"],
+                "extensions": [".dia"],
                 "configuration": "./language-configuration.json"
             }
         ],
