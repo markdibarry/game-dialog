@@ -42,8 +42,8 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
     {
         _compiler.ClearMemberRegister();
         string rootPath = _server.ClientSettings.RootPath!;
-        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeBaseName, rootPath);
-        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath);
+        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeBaseName, rootPath, false);
+        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, true);
         _compiler.UpdateDoc(notification.TextDocument.Uri, notification.TextDocument.Text);
         Dictionary<DocumentUri, CompilationResult> results = _compiler.Compile();
         PublishDiagnostics(results);

@@ -93,18 +93,14 @@ public partial class ExpressionVisitor
         {
             if (funcDef.Name != name
                 || funcDef.ReturnType != returnType
-                || argTypes.Count > funcDef.ArgTypes.Count)
+                || argTypes.Count != funcDef.ArgTypes.Count)
             {
                 return false;
             }
 
             for (var i = 0; i < funcDef.ArgTypes.Count; i++)
             {
-                // if match but has more parameters, check if optional
-                if (i >= argTypes.Count)
-                    return funcDef.ArgTypes.Skip(argTypes.Count).All(y => y.IsOptional);
-
-                if (argTypes[i] != funcDef.ArgTypes[i].Type)
+                if (argTypes[i] != funcDef.ArgTypes[i])
                     return false;
             }
             return true;

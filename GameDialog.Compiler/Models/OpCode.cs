@@ -35,15 +35,14 @@ public static class OpCode
     public const ushort DivAssign = 21;
     public const ushort AddAssign = 22;
     public const ushort SubAssign = 23;
-    // [Op, float index (pause time or -1 == auto or -2 == close)]
+    // [Op, float index (pause time or -1 == immediate or -2 == disable auto)]
     public const ushort Auto = 24;
     // [Op, section index] (Should be compiler only)
     public const ushort Goto = 25;
-    public const ushort NewLine = 26;
     // [Op, float index (speed multiplier)]
-    public const ushort Speed = 27;
+    public const ushort Speed = 26;
     // [Op, float index (pause time)]
-    public const ushort Pause = 28;
+    public const ushort Pause = 27;
     // [Op, speaker index]
-    public const ushort GetName = 29;
+    public const ushort GetName = 28;
 }

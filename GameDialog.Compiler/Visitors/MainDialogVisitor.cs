@@ -47,11 +47,13 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
                 _diagnostics.Add(section.section_title().GetError($"Title \"{title}\" already used in this script."));
 
             titles.Add(title);
+            int titleStringIndex = _scriptData.Strings.GetOrAdd(title);
 
             if (string.Equals(title, BuiltIn.END, StringComparison.OrdinalIgnoreCase))
                 _diagnostics.Add(section.section_title().GetError("\"end\" is a reserved name."));
 
-            _scriptData.Instructions.Add([InstructionType.Section, 0]);
+            // Will set the "next" while traversing dialog
+            _scriptData.Instructions.Add([InstructionType.Section, 0, titleStringIndex]);
             _sections.Add(title);
         }
 

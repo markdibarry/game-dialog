@@ -57,9 +57,6 @@ public partial class MainDialogVisitor
         {
             _diagnostics.Add(context.GetError("Goto is only available on a separate line."));
             return;
-            // List<int> lineInstr = _scriptData.Instructions[lineIndex];
-            // lineInstr[3] = ints[3] == -1 ? _endIndex : ints[3];
-            // return;
         }
 
         _scriptData.Instructions.Add(ints);
@@ -111,12 +108,12 @@ public partial class MainDialogVisitor
 
         bool isClose = context.OPEN_BRACKET().GetText().EndsWith('/');
 
-        if (isClose && expName != BuiltIn.SPEED)
+        if (expName != BuiltIn.SPEED && isClose)
         {
             _diagnostics.Add(context.GetError($"Tag {expName} is not supported as a closing tag."));
             return null;
         }
-        else if (!isClose && expName == BuiltIn.SPEED)
+        else if (expName == BuiltIn.SPEED && !isClose)
         {
             _diagnostics.Add(context.GetError($"Tag {expName} can only be assigned to or be part of a closing tag."));
             return null;
@@ -133,25 +130,10 @@ public partial class MainDialogVisitor
 
                 ints.AddRange([OpCode.Goto, -1]);
                 return ints;
-            case BuiltIn.NEWLINE:
-                if (isClose)
-                {
-                    _diagnostics.Add(context.GetError($"Tag {expName} is not supported as a closing tag."));
-                    return null;
-                }
-
-                ints.Add(OpCode.NewLine);
-                return ints;
             case BuiltIn.AUTO:
                 ints.AddRange([OpCode.Auto, _scriptData.Floats.GetOrAdd(isClose ? -2 : -1)]);
                 return ints;
             case BuiltIn.SPEED:
-                if (!isClose)
-                {
-                    _diagnostics.Add(context.GetError($"Tag {expName} can only be assigned to or be part of a closing tag."));
-                    return null;
-                }
-
                 ints.AddRange([OpCode.Speed, _scriptData.Floats.GetOrAdd(1)]);
                 return ints;
         }

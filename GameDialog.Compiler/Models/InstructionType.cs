@@ -21,7 +21,8 @@ public static class InstructionType
     public const ushort Line = 3;
     /// <summary>
     /// InstructionSet pattern.
-    /// <para>Pattern: [Type, NextIndex, InstructionIndex]</para>
+    /// <para>Reference Pattern: [Type, NextIndex, InstructionIndex]</para>
+    /// <para>Expression Pattern: [Type, 0, (Expression)]</para>
     /// </summary>
     public const ushort Instruction = 4;
     /// <summary>

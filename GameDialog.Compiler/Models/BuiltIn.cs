@@ -7,7 +7,6 @@ public class BuiltIn
         AUTO,
         END,
         GOTO,
-        NEWLINE,
         PAUSE,
         SPEED
     ];
@@ -16,7 +15,6 @@ public class BuiltIn
     public const string AUTO = "auto";
     public const string END = "end";
     public const string GOTO = "goto";
-    public const string NEWLINE = "nl";
     public const string PAUSE = "pause";
     public const string SPEED = "speed";
 
