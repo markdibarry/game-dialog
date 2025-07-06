@@ -53,6 +53,7 @@ OPEN_PAREN : '(';
 CLOSE_PAREN : ')';
 EXP_WS: WS -> skip;
 BOOL: ('true'|'false');
+AWAIT: 'await';
 STRING: '"' (~('"'|'\\'|'\r'|'\n') | '\\'('"'|'\\'))* '"';
 FLOAT: INT ('.'INT)*;
 OP_ASSIGN: '=';

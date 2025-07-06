@@ -12,10 +12,27 @@ public class MemberRegister
     {
         VarDefs = [.. memberRegister.VarDefs];
         FuncDefs = [.. memberRegister.FuncDefs];
+        AsyncFuncDefs = [.. memberRegister.AsyncFuncDefs];
     }
 
     public List<VarDef> VarDefs { get; set; } = [];
     public List<FuncDef> FuncDefs { get; set; } = [];
+    public List<AsyncFuncDef> AsyncFuncDefs { get; set; } = [];
+
+    private readonly HashSet<string> s_ignoreNames =
+    [
+        "DialogBridge",
+        "Properties",
+        "Methods",
+        "AsyncMethods",
+        "Init",
+        "RegisterProperty",
+        "RegisterMethod",
+        "RegisterAsyncMethod",
+        "RegisterProperties",
+        "RegisterMethods",
+        "RegisterAsyncMethods",
+    ];
 
     public void SetMembersFromFile(string fileName, string rootPath, bool generateRegister)
     {
@@ -33,10 +50,11 @@ public class MemberRegister
             CompilationUnitSyntax? root = tree.GetCompilationUnitRoot();
             var members = root.DescendantNodes().OfType<MemberDeclarationSyntax>();
 
-            List<VarDef> varDefs = [];
-            List<FuncDef> funcDefs = [];
             string fileNamespace = string.Empty;
             string fileClassName = string.Empty;
+            List<VarDef> varDefs = [];
+            List<FuncDef> funcDefs = [];
+            List<AsyncFuncDef> asyncFuncDefs = [];
 
             foreach (var member in members)
             {
@@ -55,8 +73,12 @@ public class MemberRegister
                     if (varType == VarType.Undefined)
                         continue;
 
+                    if (s_ignoreNames.Contains(propDeclaration.Identifier.Text))
+                        continue;
+
                     VarDef varDef = new(propDeclaration.Identifier.Text, varType);
                     varDefs.Add(varDef);
+                    VarDefs.Add(varDef);
                 }
                 else if (member is MethodDeclarationSyntax methodDeclaration)
                 {
@@ -64,18 +86,36 @@ public class MemberRegister
                     if (methodDeclaration.Modifiers.Any(x => x.Text == "override"))
                         continue;
 
-                    FuncDef? funcDef = GetFuncDef(methodDeclaration);
+                    if (s_ignoreNames.Contains(methodDeclaration.Identifier.Text))
+                        continue;
 
-                    if (funcDef != null)
-                        funcDefs.Add(funcDef);
+                    string returnTypeString = methodDeclaration.ReturnType.ToString();
+
+                    if (returnTypeString == "Task" || returnTypeString == "ValueTask")
+                    {
+                        AsyncFuncDef? funcDef = GetAsyncFuncDef(methodDeclaration);
+
+                        if (funcDef != null)
+                        {
+                            asyncFuncDefs.Add(funcDef);
+                            AsyncFuncDefs.Add(funcDef);
+                        }
+                    }
+                    else
+                    {
+                        FuncDef? funcDef = GetFuncDef(methodDeclaration);
+
+                        if (funcDef != null)
+                        {
+                            funcDefs.Add(funcDef);
+                            FuncDefs.Add(funcDef);
+                        }
+                    }
                 }
             }
 
-            VarDefs.AddRange(varDefs);
-            FuncDefs.AddRange(funcDefs);
-
             if (generateRegister)
-                GenerateMemberFile(filePath, fileNamespace, fileClassName, varDefs, funcDefs);
+                GenerateMemberFile(filePath, fileNamespace, fileClassName, varDefs, funcDefs, asyncFuncDefs);
         }
     }
 
@@ -84,11 +124,12 @@ public class MemberRegister
         string fileNamespace,
         string fileClassName,
         List<VarDef> varDefs,
-        List<FuncDef> funcDefs)
+        List<FuncDef> funcDefs,
+        List<AsyncFuncDef> asyncFuncDefs)
     {
         string newFilePath = Path.ChangeExtension(filePath, "Generated.cs");
 
-        string content = "using GameCore.GUI;\n\n";
+        string content = "using GameCore.GUI.GameDialog;\n\n";
 
         if (fileNamespace.Length > 0)
             content += $"namespace {fileNamespace};\n\n";
@@ -96,7 +137,7 @@ public class MemberRegister
         string varDefContent = string.Join("\n\n        ", varDefs.Select(x =>
         {
             return $$"""
-            DialogBridgeRegister.RegisterProperty(
+            DialogBridgeBase.RegisterProperty(
                         name: nameof({{x.Name}}),
                         varType: VarType.{{x.Type}},
                         getter: () => new({{x.Name}}),
@@ -117,13 +158,42 @@ public class MemberRegister
             }
 
             string argTypesArg = string.Join(", ", x.ArgTypes.Select(argType => $"VarType.{argType}"));
+            string func = "";
+
+            if (x.ReturnType == VarType.Void)
+                func = $"(args) => {{ {x.Name}({literalArgs}); return new(); }});";
+            else
+                func = $"(args) => new({x.Name}({literalArgs})));";
 
             return $$"""
-            DialogBridgeRegister.RegisterMethod(
+            DialogBridgeBase.RegisterMethod(
                         name: nameof({{x.Name}}),
                         argTypes: [{{argTypesArg}}],
                         returnType: VarType.{{x.ReturnType}},
-                        func: (args) => new({{x.Name}}({{literalArgs}})));
+                        func: {{func}}
+            """;
+        }));
+
+        string asyncFuncDefContent = string.Join("\n\n        ", asyncFuncDefs.Select(x =>
+        {
+            string literalArgs = string.Empty;
+
+            for (int i = 0; i < x.ArgTypes.Count; i++)
+            {
+                if (i > 0)
+                    literalArgs += ", ";
+
+                literalArgs += $"args[{i}].{x.ArgTypes[i]}";
+            }
+
+            string argTypesArg = string.Join(", ", x.ArgTypes.Select(argType => $"VarType.{argType}"));
+            string func = $"async (args) => await {x.Name}({literalArgs})";
+
+            return $$"""
+            DialogBridgeBase.RegisterAsyncMethod(
+                        name: nameof({{x.Name}}),
+                        argTypes: [{{argTypesArg}}],
+                        func: {{func}});
             """;
         }));
 
@@ -133,12 +203,20 @@ public class MemberRegister
         {
             public override void RegisterProperties()
             {
+                base.RegisterProperties();
                 {{varDefContent}}
             }
 
             public override void RegisterMethods()
             {
+                base.RegisterMethods();
                 {{funcDefContent}}
+            }
+
+            public override void RegisterAsyncMethods()
+            {
+                base.RegisterAsyncMethods();
+                {{asyncFuncDefContent}}
             }
         }
         """;
@@ -188,6 +266,33 @@ public class MemberRegister
         FuncDef funcDef = new(funcName, returnType, args);
         return funcDef;
     }
+    
+    private static AsyncFuncDef? GetAsyncFuncDef(MethodDeclarationSyntax node)
+    {
+        string funcName = node.Identifier.Text;
+        List<VarType> args = [];
+        bool argsValid = true;
+
+        foreach (var parameter in node.ParameterList.Parameters)
+        {
+            if (parameter.Type == null)
+                return null;
+
+            VarType paramType = GetVarType(parameter.Type.ToString());
+
+            if (paramType == VarType.Undefined)
+                return null;
+
+            // parameter.Default != null tells if it's optional
+            args.Add(paramType);
+        }
+
+        if (!argsValid)
+            return null;
+
+        AsyncFuncDef funcDef = new(funcName, args);
+        return funcDef;
+    }
 }
 
 public class VarDef
@@ -219,5 +324,17 @@ public class FuncDef
 
     public string Name { get; set; } = string.Empty;
     public VarType ReturnType { get; set; }
+    public List<VarType> ArgTypes { get; set; } = [];
+}
+
+public class AsyncFuncDef
+{
+    public AsyncFuncDef(string name, List<VarType> argTypes)
+    {
+        Name = name;
+        ArgTypes = argTypes;
+    }
+
+    public string Name { get; set; } = string.Empty;
     public List<VarType> ArgTypes { get; set; } = [];
 }

@@ -119,7 +119,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
 
     private VarType PushExp(IToken op, VarType checkType, params ReadOnlySpan<ParserRuleContext> exps)
     {
-        return PushExp([(int)InstructionLookup[op.Type]], checkType, exps);
+        return PushExp([InstructionLookup[op.Type]], checkType, exps);
     }
 
     private VarType PushExp(ReadOnlySpan<int> values, VarType expectedType, params ReadOnlySpan<ParserRuleContext> exps)

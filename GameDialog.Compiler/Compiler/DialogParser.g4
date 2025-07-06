@@ -94,4 +94,4 @@ assignment:
     NAME
     op=(OP_ASSIGN | OP_MULT_ASSIGN | OP_DIVIDE_ASSIGN | OP_ADD_ASSIGN | OP_SUB_ASSIGN)
     right=expression;
-function : NAME '(' (expression (COMMA expression)*)? ')';
+function : (AWAIT)? NAME '(' (expression (COMMA expression)*)? ')';

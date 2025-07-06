@@ -52,20 +52,30 @@ public partial class ExpressionVisitor
 
     public override VarType VisitFunction(FunctionContext context)
     {
+        int isAwaiting = context.AWAIT()?.GetText().Length > 0 ? 1 : 0;
         string funcName = context.NAME().GetText();
-        var funcDefs = _memberRegister.FuncDefs.Where(x => x.Name == funcName);
+        int argsFound = context.expression().Length;
+        int nameIndex = _scriptData.Strings.GetOrAdd(funcName);
+        var funcDef = _memberRegister.FuncDefs.FirstOrDefault(x => x.Name == funcName);
+        var asyncFuncDef = _memberRegister.AsyncFuncDefs.FirstOrDefault(x => x.Name == funcName);
+        VarType returnType = VarType.Undefined;
 
-        if (!funcDefs.Any())
+        if (isAwaiting == 0 && funcDef is not null)
         {
-            _diagnostics.Add(context.GetError("Function not found: Functions must be defined in the Dialog Bridge before use."));
+            PushExp([OpCode.Func, nameIndex, argsFound], default);
+            returnType = funcDef.ReturnType;
+        }
+        else if (asyncFuncDef is not null)
+        {
+            PushExp([OpCode.AsyncFunc, nameIndex, isAwaiting, argsFound], default);
+            returnType = VarType.Void;
+        }
+        else
+        {
+            _diagnostics.Add(context.GetError($"Method \"{funcName}\" not found: Functions must be defined in the Dialog Bridge before use."));
             return VarType.Undefined;
         }
 
-        VarType returnType = funcDefs.First().ReturnType;
-        int argsFound = context.expression().Length;
-        int nameIndex = _scriptData.Strings.GetOrAdd(funcName);
-
-        PushExp([OpCode.Func, nameIndex, argsFound], default);
         List<VarType> argTypesFound = [];
 
         for (int i = 0; i < argsFound; i++)
@@ -74,36 +84,41 @@ public partial class ExpressionVisitor
             argTypesFound.Add(Visit(exp));
         }
 
-        FuncDef? funcDef = FindMatchingFuncDef(funcName, returnType, argTypesFound);
-
-        if (funcDef == null)
+        if ((funcDef is not null && !FuncDefMatches(funcDef, argTypesFound))
+            || asyncFuncDef is not null && !AsyncFuncDefMatches(asyncFuncDef, argTypesFound))
         {
-            _diagnostics.Add(context.GetError("Function not found: Functions must be defined in the Dialog Bridge before use."));
+            _diagnostics.Add(context.GetError($"Method \"{funcName}\" arguments do not match those defined."));
             return VarType.Undefined;
         }
 
         return returnType;
     }
 
-    private FuncDef? FindMatchingFuncDef(string name, VarType returnType, List<VarType> argTypes)
+    private static bool FuncDefMatches(FuncDef funcDef, List<VarType> argTypes)
     {
-        return _memberRegister.FuncDefs.FirstOrDefault(FuncDefMatches);
+        if (argTypes.Count != funcDef.ArgTypes.Count)
+            return false;
 
-        bool FuncDefMatches(FuncDef funcDef)
+        for (var i = 0; i < funcDef.ArgTypes.Count; i++)
         {
-            if (funcDef.Name != name
-                || funcDef.ReturnType != returnType
-                || argTypes.Count != funcDef.ArgTypes.Count)
-            {
+            if (argTypes[i] != funcDef.ArgTypes[i])
                 return false;
-            }
-
-            for (var i = 0; i < funcDef.ArgTypes.Count; i++)
-            {
-                if (argTypes[i] != funcDef.ArgTypes[i])
-                    return false;
-            }
-            return true;
         }
+
+        return true;
+    }
+
+    private static bool AsyncFuncDefMatches(AsyncFuncDef funcDef, List<VarType> argTypes)
+    {
+        if (argTypes.Count != funcDef.ArgTypes.Count)
+            return false;
+
+        for (var i = 0; i < funcDef.ArgTypes.Count; i++)
+        {
+            if (argTypes[i] != funcDef.ArgTypes[i])
+                return false;
+        }
+
+        return true;
     }
 }
