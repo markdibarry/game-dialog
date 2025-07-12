@@ -11,9 +11,9 @@ public class SpeakerIdVisitor : DialogParserBaseVisitor<int>
 
     private readonly ScriptData _dialogScript;
 
-    public override int VisitSpeaker_ids(Speaker_idsContext context)
+    public override int VisitSpeakerIds(SpeakerIdsContext context)
     {
-        foreach (var nameContext in context.speaker_id())
+        foreach (var nameContext in context.speakerId())
         {
             string nameText = nameContext.NAME().GetText();
 

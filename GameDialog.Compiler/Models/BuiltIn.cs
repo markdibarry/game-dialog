@@ -11,7 +11,6 @@ public class BuiltIn
         SPEED
     ];
 
-    public const string GETNAME = "GetName";
     public const string AUTO = "auto";
     public const string END = "end";
     public const string GOTO = "goto";

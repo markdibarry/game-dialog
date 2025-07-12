@@ -8,13 +8,13 @@ MULTILINE_COMMENT: '/*' .*? '*/' -> skip;
 NEWLINE: ('\r'?'\n'|'\r') WS?;
 
 TITLE: '--' NAME '--';
-TAG_ENTER: OPEN_BRACKET -> type(OPEN_BRACKET), pushMode(Expression);
-SPEAKER_NAME: (NAME | UNDERSCORE) -> type(NAME), pushMode(Speaker);
 
 CHOICE: '?' ' '+ -> pushMode(Line);
-IF: 'if' -> pushMode(Expression);
-ELSEIF: 'else if' -> pushMode(Expression);
+IF: 'if' -> pushMode(ExpressionMode);
+ELSEIF: 'else if' -> pushMode(ExpressionMode);
 ELSE: 'else';
+TAG_ENTER: OPEN_BRACKET -> type(OPEN_BRACKET), pushMode(ExpressionMode);
+SPEAKER_NAME: (NAME | UNDERSCORE) -> type(NAME), pushMode(Speaker);
 ANY: .;
 
 mode Speaker;
@@ -25,14 +25,14 @@ ML_ENTER: ':' SPACE? '^^' -> popMode, pushMode(MultiLine);
 SPEAKER_ANY: ANY -> type(ANY);
 
 mode Line;
-LINE_TAG_ENTER: OPEN_BRACKET (WS* '/')? -> type(OPEN_BRACKET), pushMode(Expression);
+LINE_TAG_ENTER: OPEN_BRACKET (WS* '/')? -> type(OPEN_BRACKET), pushMode(ExpressionMode);
 LINE_COMMENT: COMMENT;
 LINE_NEWLINE: NEWLINE -> type(NEWLINE), popMode;
 LINE_TEXT: (ESC | ~[\r\n/[] | ('/' ~[\r\n/[]) )+;
 LINE_ANY: ANY -> type(ANY);
 
 mode MultiLine;
-ML_TAG_ENTER: OPEN_BRACKET (WS* '/')? -> type(OPEN_BRACKET), pushMode(Expression);
+ML_TAG_ENTER: OPEN_BRACKET (WS* '/')? -> type(OPEN_BRACKET), pushMode(ExpressionMode);
 ML_COMMENT: COMMENT;
 ML_NEWLINE: NEWLINE -> type(NEWLINE);
 ML_CLOSE: '^^' -> popMode;
@@ -44,7 +44,7 @@ BBCODE_EXTRA_TEXT: ~']'+;
 BBCODE_TAG_EXIT: ']' -> type(CLOSE_BRACKET), popMode;
 BBCODE_ANY: ANY -> type(ANY);
 
-mode Expression;
+mode ExpressionMode;
 BBCODE_NAME: ('b'|'i'|'u'|'s'|'code'|'char'|'p'|'center'|'right'|'left'|'fill'|'indent'|'url'|'hint'
 	|'img'|'font'|'font_size'|'dropcap'|'opentype_features'|'lang'|'table'|'cell'|'ul'
 	|'ol'|'lb'|'rb'|'color'|'bgcolor'|'fgcolor'|'outline_size'|'outline_color'

@@ -33,7 +33,7 @@ public partial class ExpressionVisitor
 
         if (varDef == null)
         {
-            _diagnostics.Add(context.GetError($"Variable \"{varName}\" must be defined before use."));
+            _diagnostics.AddError(context, $"Variable \"{varName}\" must be defined before use.");
             return VarType.Undefined;
         }
 
@@ -43,7 +43,7 @@ public partial class ExpressionVisitor
         // Should never happen?
         if (varDef.Type == VarType.Undefined)
         {
-            _diagnostics.Add(context.GetError("Type Error: Cannot infer expression result type."));
+            _diagnostics.AddError(context, "Type Error: Cannot infer expression result type.");
         }
 
         PushExp([OpCode.Var, nameIndex], varDef.Type);
@@ -72,7 +72,7 @@ public partial class ExpressionVisitor
         }
         else
         {
-            _diagnostics.Add(context.GetError($"Method \"{funcName}\" not found: Functions must be defined in the Dialog Bridge before use."));
+            _diagnostics.AddError(context, $"Method \"{funcName}\" not found: Functions must be defined in the Dialog Bridge before use.");
             return VarType.Undefined;
         }
 
@@ -87,7 +87,7 @@ public partial class ExpressionVisitor
         if ((funcDef is not null && !FuncDefMatches(funcDef, argTypesFound))
             || asyncFuncDef is not null && !AsyncFuncDefMatches(asyncFuncDef, argTypesFound))
         {
-            _diagnostics.Add(context.GetError($"Method \"{funcName}\" arguments do not match those defined."));
+            _diagnostics.AddError(context, $"Method \"{funcName}\" arguments do not match those defined.");
             return VarType.Undefined;
         }
 

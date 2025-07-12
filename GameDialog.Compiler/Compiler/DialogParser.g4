@@ -3,50 +3,50 @@ parser grammar DialogParser;
 options { tokenVocab=DialogLexer; }
 
 script: section+ EOF;
-section: section_title section_body;
-section_title: TITLE NEWLINE+;
-section_body: stmt+;
+section: sectionTitle sectionBody;
+sectionTitle: TITLE NEWLINE+;
+sectionBody: stmt+;
 
 stmt
-    : cond_stmt
+    : condStmt
     | tag NEWLINE+
-    | line_stmt
+    | lineStmt
     | INDENT stmt+ DEDENT;
 
-line_stmt:
-    (speaker_ids | UNDERSCORE) line_text NEWLINE+
-        choice_stmt*
-    | (speaker_ids | UNDERSCORE) ml_text NEWLINE+
-        DEDENT choice_stmt*;
+lineStmt:
+    (speakerIds | UNDERSCORE) lineText NEWLINE+
+        choiceStmt*
+    | (speakerIds | UNDERSCORE) mlText NEWLINE+
+        DEDENT choiceStmt*;
 
-text_content: (LINE_TEXT | tag)*;
+textContent: (LINE_TEXT | tag)*;
 
-line_text
-    : LINE_ENTER text_content
-    | ML_ENTER text_content ML_CLOSE;
-ml_text:
+lineText
+    : LINE_ENTER textContent
+    | ML_ENTER textContent ML_CLOSE;
+mlText:
     ML_ENTER
-        text_content NEWLINE
-        INDENT text_content
-        (NEWLINE text_content)*
+        textContent NEWLINE
+        INDENT textContent
+        (NEWLINE textContent)*
     ML_CLOSE;
 
-hash_name: HASH NAME;
-hash_assignment: hash_name OP_ASSIGN expression;
-hash_collection: (hash_name | hash_assignment)+;
+hashName: HASH NAME;
+hashAssignment: hashName OP_ASSIGN expression;
+hashCollection: (hashName | hashAssignment)+;
 
-speaker_collection: NAME hash_collection;
-speaker_id: NAME;
-speaker_ids: speaker_id (NAME_SEPARATOR speaker_id)*;
+speakerCollection: NAME hashCollection;
+speakerId: NAME;
+speakerIds: speakerId (NAME_SEPARATOR speakerId)*;
 
-cond_stmt: if_stmt elseif_stmt* else_stmt?;
-if_stmt:
+condStmt: ifStmt elseifStmt* elseStmt?;
+ifStmt:
     IF OPEN_BRACKET expression CLOSE_BRACKET NEWLINE+
     INDENT stmt+ DEDENT;
-elseif_stmt:
+elseifStmt:
     ELSEIF OPEN_BRACKET expression CLOSE_BRACKET NEWLINE+
     INDENT stmt+ DEDENT;
-else_stmt:
+elseStmt:
     ELSE NEWLINE+
     INDENT stmt+ DEDENT;
 
@@ -55,27 +55,27 @@ tag:
     (
         assignment
         | expression
-        | attr_expression
-        | hash_collection
-        | speaker_collection
+        | attrExpression
+        | hashCollection
+        | speakerCollection
         | BBCODE_NAME BBCODE_EXTRA_TEXT?
     )
     CLOSE_BRACKET;
-attr_expression: NAME (expression | assignment)+;
+attrExpression: NAME (expression | assignment)+;
 
-choice_stmt:
-    choice_cond_stmt
-    | CHOICE text_content NEWLINE+ (INDENT stmt* DEDENT)?;
-choice_cond_stmt: choice_if_stmt choice_elseif_stmt* choice_else_stmt?;
-choice_if_stmt:
+choiceStmt:
+    choiceCondStmt
+    | CHOICE textContent NEWLINE+ (INDENT stmt* DEDENT)?;
+choiceCondStmt: choiceIfStmt choiceElseifStmt* choiceElseStmt?;
+choiceIfStmt:
     IF OPEN_BRACKET expression CLOSE_BRACKET NEWLINE+
-    INDENT choice_stmt+ DEDENT;
-choice_elseif_stmt:
+    INDENT choiceStmt+ DEDENT;
+choiceElseifStmt:
     ELSEIF OPEN_BRACKET expression CLOSE_BRACKET NEWLINE+
-    INDENT choice_stmt+ DEDENT;
-choice_else_stmt:
+    INDENT choiceStmt+ DEDENT;
+choiceElseStmt:
     ELSE NEWLINE+
-    INDENT choice_stmt+ DEDENT;
+    INDENT choiceStmt+ DEDENT;
 
 expression:
     OPEN_PAREN right=expression CLOSE_PAREN #ExpPara

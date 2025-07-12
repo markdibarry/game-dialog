@@ -6,7 +6,7 @@ namespace GameDialog.Compiler;
 
 public partial class MainDialogVisitor
 {
-    private void HandleChoices(Choice_stmtContext[] context)
+    private void HandleChoices(ChoiceStmtContext[] context)
     {
         List<int> choiceSet = [InstructionType.Choice];
         _scriptData.Instructions.Add(choiceSet);
@@ -14,16 +14,16 @@ public partial class MainDialogVisitor
         AddChoiceSet(context, choiceSet);
     }
 
-    private void AddChoiceSet(Choice_stmtContext[] context, List<int> choiceSet)
+    private void AddChoiceSet(ChoiceStmtContext[] context, List<int> choiceSet)
     {
         _nestLevel++;
 
-        foreach (Choice_stmtContext choiceStmt in context)
+        foreach (ChoiceStmtContext choiceStmt in context)
         {
             if (choiceStmt.CHOICE() != null)
                 AddChoice(choiceStmt, choiceSet);
             else
-                HandleChoiceCondition(choiceStmt.choice_cond_stmt(), choiceSet);
+                HandleChoiceCondition(choiceStmt.choiceCondStmt(), choiceSet);
 
             LowerUnresolvedStatements();
         }
@@ -32,10 +32,10 @@ public partial class MainDialogVisitor
         _nestLevel--;
     }
 
-    private void AddChoice(Choice_stmtContext choiceStmt, List<int> choiceSet)
+    private void AddChoice(ChoiceStmtContext choiceStmt, List<int> choiceSet)
     {
         StringBuilder sb = new();
-        HandleTextContent(sb, choiceStmt.text_content());
+        HandleTextContent(sb, choiceStmt.textContent());
         int stringIndex = _scriptData.Strings.GetOrAdd(sb.ToString());
         _scriptData.DialogStringIndices.Add(stringIndex);
         List<int> choice = [ChoiceOp.Choice, -1, stringIndex];
@@ -47,28 +47,28 @@ public partial class MainDialogVisitor
         choiceSet.AddRange(choice);
     }
 
-    private void HandleChoiceCondition(Choice_cond_stmtContext choiceCond, List<int> choiceSet)
+    private void HandleChoiceCondition(ChoiceCondStmtContext choiceCond, List<int> choiceSet)
     {
         // if
-        Choice_if_stmtContext ifStmt = choiceCond.choice_if_stmt();
+        ChoiceIfStmtContext ifStmt = choiceCond.choiceIfStmt();
         choiceSet.AddRange([ChoiceOp.If, _scriptData.Instructions.Count]);
         _scriptData.Instructions.Add(GetInstrStmt(ifStmt.expression(), VarType.Bool));
-        AddChoiceSet(ifStmt.choice_stmt(), choiceSet);
+        AddChoiceSet(ifStmt.choiceStmt(), choiceSet);
 
         // else if
-        foreach (Choice_elseif_stmtContext elseifStmt in choiceCond.choice_elseif_stmt())
+        foreach (ChoiceElseifStmtContext elseifStmt in choiceCond.choiceElseifStmt())
         {
             choiceSet.AddRange([ChoiceOp.ElseIf, _scriptData.Instructions.Count]);
             _scriptData.Instructions.Add(GetInstrStmt(ifStmt.expression(), VarType.Bool));
-            AddChoiceSet(elseifStmt.choice_stmt(), choiceSet);
+            AddChoiceSet(elseifStmt.choiceStmt(), choiceSet);
         }
 
         // else
-        if (choiceCond.choice_else_stmt() != null)
+        if (choiceCond.choiceElseStmt() != null)
         {
             choiceSet.AddRange([ChoiceOp.Else]);
-            Choice_else_stmtContext elseStmt = choiceCond.choice_else_stmt();
-            AddChoiceSet(elseStmt.choice_stmt(), choiceSet);
+            ChoiceElseStmtContext elseStmt = choiceCond.choiceElseStmt();
+            AddChoiceSet(elseStmt.choiceStmt(), choiceSet);
         }
 
         choiceSet.AddRange([ChoiceOp.EndIf]);

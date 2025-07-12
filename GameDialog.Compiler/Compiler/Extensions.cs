@@ -34,13 +34,19 @@ public static class Extensions
         return index;
     }
 
-    public static Diagnostic GetError(this ParserRuleContext context, string message)
+    public static List<int>? AddError(
+        this List<Diagnostic> diagnostics,
+        ParserRuleContext context,
+        string message)
     {
-        return new Diagnostic()
+        Diagnostic diagnostic = new()
         {
             Range = context.GetRange(),
             Message = message,
             Severity = DiagnosticSeverity.Error,
         };
+
+        diagnostics.Add(diagnostic);
+        return null;
     }
 }

@@ -47,7 +47,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
         _currentInst = [];
 
         if (expectedType != default && resultType != expectedType)
-            context.GetError($"Type Mismatch: Expected {expectedType}, but returned {resultType}.");
+            _diagnostics.AddError(context, $"Type Mismatch: Expected {expectedType}, but returned {resultType}.");
 
         return result;
     }
@@ -66,7 +66,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
 
         if (context.op.Type != DialogLexer.OP_ASSIGN && varDef.Type != VarType.Float)
         {
-            _diagnostics.Add(context.GetError($"Operator requires variable to be of type {VarType.Float} and already have a value."));
+            _diagnostics.AddError(context, $"Operator requires variable to be of type {VarType.Float} and already have a value.");
             return VarType.Undefined;
         }
 
@@ -126,7 +126,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
     {
         _currentInst.AddRange(values);
 
-        foreach (var exp in exps)
+        foreach (ParserRuleContext exp in exps)
         {
             // Visit inner expression
             VarType resultType = Visit(exp);
@@ -135,9 +135,7 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
                 expectedType = resultType;
 
             if (resultType != expectedType)
-            {
-                _diagnostics.Add(exp.GetError($"Type Mismatch: Expected {expectedType}, but returned {resultType}."));
-            }
+                _diagnostics.AddError(exp, $"Type Mismatch: Expected {expectedType}, but returned {resultType}.");
         }
 
         return expectedType;

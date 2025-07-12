@@ -11,7 +11,7 @@ public partial class MainDialogVisitor
         // Line tags are handled separately.
         if (context.BBCODE_NAME() != null)
         {
-            _diagnostics.Add(context.GetError("BBCode cannot be used in stand-alone expressions."));
+            _diagnostics.AddError(context, "BBCode cannot be used in stand-alone expressions.");
             return;
         }
 
@@ -55,7 +55,7 @@ public partial class MainDialogVisitor
 
         if (ints[0] == InstructionType.Instruction && ints[2] == OpCode.Goto)
         {
-            _diagnostics.Add(context.GetError("Goto is only available on a separate line."));
+            _diagnostics.AddError(context, "Goto is only available on a separate line.");
             return;
         }
 
@@ -69,12 +69,12 @@ public partial class MainDialogVisitor
             return GetExpressionStmt(context);
         else if (context.assignment() != null)
             return GetAssignTagStmt(context.assignment());
-        else if (context.attr_expression() != null)
-            return GetAttrTagStmt(context.attr_expression());
-        else if (context.hash_collection() != null)
-            return GetHashCollectionStmt(context.hash_collection());
-        else if (context.speaker_collection() != null)
-            return GetSpeakerCollectionStmt(context.speaker_collection());
+        else if (context.attrExpression() != null)
+            return GetAttrExpStmt(context.attrExpression());
+        else if (context.hashCollection() != null)
+            return GetHashCollectionStmt(context.hashCollection());
+        else if (context.speakerCollection() != null)
+            return GetSpeakerCollectionStmt(context.speakerCollection());
         return null;
     }
 
@@ -109,24 +109,15 @@ public partial class MainDialogVisitor
         bool isClose = context.OPEN_BRACKET().GetText().EndsWith('/');
 
         if (expName != BuiltIn.SPEED && isClose)
-        {
-            _diagnostics.Add(context.GetError($"Tag {expName} is not supported as a closing tag."));
-            return null;
-        }
+            return _diagnostics.AddError(context, $"Tag {expName} is not supported as a closing tag.");
         else if (expName == BuiltIn.SPEED && !isClose)
-        {
-            _diagnostics.Add(context.GetError($"Tag {expName} can only be assigned to or be part of a closing tag."));
-            return null;
-        }
+            return _diagnostics.AddError(context, $"Tag {expName} can only be assigned to or be part of a closing tag.");
 
         switch (expName)
         {
             case BuiltIn.END:
                 if (isClose)
-                {
-                    _diagnostics.Add(context.GetError($"Tag {expName} is not supported as a closing tag."));
-                    return null;
-                }
+                    return _diagnostics.AddError(context, $"Tag {expName} is not supported as a closing tag.");
 
                 ints.AddRange([OpCode.Goto, -1]);
                 return ints;
@@ -139,8 +130,7 @@ public partial class MainDialogVisitor
         }
 
         // Nothing matched
-        _diagnostics.Add(context.GetError($"Built-in tag \"{expName}\" cannot be used as an expression."));
-        return null;
+        return _diagnostics.AddError(context, $"Built-in tag \"{expName}\" cannot be used as an expression.");
     }
 
     private List<int>? GetAssignTagStmt(AssignmentContext context)
@@ -157,21 +147,18 @@ public partial class MainDialogVisitor
         if (expName is BuiltIn.SPEED or BuiltIn.PAUSE or BuiltIn.AUTO)
         {
             if (context.right is not ConstFloatContext floatContext)
-            {
-                _diagnostics.Add(context.GetError("Type Mismatch: Expected Float."));
-                return null;
-            }
+                return _diagnostics.AddError(context, "Type Mismatch: Expected Float.");
 
             float value = float.Parse(floatContext.GetText());
 
             if (value <= 0)
             {
                 if (expName == BuiltIn.SPEED)
-                    _diagnostics.Add(context.GetError("Invalid value: Speed multiplier cannot be zero or lesser."));
+                    _diagnostics.AddError(context, "Invalid value: Speed multiplier cannot be zero or lesser.");
                 else if (expName == BuiltIn.PAUSE)
-                    _diagnostics.Add(context.GetError("Invalid value: Pause timeout cannot be zero or lesser."));
+                    _diagnostics.AddError(context, "Invalid value: Pause timeout cannot be zero or lesser.");
                 else if (expName == BuiltIn.AUTO)
-                    _diagnostics.Add(context.GetError("Invalid value: Auto timeout cannot be zero or lesser."));
+                    _diagnostics.AddError(context, "Invalid value: Auto timeout cannot be zero or lesser.");
                 return null;
             }
 
@@ -187,65 +174,54 @@ public partial class MainDialogVisitor
             return ints;
         }
 
-        _diagnostics.Add(context.GetError($"Built-in tag \"{expName}\" is not assignable."));
-        return null;
+        return _diagnostics.AddError(context, $"Built-in tag \"{expName}\" is not assignable.");
     }
 
-    private List<int>? GetAttrTagStmt(Attr_expressionContext context)
+    private List<int>? GetAttrExpStmt(AttrExpressionContext context)
     {
         string attName = context.NAME().GetText();
 
-        if (attName == BuiltIn.GOTO)
+        if (attName != BuiltIn.GOTO)
+            return _diagnostics.AddError(context, $"Built-in tag \"{attName}\" does not have attributes.");
+        
+        if (context.assignment().Length > 0 || context.expression().Length != 1)
+            return _diagnostics.AddError(context, "Built-in tag has incorrect number of attributes.");
+
+        List<int> ints = [InstructionType.Instruction, 0];
+        string sectionName = context.expression()[0].GetText();
+
+        if (string.Equals(sectionName, BuiltIn.END, StringComparison.OrdinalIgnoreCase))
         {
-            if (context.assignment().Length > 0 || context.expression().Length != 1)
-            {
-                _diagnostics.Add(context.GetError("Built-in tag has incorrect number of attributes."));
-                return null;
-            }
-
-            List<int> ints = [InstructionType.Instruction, 0];
-
-            string sectionName = context.expression()[0].GetText();
-
-            if (string.Equals(sectionName, BuiltIn.END, StringComparison.OrdinalIgnoreCase))
-            {
-                ints.AddRange([OpCode.Goto, -1]);
-                return ints;
-            }
-
-            int sectionIndex = _sections.IndexOf(sectionName);
-
-            if (sectionIndex == -1)
-            {
-                _diagnostics.Add(context.GetError("Section not found."));
-                return null;
-            }
-
-            ints.AddRange([OpCode.Goto, sectionIndex]);
+            ints.AddRange([OpCode.Goto, -1]);
             return ints;
         }
 
-        _diagnostics.Add(context.GetError($"Built-in tag \"{attName}\" does not have attributes."));
-        return null;
+        int sectionIndex = _sections.IndexOf(sectionName);
+
+        if (sectionIndex == -1)
+            return _diagnostics.AddError(context, "Section not found.");
+
+        ints.AddRange([OpCode.Goto, sectionIndex]);
+        return ints;
     }
 
-    private List<int>? GetHashCollectionStmt(Hash_collectionContext context)
+    private List<int>? GetHashCollectionStmt(HashCollectionContext context)
     {
         List<int> ints = [InstructionType.Hash, 0];
         return GetHashCollectionInts(context, ints);
     }
 
-    private List<int>? GetHashCollectionInts(Hash_collectionContext context, List<int> ints)
+    private List<int>? GetHashCollectionInts(HashCollectionContext context, List<int> ints)
     {
-        foreach (Hash_nameContext hash in context.hash_name())
+        foreach (HashNameContext hash in context.hashName())
         {
             int index = _scriptData.Strings.GetOrAdd(hash.NAME().GetText());
             ints.AddRange([1, index]);
         }
 
-        foreach (Hash_assignmentContext hashAssignment in context.hash_assignment())
+        foreach (HashAssignmentContext hashAssignment in context.hashAssignment())
         {
-            string name = hashAssignment.hash_name().NAME().GetText();
+            string name = hashAssignment.hashName().NAME().GetText();
             int index = _scriptData.Strings.GetOrAdd(name);
             List<int> expInts = _expressionVisitor.GetInstruction(hashAssignment.expression());
             ints.AddRange([2, index, ..expInts]);
@@ -254,17 +230,14 @@ public partial class MainDialogVisitor
         return ints;
     }
 
-    private List<int>? GetSpeakerCollectionStmt(Speaker_collectionContext context)
+    private List<int>? GetSpeakerCollectionStmt(SpeakerCollectionContext context)
     {
         int nameIndex = _scriptData.SpeakerIds.IndexOf(context.NAME().GetText());
 
         if (nameIndex == -1)
-        {
-            _diagnostics.Add(context.GetError("Can only edit speakers that appear in this dialog script."));
-            return null;
-        }
+            return _diagnostics.AddError(context, "Can only edit speakers that appear in this dialog script.");
 
         List<int> ints = [InstructionType.Speaker, 0, nameIndex];
-        return GetHashCollectionInts(context.hash_collection(), ints);
+        return GetHashCollectionInts(context.hashCollection(), ints);
     }
 }

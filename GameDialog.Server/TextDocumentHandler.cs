@@ -17,28 +17,26 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
 {
     public TextDocumentHandler(ILanguageServerFacade languageServer, ILanguageServerConfiguration configuration)
     {
+        _compiler = new();
         _server = languageServer;
         _configuration = configuration;
     }
 
-    private readonly ILanguageServerFacade _server;
-    private readonly ILanguageServerConfiguration _configuration;
-    private readonly DialogCompiler _compiler = new();
-    private readonly TextDocumentSelector _documentSelector = new(new TextDocumentFilter() { Pattern = "**/*.dia" });
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true
     };
-    public TextDocumentSyncKind Change { get; } = TextDocumentSyncKind.Full;
+
+    private readonly ILanguageServerFacade _server;
+    private readonly ILanguageServerConfiguration _configuration;
+    private readonly DialogCompiler _compiler = new();
 
     public override TextDocumentAttributes GetTextDocumentAttributes(DocumentUri uri)
     {
         return new(uri, Constants.LanguageId);
     }
 
-    public override Task<Unit> Handle(
-        DidOpenTextDocumentParams notification,
-        CancellationToken cancellationToken)
+    public override Task<Unit> Handle(DidOpenTextDocumentParams notification, CancellationToken ct)
     {
         _compiler.ClearMemberRegister();
         string rootPath = _server.ClientSettings.RootPath!;
@@ -50,9 +48,7 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
         return Unit.Task;
     }
 
-    public override Task<Unit> Handle(
-        DidChangeTextDocumentParams notification,
-        CancellationToken cancellationToken)
+    public override Task<Unit> Handle(DidChangeTextDocumentParams notification, CancellationToken ct)
     {
         if (!notification.ContentChanges.Any())
             return Unit.Task;
@@ -63,16 +59,13 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
         return Unit.Task;
     }
 
-    public override Task<Unit> Handle(
-        DidCloseTextDocumentParams notification,
-        CancellationToken cancellationToken)
+    public override Task<Unit> Handle(DidCloseTextDocumentParams notification, CancellationToken ct)
     {
+        _compiler.RemoveDoc(notification.TextDocument.Uri);
         return Unit.Task;
     }
 
-    public override Task<Unit> Handle(
-        DidSaveTextDocumentParams notification,
-        CancellationToken cancellationToken)
+    public override Task<Unit> Handle(DidSaveTextDocumentParams notification, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(notification.Text))
             return Unit.Task;
@@ -81,42 +74,29 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
         string rootPath = _server.ClientSettings.RootPath!;
         _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeBaseName, rootPath, false);
         _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, true);
+        DocumentUri uri = notification.TextDocument.Uri;
+        _compiler.UpdateDoc(uri, notification.Text);
 
-        _compiler.UpdateDoc(notification.TextDocument.Uri, notification.Text);
-        Dictionary<DocumentUri, CompilationResult> results = _compiler.Compile();
-
-        foreach (var kvp in results)
+        if (!_compiler.Documents.TryGetValue(uri, out DialogDocument? doc))
         {
-            // Do not generate files with errors
-            if (kvp.Value.Diagnostics.Any(x => x.Severity == DiagnosticSeverity.Error))
-            {
-                _server.Window.ShowError($"No JSON document was generated. File {kvp.Key} contains errors.");
-                continue;
-            }
-
-            string uriPath = kvp.Key.GetFileSystemPath();
-            string fileName = Path.GetFileNameWithoutExtension(uriPath);
-            string pathDirectory = Path.GetDirectoryName(uriPath) ?? string.Empty;
-
-            if (bool.TryParse(_configuration[Constants.ConfigCSVTranslationEnabled], out bool csvEnabled) && csvEnabled)
-            {
-                string csvDirectory = _configuration[Constants.ConfigCSVTranslationLocation];
-                _ = bool.TryParse(_configuration[Constants.ConfigCSVTranslationSeparateFiles], out bool separateFiles);
-
-                if (string.IsNullOrEmpty(csvDirectory))
-                    csvDirectory = pathDirectory;
-
-                if (!Directory.Exists(csvDirectory))
-                {
-                    _server.Window.ShowError($"CSV Translation location is invalid. Please check your settings.");
-                    continue;
-                }
-
-                CreateTranslationCSV(fileName, csvDirectory, kvp.Value.ScriptData, separateFiles);
-            }
-
-            CreateJsonFile(fileName, pathDirectory, kvp.Value.ScriptData);
+            _server.Window.ShowError($"No JSON document was generated. File {uri} not found.");
+            return Unit.Task;
         }
+
+        CompilationResult result = _compiler.Compile(doc);
+
+        // Do not generate files with errors
+        if (result.Diagnostics.Any(x => x.Severity == DiagnosticSeverity.Error))
+        {
+            _server.Window.ShowError($"No JSON document was generated. File {uri} contains errors.");
+            return Unit.Task;
+        }
+
+        string uriPath = uri.GetFileSystemPath();
+        string fileName = Path.GetFileNameWithoutExtension(uriPath);
+        string pathDirectory = Path.GetDirectoryName(uriPath) ?? string.Empty;
+        CreateTranslationCSV(fileName, pathDirectory, result.ScriptData);
+        CreateJsonFile(fileName, pathDirectory, result.ScriptData);
 
         return Unit.Task;
     }
@@ -127,8 +107,8 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
     {
         return new TextDocumentSyncRegistrationOptions()
         {
-            DocumentSelector = _documentSelector,
-            Change = Change,
+            DocumentSelector = new(new TextDocumentFilter() { Pattern = "**/*.dia" }),
+            Change = TextDocumentSyncKind.Full,
             Save = new SaveOptions() { IncludeText = true }
         };
     }
@@ -140,15 +120,29 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
         File.WriteAllText(jsonFilePath, jsonString);
     }
 
-    private static void CreateTranslationCSV(
-        string fileName,
-        string pathDirectory,
-        ScriptData scriptData,
-        bool separateFiles)
+    private void CreateTranslationCSV(string fileName, string pathDirectory, ScriptData scriptData)
     {
+        string csvEnabledString = _configuration[Constants.ConfigCSVTranslationEnabled];
+
+        if (!bool.TryParse(csvEnabledString, out bool csvEnabled) || !csvEnabled)
+            return;
+
+        string csvDirectory = _configuration[Constants.ConfigCSVTranslationLocation];
+
+        if (string.IsNullOrEmpty(csvDirectory))
+            csvDirectory = pathDirectory;
+
+        if (!Directory.Exists(csvDirectory))
+        {
+            _server.Window.ShowError($"CSV Translation location is invalid. Please check your settings.");
+            return;
+        }
+
+        string separateFilesString = _configuration[Constants.ConfigCSVTranslationSeparateFiles];
+        _ = bool.TryParse(separateFilesString, out bool separateFiles);
         string fileSuffix = separateFiles ? $"_{fileName}" : string.Empty;
         string csvPath = $"{pathDirectory}{Path.DirectorySeparatorChar}DialogTranslation{fileSuffix}.csv";
-        string keyPrefix = $"Dialog_{fileName}_";
+        string keyPrefix = $"{fileName}_";
         // TODO: Add default language
         string header = "keys,en";
         List<string> records = [];

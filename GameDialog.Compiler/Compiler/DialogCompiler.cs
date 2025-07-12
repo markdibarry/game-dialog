@@ -49,6 +49,14 @@ public class DialogCompiler
 
     public void UpdateDoc(DocumentUri uri, string text)
     {
+        foreach (var existing in Documents)
+        {
+            string path = existing.Value.Uri.GetFileSystemPath();
+
+            if (!File.Exists(path))
+                RemoveDoc(existing.Value.Uri);
+        }
+
         if (!Documents.TryGetValue(uri, out DialogDocument? doc))
         {
             doc = new(uri, text);
@@ -56,5 +64,10 @@ public class DialogCompiler
         }
 
         doc.UpdateText(text);
+    }
+
+    public void RemoveDoc(DocumentUri uri)
+    {
+        Documents.Remove(uri, out var value);
     }
 }

@@ -86,7 +86,7 @@
         },
         "controls": {
             "name": "keyword.control",
-            "match": "(?i:if|else if|else)"
+            "match": "^(?:[ \\t]*)\\b(?:else\\s+if|else|if)\\b"
         },
         "functions": {
             "match": "(\\w+)(\\()(.*)(\\))",

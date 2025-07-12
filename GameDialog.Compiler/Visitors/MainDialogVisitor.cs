@@ -40,17 +40,17 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
 
         foreach (SectionContext section in context.section())
         {
-            string title = section.section_title().TITLE().GetText();
+            string title = section.sectionTitle().TITLE().GetText();
             title = title[2..^2];
 
             if (titles.Contains(title))
-                _diagnostics.Add(section.section_title().GetError($"Title \"{title}\" already used in this script."));
+                _diagnostics.AddError(section.sectionTitle(), $"Title \"{title}\" already used in this script.");
 
             titles.Add(title);
             int titleStringIndex = _scriptData.Strings.GetOrAdd(title);
 
             if (string.Equals(title, BuiltIn.END, StringComparison.OrdinalIgnoreCase))
-                _diagnostics.Add(section.section_title().GetError("\"end\" is a reserved name."));
+                _diagnostics.AddError(section.sectionTitle(), "\"end\" is a reserved name.");
 
             // Will set the "next" while traversing dialog
             _scriptData.Instructions.Add([InstructionType.Section, 0, titleStringIndex]);
@@ -67,7 +67,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
             _scriptData.Instructions[i][1] = _scriptData.Instructions.Count;
 
             // Parse each statement
-            foreach (var stmt in context.section()[i].section_body().stmt())
+            foreach (var stmt in context.section()[i].sectionBody().stmt())
                 Visit(stmt);
 
             // Resolve all outstanding statements to the end
@@ -78,7 +78,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         return 0;
     }
 
-    public override int VisitCond_stmt(Cond_stmtContext context)
+    public override int VisitCondStmt(CondStmtContext context)
     {
         List<int> conditions = [InstructionType.Conditional, 0];
         int condIndex = _scriptData.Instructions.GetOrAdd(conditions);
@@ -88,15 +88,15 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         // if
         _unresolvedStmts.Add((_nestLevel, conditions));
 
-        foreach (StmtContext stmt in context.if_stmt().stmt())
+        foreach (StmtContext stmt in context.ifStmt().stmt())
             Visit(stmt);
 
-        conditions.AddRange(_expressionVisitor.GetInstruction(context.if_stmt().expression()));
+        conditions.AddRange(_expressionVisitor.GetInstruction(context.ifStmt().expression()));
         conditions.AddRange(conditions[1]);
         LowerUnresolvedStatements();
 
         // else if
-        foreach (var elseifstmt in context.elseif_stmt())
+        foreach (var elseifstmt in context.elseifStmt())
         {
             _unresolvedStmts.Add((_nestLevel, conditions));
 
@@ -111,9 +111,9 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         _unresolvedStmts.Add((_nestLevel, conditions));
 
         // else
-        if (context.else_stmt() != null)
+        if (context.elseStmt() != null)
         {
-            foreach (StmtContext stmt in context.else_stmt().stmt())
+            foreach (StmtContext stmt in context.elseStmt().stmt())
                 Visit(stmt);
 
             LowerUnresolvedStatements();
@@ -123,7 +123,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         return 0;
     }
 
-    public override int VisitLine_stmt(Line_stmtContext context)
+    public override int VisitLineStmt(LineStmtContext context)
     {
         StringBuilder sb = new();
         List<int> line = [InstructionType.Line, 0, 0];
@@ -133,13 +133,13 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         // Add speakers
         if (context.UNDERSCORE() == null)
         {
-            if (context.speaker_ids() == null)
+            if (context.speakerIds() == null)
             {
-                _diagnostics.Add(context.GetError("No speaker provided."));
+                _diagnostics.AddError(context, "No speaker provided.");
                 return 0;
             }
 
-            Speaker_idContext[] speakerIds = context.speaker_ids().speaker_id();
+            SpeakerIdContext[] speakerIds = context.speakerIds().speakerId();
             line[^1] = speakerIds.Length;
             List<string> speakers = speakerIds.Select(x => x.NAME().GetText()).ToList();
 
@@ -149,7 +149,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
 
                 if (distinctSpeakers.Count != speakerIds.Length)
                 {
-                    _diagnostics.Add(context.GetError("Duplicate speakers."));
+                    _diagnostics.AddError(context, "Duplicate speakers.");
                     return 0;
                 }
             }
@@ -162,10 +162,10 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
             }
         }
 
-        if (context.line_text()?.text_content() != null)
-            HandleTextContent(sb, context.line_text().text_content());
+        if (context.lineText()?.textContent() != null)
+            HandleTextContent(sb, context.lineText().textContent());
         else
-            HandleTextContent(sb, context.ml_text().text_content());
+            HandleTextContent(sb, context.mlText().textContent());
 
         int textIndex = _scriptData.Strings.GetOrAdd(sb.ToString());
         line.Add(textIndex);
@@ -174,8 +174,8 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         ResolveStatements(lineIndex);
         _unresolvedStmts.Add((_nestLevel, line));
 
-        if (context.choice_stmt().Length > 0)
-            HandleChoices(context.choice_stmt());
+        if (context.choiceStmt().Length > 0)
+            HandleChoices(context.choiceStmt());
 
         return 0;
     }
@@ -186,13 +186,13 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         return 0;
     }
 
-    private void HandleTextContent(StringBuilder sb, Text_contentContext[] content)
+    private void HandleTextContent(StringBuilder sb, TextContentContext[] content)
     {
         foreach (var part in content)
             HandleTextContent(sb, part);
     }
 
-    private void HandleTextContent(StringBuilder sb, Text_contentContext content)
+    private void HandleTextContent(StringBuilder sb, TextContentContext content)
     {
         // Start building a string of text and instruction identifiers
         for (int i = 0; i < content.children.Count; i++)
