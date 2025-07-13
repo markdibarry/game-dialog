@@ -1,4 +1,4 @@
-namespace GameDialog.Compiler;
+﻿namespace GameDialog.Common;
 
 public static class OpCode
 {
@@ -35,7 +35,7 @@ public static class OpCode
     public const ushort DivAssign = 21;
     public const ushort AddAssign = 22;
     public const ushort SubAssign = 23;
-    // [Op, float index (pause time or -1 == immediate or -2 == disable auto)]
+    // [Op, float index (pause time or -1 == auto or -2 == close)]
     public const ushort Auto = 24;
     // [Op, section index] (Should be compiler only)
     public const ushort Goto = 25;

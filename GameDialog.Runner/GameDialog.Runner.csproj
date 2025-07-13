@@ -1,0 +1,14 @@
+﻿<Project Sdk="Godot.NET.Sdk/4.5.0-beta">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>Preview</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../GameDialog.Common/GameDialog.Common.csproj" />
+  </ItemGroup>
+
+</Project>

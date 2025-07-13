@@ -1,4 +1,6 @@
-﻿using static GameDialog.Compiler.DialogParser;
+﻿using GameDialog.Common;
+
+using static GameDialog.Compiler.DialogParser;
 
 namespace GameDialog.Compiler;
 

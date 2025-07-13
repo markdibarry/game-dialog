@@ -35,4 +35,8 @@
     <PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.9" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../GameDialog.Common/GameDialog.Common.csproj" />
+  </ItemGroup>
+
 </Project>

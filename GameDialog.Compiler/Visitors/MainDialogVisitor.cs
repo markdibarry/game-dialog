@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Antlr4.Runtime.Tree;
+using GameDialog.Common;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
 using static GameDialog.Compiler.DialogParser;

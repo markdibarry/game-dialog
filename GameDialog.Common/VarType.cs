@@ -1,4 +1,4 @@
-﻿namespace GameDialog.Compiler;
+﻿namespace GameDialog.Common;
 
 public enum VarType
 {

@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using GameDialog.Common;
 
 using static GameDialog.Compiler.DialogParser;
 
