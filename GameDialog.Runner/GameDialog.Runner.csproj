@@ -1,4 +1,4 @@
-﻿<Project Sdk="Godot.NET.Sdk/4.5.0-beta">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="GodotSharp" Version="4.5.0-beta" />
     <ProjectReference Include="../GameDialog.Common/GameDialog.Common.csproj" />
   </ItemGroup>
-
 </Project>

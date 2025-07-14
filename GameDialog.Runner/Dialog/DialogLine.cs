@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using GameDialog.Common;
 using GameDialog.Pooling;
 
 namespace GameDialog.Runner;

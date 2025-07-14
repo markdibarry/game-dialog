@@ -1,4 +1,5 @@
-﻿using GameDialog.Common;
+﻿using System.Collections.Generic;
+using GameDialog.Common;
 
 namespace GameDialog.Runner;
 

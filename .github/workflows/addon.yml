@@ -1,0 +1,56 @@
+name: Create addon
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout Repo
+          uses: actions/checkout@v4
+
+        - name: Grab Files
+          run: |
+            rm -rf GameDialog
+            mkdir -p GameDialog/{Common,Dialog,ObjectPool}
+
+            cp GameDialog.Common/Choice.cs GameDialog/Common/
+            cp GameDialog.Common/ChoiceOp.cs GameDialog/Common/
+            cp GameDialog.Common/Defs.cs GameDialog/Common/
+            cp GameDialog.Common/InstructionType.cs GameDialog/Common/
+            cp GameDialog.Common/OpCode.cs GameDialog/Common/
+            cp GameDialog.Common/StateSpan.cs GameDialog/Common/
+            cp GameDialog.Common/TextVariant.cs GameDialog/Common/
+            cp GameDialog.Common/VarType.cs GameDialog/Common/
+
+            cp GameDialog.Runner/Dialog/DialogBase.cs GameDialog/Dialog/
+            cp GameDialog.Runner/Dialog/DialogBase.Interpreter.cs GameDialog/Dialog/
+            cp GameDialog.Runner/Dialog/DialogBase.Reader.cs GameDialog/Dialog/
+            cp GameDialog.Runner/Dialog/DialogBase.ScriptData.cs GameDialog/Dialog/
+            cp GameDialog.Runner/Dialog/DialogBridgeBase.cs GameDialog/Dialog/
+            cp GameDialog.Runner/Dialog/DialogLine.cs GameDialog/Dialog/
+            cp GameDialog.Runner/Dialog/ITextEventHandler.cs GameDialog/Dialog/
+            cp GameDialog.Runner/Dialog/TextEvent.cs GameDialog/Dialog/
+            cp GameDialog.Runner/Dialog/TextParser.cs GameDialog/Dialog/
+            cp GameDialog.Runner/Dialog/TextStorage.cs GameDialog/Dialog/
+            cp GameDialog.Runner/Dialog/TextWriter.cs GameDialog/Dialog/
+
+            cp GameDialog.Runner/ObjectPool/IPoolable.cs GameDialog/ObjectPool/
+            cp GameDialog.Runner/ObjectPool/LimitedQueue.cs GameDialog/ObjectPool/
+            cp GameDialog.Runner/ObjectPool/ListPool.cs GameDialog/ObjectPool/
+            cp GameDialog.Runner/ObjectPool/Pool.cs GameDialog/ObjectPool/
+
+        - name: Zip Files
+          run: |
+            cd GameDialog
+            zip -r ../GameDialog.zip .
+            cd ..
+
+        - name: Upload Files
+          uses: actions/upload-artifact@v4
+          with:
+            name: GameDialog
+            path: GameDialog.zip

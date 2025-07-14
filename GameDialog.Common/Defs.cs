@@ -1,4 +1,7 @@
-﻿namespace GameDialog.Common;
+﻿using System;
+using System.Threading.Tasks;
+
+namespace GameDialog.Common;
 
 public class VarDef
 {

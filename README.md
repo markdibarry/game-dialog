@@ -56,7 +56,7 @@ comment
 
 ## goto
 
-By default, the reader starts at the first section in the file. If you have more than one section, it's important to connect them otherwise the dialog will exit at the end of the current section. To connect them, type an open square bracket, the keyword `goto`, the neme of the section you want to "go to", and a closing square bracket:
+By default, the reader starts at the first section in the file. If you have more than one section, it's important to connect them otherwise the dialog script will exit at the end of the current section. To connect them, type an open square bracket, the keyword `goto`, the name of the section you want to "go to", and a closing square bracket:
 
 ```gamedialog
 --Greeting--
@@ -69,7 +69,7 @@ Stalone: See you later!
 
 ## Choices
 
-It's common for dialog for characters to ask questions and let the player answer using multiple choices. To do so, start a line with a `?` and a space after it, then write the choice that will be displayed. Any additional dialog should be indented below the choice.
+It's common in dialog for characters to ask questions and let the player answer using multiple choices. To do so, start a line with a `?` and a space after it, then write the choice that will be displayed. Any additional dialog should be indented below the choice.
 
 ```gamedialog
 --Drinks--

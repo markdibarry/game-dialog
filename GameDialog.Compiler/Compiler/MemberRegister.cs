@@ -130,7 +130,7 @@ public class MemberRegister
     {
         string newFilePath = Path.ChangeExtension(filePath, "Generated.cs");
 
-        string content = "using GameCore.GUI.GameDialog;\n\n";
+        string content = "using GameDialog.Common;\nusing GameDialog.Runner;\n\n";
 
         if (fileNamespace.Length > 0)
             content += $"namespace {fileNamespace};\n\n";

@@ -1,15 +1,14 @@
 using System;
 using System.Collections.Generic;
-using GameDialog.Common;
 using GameDialog.Pooling;
 using Godot;
 
 namespace GameDialog.Runner;
 
 [Tool, GlobalClass]
-public partial class PagedText : RichTextLabel, IPoolable
+public partial class TextWriter : RichTextLabel, IPoolable
 {
-    public PagedText()
+    public TextWriter()
     {
         ClipContents = true;
         BbcodeEnabled = true;
