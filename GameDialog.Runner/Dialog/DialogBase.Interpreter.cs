@@ -458,6 +458,6 @@ public partial class DialogBase
         ArrayPool<TextVariant>.Shared.Return(args, true);
 
         if (next >= 0)
-            Resume(next);
+            ReadNext(next);
     }
 }

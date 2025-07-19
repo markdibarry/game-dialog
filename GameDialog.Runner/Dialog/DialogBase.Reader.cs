@@ -9,19 +9,27 @@ namespace GameDialog.Runner;
 public partial class DialogBase
 {
     private const int EndScript = -2;
-    private const int Wait = -1;
+    private const int SuspendScript = -1;
 
-    private void ReadStatements(int startIndex)
+    public void StartScript()
     {
-        int instrIndex = startIndex;
+        ReadNext(0);
+    }
 
-        while (instrIndex >= 0 && instrIndex < Instructions.Count)
-            instrIndex = ReadStatement(Instructions[instrIndex]);
+    public void ReadNext(int? nextIndex = null)
+    {
+        if (!nextIndex.HasValue)
+            nextIndex = Next.HasValue ? Next : EndScript;
 
-        if (instrIndex == Wait)
+        Next = null;
+
+        while (nextIndex >= 0 && nextIndex < Instructions.Count)
+            nextIndex = ReadStatement(Instructions[nextIndex.Value]);
+
+        if (nextIndex == SuspendScript)
             return;
 
-        ScriptEnded?.Invoke(this, null);
+        ScriptEnded?.Invoke(this);
     }
 
     private int ReadStatement(ushort[] instr)
@@ -63,7 +71,7 @@ public partial class DialogBase
             string text = Strings[stringIndex];
             line.Text = Tr(text);
             OnDialogLineStarted(line);
-            return Wait;
+            return SuspendScript;
         }
 
         int HandleInstructionStatement()
@@ -72,16 +80,16 @@ public partial class DialogBase
 
             if (instr[2] == OpCode.AsyncFunc)
             {
-                (AsyncFuncDef, TextVariant[]) tuple = EvalInstrAsyncFunc(instr);
+                (AsyncFuncDef funcDef, TextVariant[] variants) = EvalInstrAsyncFunc(instr);
 
                 if (instr[4] == 1) // Is awaiting
                 {
-                    _ = RunAsyncFunc(tuple.Item1, tuple.Item2, next);
-                    return Wait;
+                    _ = RunAsyncFunc(funcDef, variants, next);
+                    return SuspendScript;
                 }
                 else
                 {
-                    _ = RunAsyncFunc(tuple.Item1, tuple.Item2);
+                    _ = RunAsyncFunc(funcDef, variants);
                     return next;
                 }
             }

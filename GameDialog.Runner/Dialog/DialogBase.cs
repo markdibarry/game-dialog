@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using GameDialog.Common;
 using Godot;
 
@@ -19,6 +18,7 @@ public abstract partial class DialogBase : Control, ITextEventHandler
 
     // TODO: Support multiple instances
     public static DialogBase? CurrentDialog { get; private set; }
+
     private readonly TextStorage _textStorage = new();
 
     protected List<string> SpeakerIds { get; private set; } = [];
@@ -30,44 +30,9 @@ public abstract partial class DialogBase : Control, ITextEventHandler
     protected bool AutoProceedGlobalEnabled { get; private set; }
     protected float AutoProceedGlobalTimeout { get; private set; }
 
-    public event Action<DialogBase, object?>? ScriptEnded;
+    public int? Next { get; set; }
 
-    public void StartDialog()
-    {
-        ReadStatements(0);
-    }
-
-    public void Resume(int index)
-    {
-        ReadStatements(index);
-    }
-
-    public virtual ValueTask OnResumeAsync(object? data)
-    {
-        if (data is int next)
-            ReadStatements(next);
-
-        return ValueTask.CompletedTask;
-    }
-
-    private int GetSectionIndex(string sectionId)
-    {
-        foreach (var instr in Instructions)
-        {
-            ushort instructionType = instr[0];
-
-            if (instructionType != InstructionType.Section)
-                continue;
-
-            ushort sectionStartIndex = instr[1];
-            ushort stringIndex = instr[2];
-
-            if (sectionId == Strings[stringIndex])
-                return sectionStartIndex;
-        }
-
-        return -1;
-    }
+    public event Action<DialogBase>? ScriptEnded;
 
     /// <summary>
     /// Called when the script encounters a dialog line.
@@ -78,7 +43,7 @@ public abstract partial class DialogBase : Control, ITextEventHandler
     /// Called when a dialog line finishes.
     /// </summary>
     /// <param name="next">The next script instruction index</param>
-    protected virtual void OnDialogLineEnded(int next) => Resume(next);
+    protected virtual void OnDialogLineEnded(int next) => ReadNext(next);
     /// <summary>
     /// Called when the script encounters a choice set.
     /// </summary>

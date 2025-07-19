@@ -39,62 +39,66 @@ public partial class DialogBase
 
         while (reader.TokenType != JsonTokenType.EndObject)
         {
-            if (reader.TokenType == JsonTokenType.PropertyName)
+            if (reader.TokenType != JsonTokenType.PropertyName)
             {
-                bool isSpeakerIds = reader.ValueTextEquals(nameof(SpeakerIds));
+                reader.Read();
+                continue;
+            }
 
-                if (isSpeakerIds || reader.ValueTextEquals(nameof(Strings)))
+            bool isSpeakerIds = reader.ValueTextEquals(nameof(SpeakerIds));
+
+            if (isSpeakerIds || reader.ValueTextEquals(nameof(Strings)))
+            {
+                reader.Read();
+                reader.Read();
+                int stringCount = GetArrayCount(reader);
+
+                for (int i = 0; i < stringCount; i++)
                 {
-                    reader.Read();
-                    reader.Read();
-                    int stringCount = GetArrayCount(reader);
+                    if (isSpeakerIds)
+                        SpeakerIds.Add(reader.GetString() ?? string.Empty);
+                    else
+                        Strings.Add(reader.GetString() ?? string.Empty);
 
-                    for (int i = 0; i < stringCount; i++)
-                    {
-                        if (isSpeakerIds)
-                            SpeakerIds.Add(reader.GetString() ?? string.Empty);
-                        else
-                            Strings.Add(reader.GetString() ?? string.Empty);
-
-                        reader.Read();
-                    }
-                }
-                else if (reader.ValueTextEquals(nameof(Floats)))
-                {
                     reader.Read();
-                    reader.Read();
-                    int floatCount = GetArrayCount(reader);
-
-                    for (int i = 0; i < floatCount; i++)
-                    {
-                        Floats.Add(reader.GetSingle());
-                        reader.Read();
-                    }
-                }
-                else if (reader.ValueTextEquals(nameof(Instructions)))
-                {
-                    reader.Read();
-                    reader.Read();
-                    int arrCount = GetNestedArrayCount(reader);
-                    reader.Read();
-
-                    for (int i = 0; i < arrCount; i++)
-                    {
-                        int intCount = GetArrayCount(reader);
-                        ushort[] arr = ArrayPool<ushort>.Shared.Rent(intCount);
-                        Instructions.Add(arr);
-
-                        for (int j = 0; j < intCount; j++)
-                        {
-                            arr[j] = reader.GetUInt16();
-                            reader.Read();
-                        }
-
-                        reader.Read();
-                        reader.Read();
-                    }
                 }
             }
+            else if (reader.ValueTextEquals(nameof(Floats)))
+            {
+                reader.Read();
+                reader.Read();
+                int floatCount = GetArrayCount(reader);
+
+                for (int i = 0; i < floatCount; i++)
+                {
+                    Floats.Add(reader.GetSingle());
+                    reader.Read();
+                }
+            }
+            else if (reader.ValueTextEquals(nameof(Instructions)))
+            {
+                reader.Read();
+                reader.Read();
+                int arrCount = GetNestedArrayCount(reader);
+                reader.Read();
+
+                for (int i = 0; i < arrCount; i++)
+                {
+                    int intCount = GetArrayCount(reader);
+                    ushort[] arr = ArrayPool<ushort>.Shared.Rent(intCount);
+                    Instructions.Add(arr);
+
+                    for (int j = 0; j < intCount; j++)
+                    {
+                        arr[j] = reader.GetUInt16();
+                        reader.Read();
+                    }
+
+                    reader.Read();
+                    reader.Read();
+                }
+            }
+
             reader.Read();
         }
 
