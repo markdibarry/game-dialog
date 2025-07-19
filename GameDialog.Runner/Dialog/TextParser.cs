@@ -9,12 +9,13 @@ public static class TextParser
     private static readonly StringBuilder s_sb = new();
 
     /// <summary>
-    /// Takes text with BBCode removed and extracts events along with their character positions
+    /// Takes text with BBCode removed and extracts events along with their character positions.
     /// </summary>
-    /// <param name="fullText"></param>
-    /// <param name="parsedText"></param>
-    /// <param name="events"></param>
-    /// <returns></returns>
+    /// <param name="fullText">The unparsed text.</param>
+    /// <param name="parsedText">The text with BbCode removed. Can be retrieved via RichTextLabel.GetParsedText()</param>
+    /// <param name="events">A list of text events to populate</param>
+    /// <param name="handler">The text event parsing handler.</param>
+    /// <returns>The text with BBCode preserved, but text events removed.</returns>
     public static string GetEventParsedText(
         string fullText,
         string parsedText,
@@ -96,7 +97,7 @@ public static class TextParser
         return parsedString;
     }
 
-    public static TextEvent ParseTextEvent(ReadOnlySpan<char> tagContent, int renderedIndex)
+    private static TextEvent ParseTextEvent(ReadOnlySpan<char> tagContent, int renderedIndex)
     {
         // currently only supports 'pause' and 'speed'
         if (tagContent.Contains(' '))

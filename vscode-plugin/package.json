@@ -3,6 +3,10 @@
     "displayName": "Game Dialog",
     "description": "A game dialog language",
     "version": "0.0.1",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/markdibarry/game-dialog.git"
+    },
     "license": "MIT",
     "engines": {
         "vscode": "^1.100.0"
@@ -10,6 +14,7 @@
     "categories": [
         "Programming Languages"
     ],
+    "activationEvents": [],
     "main": "./out/src/extension.js",
     "contributes": {
         "commands": [

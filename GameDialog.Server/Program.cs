@@ -1,4 +1,6 @@
-﻿using OmniSharp.Extensions.LanguageServer.Server;
+﻿using System;
+using System.Threading.Tasks;
+using OmniSharp.Extensions.LanguageServer.Server;
 
 namespace GameDialog.Server;
 

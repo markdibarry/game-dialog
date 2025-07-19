@@ -1,5 +1,11 @@
-﻿using System.Text.Json;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using GameDialog.Compiler;
 using MediatR;
 using OmniSharp.Extensions.LanguageServer.Protocol;
@@ -141,7 +147,7 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
         string separateFilesString = _configuration[Constants.ConfigCSVTranslationSeparateFiles];
         _ = bool.TryParse(separateFilesString, out bool separateFiles);
         string fileSuffix = separateFiles ? $"_{fileName}" : string.Empty;
-        string csvPath = $"{pathDirectory}{Path.DirectorySeparatorChar}DialogTranslation{fileSuffix}.csv";
+        string csvPath = $"{csvDirectory}{Path.DirectorySeparatorChar}DialogTranslation{fileSuffix}.csv";
         string keyPrefix = $"{fileName}_";
         // TODO: Add default language
         string header = "keys,en";
