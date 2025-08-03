@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 
 namespace GameDialog.Common;
 
@@ -32,18 +31,4 @@ public class FuncDef
     public VarType[] ArgTypes { get; }
     public VarType ReturnType { get; }
     public Func<ReadOnlySpan<TextVariant>, TextVariant> Method { get; }
-}
-
-public class AsyncFuncDef
-{
-    public AsyncFuncDef(
-        VarType[] argTypes,
-        Func<TextVariant[], ValueTask> method)
-    {
-        Method = method;
-        ArgTypes = argTypes;
-    }
-
-    public VarType[] ArgTypes { get; }
-    public Func<TextVariant[], ValueTask> Method { get; }
 }

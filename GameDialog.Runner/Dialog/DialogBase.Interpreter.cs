@@ -386,6 +386,7 @@ public partial class DialogBase
     private TextVariant EvalFunc(ref StateSpan<ushort> span)
     {
         string funcName = Strings[span.Read()];
+        bool isAwait = span.Read() == 1;
 
         if (!DialogBridgeBase.Methods.TryGetValue(funcName, out FuncDef? funcDef))
             return default;
@@ -411,44 +412,5 @@ public partial class DialogBase
         TextVariant result = funcDef.Method.Invoke([.. args]);
         ArrayPool<TextVariant>.Shared.Return(args, true);
         return result;
-    }
-
-    private (AsyncFuncDef, TextVariant[]) EvalInstrAsyncFunc(ushort[] array)
-    {
-        StateSpan<ushort> span = new(array, DefaultStartIndex);
-        // We don't use these variables, but still assigning for clarity
-        // since Read() is necessary
-        ushort opCode = span.Read();
-        string funcName = Strings[span.Read()];
-        bool isAwait = span.Read() == 1;
-
-        if (!DialogBridgeBase.AsyncMethods.TryGetValue(funcName, out AsyncFuncDef? funcDef))
-            throw new System.Exception($"No async method named \"{funcName}\" found.");
-
-        int argNum = span.Read();
-        TextVariant[] args = ArrayPool<TextVariant>.Shared.Rent(argNum);
-
-        for (int i = 0; i < argNum; i++)
-        {
-            args[i] = funcDef.ArgTypes[i] switch
-            {
-                VarType.Float => new(EvalFloatExp(ref span)),
-                VarType.Bool => new(EvalBoolExp(ref span)),
-                VarType.String => new(EvalStringExp(ref span)),
-                _ => throw new System.Exception("Unknown Variant type")
-            };
-        }
-
-        return (funcDef, args);
-    }
-
-    private async ValueTask RunAsyncFunc(AsyncFuncDef funcDef, TextVariant[] args, int next = -1)
-    {
-        await funcDef.Method.Invoke([.. args]);
-        // Must return the array rented in EvalInstrAsyncFunc()
-        ArrayPool<TextVariant>.Shared.Return(args, true);
-
-        if (next >= 0)
-            ReadNext(next);
     }
 }

@@ -47,7 +47,6 @@ public partial class TextWriter : RichTextLabel, IPoolable
     public Callable WriteNextPageButton => Callable.From(WriteNextPage);
     [ExportToolButton("Reset")]
     public Callable ResetButton => Callable.From(() => Reset(false));
-
     public bool Writing => _isWriting;
     public double SpeedMultiplier
     {
@@ -55,25 +54,8 @@ public partial class TextWriter : RichTextLabel, IPoolable
         set => field = value > 0 ? value : field;
     }
     public bool IsSpeedUpEnabled { get; set; }
-    private double PauseTimer
-    {
-        get => field;
-        set => field = value >= 0 ? value : field;
-    }
     public bool AutoProceedEnabled { get; set; }
-    private float AutoProceedTimeout
-    {
-        get
-        {
-            double time = field;
-
-            if (time == -1)
-                time = (_targetWriteRange.Y - _targetWriteRange.X) * AutoTimeoutMultiplier;
-
-            return (float)Math.Max(0, time);
-        }
-        set => field = value;
-    }
+    public bool Suspended { get; private set; }
     /// <summary>
     /// Parses and handles text events, usually a DialogBase object.
     /// </summary>
@@ -86,6 +68,25 @@ public partial class TextWriter : RichTextLabel, IPoolable
     {
         get => base.Text;
         set => SetParsedText(value);
+    }
+
+    private double PauseTimer
+    {
+        get => field;
+        set => field = value >= 0 ? value : field;
+    }
+    private float AutoProceedTimeout
+    {
+        get
+        {
+            double time = field;
+
+            if (time == -1)
+                time = (_targetWriteRange.Y - _targetWriteRange.X) * AutoTimeoutMultiplier;
+
+            return (float)Math.Max(0, time);
+        }
+        set => field = value;
     }
 
     public event Action? FinishedWriting;
@@ -105,6 +106,9 @@ public partial class TextWriter : RichTextLabel, IPoolable
 
     public override void _PhysicsProcess(double delta)
     {
+        if (Suspended)
+            return;
+
         if (PauseTimer > 0)
         {
             if (IsSpeedUpEnabled)
@@ -127,6 +131,8 @@ public partial class TextWriter : RichTextLabel, IPoolable
     public void WriteNextLine() => WriteNext(true);
 
     public bool IsComplete() => VisibleCharacters == -1 || VisibleCharacters == _totalCharacters;
+
+    public void Resume() => Suspended = false;
 
     public void SetParsedText(string text)
     {
@@ -302,6 +308,9 @@ public partial class TextWriter : RichTextLabel, IPoolable
 
         if (textIndex < textEvent.TextIndex)
             return false;
+
+        if (textEvent.IsAwait)
+            Suspended = true;
 
         _textEventIndex++;
 

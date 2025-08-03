@@ -14,7 +14,6 @@ public class DialogCompiler
     {
         MemberRegister.FuncDefs.Clear();
         MemberRegister.VarDefs.Clear();
-        MemberRegister.AsyncFuncDefs.Clear();
     }
 
     public Dictionary<DocumentUri, CompilationResult> Compile()

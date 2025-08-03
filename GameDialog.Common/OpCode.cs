@@ -11,7 +11,7 @@ public static class OpCode
     public const ushort Bool = 3;
     // [Op, string index (var name)]
     public const ushort Var = 4;
-    // [Op, string index (func name), number of args, instr indices...]
+    // [Op, string index (func name), is Awaiting (0 or 1), number of args, instr indices...]
     public const ushort Func = 5;
     // [Op, float index, float index]
     public const ushort Mult = 6;
@@ -43,6 +43,4 @@ public static class OpCode
     public const ushort Speed = 26;
     // [Op, float index (pause time)]
     public const ushort Pause = 27;
-    // [Op, string index (func name), is Awaiting (0 or 1), number of args, instr indices...]
-    public const ushort AsyncFunc = 28;
 }

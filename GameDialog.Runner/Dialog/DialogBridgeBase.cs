@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using GameDialog.Common;
 
 namespace GameDialog.Runner;
@@ -10,7 +9,6 @@ public abstract class DialogBridgeBase
     public static DialogBridgeBase DialogBridge { get; private set; } = null!;
     public static Dictionary<string, VarDef> Properties { get; private set; } = [];
     public static Dictionary<string, FuncDef> Methods { get; private set; } = [];
-    public static Dictionary<string, AsyncFuncDef> AsyncMethods { get; private set; } = [];
     private static readonly Random s_random = new();
 
     public static float Rand() => s_random.NextSingle();
@@ -22,7 +20,6 @@ public abstract class DialogBridgeBase
         T dialogBridge = new();
         dialogBridge.RegisterProperties();
         dialogBridge.RegisterMethods();
-        dialogBridge.RegisterAsyncMethods();
         DialogBridge = dialogBridge;
     }
 
@@ -44,14 +41,6 @@ public abstract class DialogBridgeBase
         Methods.Add(name, new FuncDef(argTypes, returnType, func));
     }
 
-    public static void RegisterAsyncMethod(
-        string name,
-        VarType[] argTypes,
-        Func<TextVariant[], ValueTask> func)
-    {
-        AsyncMethods.Add(name, new AsyncFuncDef(argTypes, func));
-    }
-
     public virtual void RegisterProperties()
     {
     }
@@ -69,9 +58,5 @@ public abstract class DialogBridgeBase
             argTypes: [VarType.String],
             returnType: VarType.String,
             func: (args) => new(GetName(args[0].String)));
-    }
-
-    public virtual void RegisterAsyncMethods()
-    {
     }
 }

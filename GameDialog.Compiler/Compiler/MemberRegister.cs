@@ -13,26 +13,21 @@ public class MemberRegister
     {
         VarDefs = [.. memberRegister.VarDefs];
         FuncDefs = [.. memberRegister.FuncDefs];
-        AsyncFuncDefs = [.. memberRegister.AsyncFuncDefs];
     }
 
     public List<VarDef> VarDefs { get; set; } = [];
     public List<FuncDef> FuncDefs { get; set; } = [];
-    public List<AsyncFuncDef> AsyncFuncDefs { get; set; } = [];
 
     private readonly HashSet<string> s_ignoreNames =
     [
         "DialogBridge",
         "Properties",
         "Methods",
-        "AsyncMethods",
         "Init",
         "RegisterProperty",
         "RegisterMethod",
-        "RegisterAsyncMethod",
         "RegisterProperties",
         "RegisterMethods",
-        "RegisterAsyncMethods",
     ];
 
     public void SetMembersFromFile(string fileName, string rootPath, bool generateRegister)
@@ -55,7 +50,6 @@ public class MemberRegister
             string fileClassName = string.Empty;
             List<VarDef> varDefs = [];
             List<FuncDef> funcDefs = [];
-            List<AsyncFuncDef> asyncFuncDefs = [];
 
             foreach (var member in members)
             {
@@ -91,32 +85,18 @@ public class MemberRegister
                         continue;
 
                     string returnTypeString = methodDeclaration.ReturnType.ToString();
+                    FuncDef? funcDef = GetFuncDef(methodDeclaration);
 
-                    if (returnTypeString == "Task" || returnTypeString == "ValueTask")
+                    if (funcDef != null)
                     {
-                        AsyncFuncDef? funcDef = GetAsyncFuncDef(methodDeclaration);
-
-                        if (funcDef != null)
-                        {
-                            asyncFuncDefs.Add(funcDef);
-                            AsyncFuncDefs.Add(funcDef);
-                        }
-                    }
-                    else
-                    {
-                        FuncDef? funcDef = GetFuncDef(methodDeclaration);
-
-                        if (funcDef != null)
-                        {
-                            funcDefs.Add(funcDef);
-                            FuncDefs.Add(funcDef);
-                        }
+                        funcDefs.Add(funcDef);
+                        FuncDefs.Add(funcDef);
                     }
                 }
             }
 
             if (generateRegister)
-                GenerateMemberFile(filePath, fileNamespace, fileClassName, varDefs, funcDefs, asyncFuncDefs);
+                GenerateMemberFile(filePath, fileNamespace, fileClassName, varDefs, funcDefs);
         }
     }
 
@@ -125,8 +105,7 @@ public class MemberRegister
         string fileNamespace,
         string fileClassName,
         List<VarDef> varDefs,
-        List<FuncDef> funcDefs,
-        List<AsyncFuncDef> asyncFuncDefs)
+        List<FuncDef> funcDefs)
     {
         string newFilePath = Path.ChangeExtension(filePath, "Generated.cs");
 
@@ -175,31 +154,7 @@ public class MemberRegister
             """;
         }));
 
-        string asyncFuncDefContent = string.Join("\n\n        ", asyncFuncDefs.Select(x =>
-        {
-            string literalArgs = string.Empty;
-
-            for (int i = 0; i < x.ArgTypes.Count; i++)
-            {
-                if (i > 0)
-                    literalArgs += ", ";
-
-                literalArgs += $"args[{i}].{x.ArgTypes[i]}";
-            }
-
-            string argTypesArg = string.Join(", ", x.ArgTypes.Select(argType => $"VarType.{argType}"));
-            string func = $"async (args) => await {x.Name}({literalArgs})";
-
-            return $$"""
-            DialogBridgeBase.RegisterAsyncMethod(
-                        name: nameof({{x.Name}}),
-                        argTypes: [{{argTypesArg}}],
-                        func: {{func}});
-            """;
-        }));
-
-        content +=
-        $$"""
+        content += $$"""
         public partial class {{fileClassName}}
         {
             public override void RegisterProperties()
@@ -212,12 +167,6 @@ public class MemberRegister
             {
                 base.RegisterMethods();
                 {{funcDefContent}}
-            }
-
-            public override void RegisterAsyncMethods()
-            {
-                base.RegisterAsyncMethods();
-                {{asyncFuncDefContent}}
             }
         }
         """;
@@ -257,7 +206,6 @@ public class MemberRegister
             if (paramType == VarType.Undefined)
                 return null;
 
-            // parameter.Default != null tells if it's optional
             args.Add(paramType);
         }
 
@@ -265,33 +213,6 @@ public class MemberRegister
             return null;
 
         FuncDef funcDef = new(funcName, returnType, args);
-        return funcDef;
-    }
-    
-    private static AsyncFuncDef? GetAsyncFuncDef(MethodDeclarationSyntax node)
-    {
-        string funcName = node.Identifier.Text;
-        List<VarType> args = [];
-        bool argsValid = true;
-
-        foreach (var parameter in node.ParameterList.Parameters)
-        {
-            if (parameter.Type == null)
-                return null;
-
-            VarType paramType = GetVarType(parameter.Type.ToString());
-
-            if (paramType == VarType.Undefined)
-                return null;
-
-            // parameter.Default != null tells if it's optional
-            args.Add(paramType);
-        }
-
-        if (!argsValid)
-            return null;
-
-        AsyncFuncDef funcDef = new(funcName, args);
         return funcDef;
     }
 }
@@ -325,17 +246,5 @@ public class FuncDef
 
     public string Name { get; set; } = string.Empty;
     public VarType ReturnType { get; set; }
-    public List<VarType> ArgTypes { get; set; } = [];
-}
-
-public class AsyncFuncDef
-{
-    public AsyncFuncDef(string name, List<VarType> argTypes)
-    {
-        Name = name;
-        ArgTypes = argTypes;
-    }
-
-    public string Name { get; set; } = string.Empty;
     public List<VarType> ArgTypes { get; set; } = [];
 }

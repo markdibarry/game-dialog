@@ -59,18 +59,18 @@ public partial class ExpressionVisitor
         int argsFound = context.expression().Length;
         int nameIndex = _scriptData.Strings.GetOrAdd(funcName);
         var funcDef = _memberRegister.FuncDefs.FirstOrDefault(x => x.Name == funcName);
-        var asyncFuncDef = _memberRegister.AsyncFuncDefs.FirstOrDefault(x => x.Name == funcName);
         VarType returnType = VarType.Undefined;
 
-        if (isAwaiting == 0 && funcDef is not null)
+        if (funcDef is not null)
         {
-            PushExp([OpCode.Func, nameIndex, argsFound], default);
+            if (isAwaiting == 1 && funcDef.ReturnType != VarType.Void)
+            {
+                _diagnostics.AddError(context, $"Only methods with a void return type can be awaited.");
+                return VarType.Undefined;
+            }
+
+            PushExp([OpCode.Func, nameIndex, isAwaiting, argsFound], default);
             returnType = funcDef.ReturnType;
-        }
-        else if (asyncFuncDef is not null)
-        {
-            PushExp([OpCode.AsyncFunc, nameIndex, isAwaiting, argsFound], default);
-            returnType = VarType.Void;
         }
         else
         {
@@ -86,8 +86,7 @@ public partial class ExpressionVisitor
             argTypesFound.Add(Visit(exp));
         }
 
-        if ((funcDef is not null && !FuncDefMatches(funcDef, argTypesFound))
-            || asyncFuncDef is not null && !AsyncFuncDefMatches(asyncFuncDef, argTypesFound))
+        if (funcDef is not null && !FuncDefMatches(funcDef, argTypesFound))
         {
             _diagnostics.AddError(context, $"Method \"{funcName}\" arguments do not match those defined.");
             return VarType.Undefined;
@@ -97,20 +96,6 @@ public partial class ExpressionVisitor
     }
 
     private static bool FuncDefMatches(FuncDef funcDef, List<VarType> argTypes)
-    {
-        if (argTypes.Count != funcDef.ArgTypes.Count)
-            return false;
-
-        for (var i = 0; i < funcDef.ArgTypes.Count; i++)
-        {
-            if (argTypes[i] != funcDef.ArgTypes[i])
-                return false;
-        }
-
-        return true;
-    }
-
-    private static bool AsyncFuncDefMatches(AsyncFuncDef funcDef, List<VarType> argTypes)
     {
         if (argTypes.Count != funcDef.ArgTypes.Count)
             return false;

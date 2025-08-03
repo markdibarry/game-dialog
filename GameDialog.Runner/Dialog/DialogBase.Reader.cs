@@ -14,7 +14,29 @@ public partial class DialogBase
 
     public void StartScript()
     {
-        ReadNext(0);
+        Next = 0;
+        Resume();
+    }
+
+    public void Resume()
+    {
+        // Next has not been set, so a line must be in progress.
+        if (Next == null)
+        {
+            OnDialogLineResumed();
+            return;
+        }
+
+        int? nextIndex = Next;
+        Next = null;
+
+        while (nextIndex >= 0 && nextIndex < Instructions.Count)
+            nextIndex = ReadStatement(Instructions[nextIndex.Value]);
+
+        if (nextIndex == SuspendScript)
+            return;
+
+        ScriptEnded?.Invoke(this);
     }
 
     public void ReadNext(int? nextIndex = null)
@@ -78,27 +100,9 @@ public partial class DialogBase
         int HandleInstructionStatement()
         {
             int next = instr[1];
-
-            if (instr[2] == OpCode.AsyncFunc)
-            {
-                (AsyncFuncDef funcDef, TextVariant[] variants) = EvalInstrAsyncFunc(instr);
-
-                if (instr[4] == 1) // Is awaiting
-                {
-                    _ = RunAsyncFunc(funcDef, variants, next);
-                    return SuspendScript;
-                }
-                else
-                {
-                    _ = RunAsyncFunc(funcDef, variants);
-                    return next;
-                }
-            }
-            else
-            {
-                EvaluateInstructions(instr);
-                return next;
-            }
+            bool isAwait = instr[2] == OpCode.Func && instr[3] == 1;
+            EvaluateInstructions(instr);
+            return isAwait ? SuspendScript : next;
         }
 
         int HandleConditionalStatement()

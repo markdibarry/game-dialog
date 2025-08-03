@@ -41,14 +41,18 @@ public abstract partial class DialogBase : Control, ITextEventHandler
     /// <param name="line">The dialog line</param>
     protected abstract void OnDialogLineStarted(DialogLine line);
     /// <summary>
+    /// Called when the in-progress dialog line is resumed, usually from an awaited function.
+    /// </summary>
+    protected abstract void OnDialogLineResumed();
+    /// <summary>
     /// Called when a dialog line finishes.
     /// </summary>
-    /// <param name="next">The next script instruction index</param>
+    /// <param name="line">The dialog line</param>
     protected virtual void OnDialogLineEnded(DialogLine line)
     {
-        int next = line.Next;
+        Next = line.Next;
         Pool.Return(line);
-        ReadNext(next);
+        Resume();
     }
     /// <summary>
     /// Called when the script encounters a choice set.
