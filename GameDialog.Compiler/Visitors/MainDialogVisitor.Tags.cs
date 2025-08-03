@@ -93,14 +93,6 @@ public partial class MainDialogVisitor
 
         string expName = varContext.NAME().GetText();
 
-        // if single Speaker name
-        if (_scriptData.SpeakerIds.Contains(expName))
-        {
-            int nameIndex = _scriptData.SpeakerIds.GetOrAdd(expName);
-            ints.AddRange([OpCode.GetName, nameIndex]);
-            return ints;
-        }
-
         if (!BuiltIn.IsBuiltIn(expName))
         {
             ints.AddRange(_expressionVisitor.GetInstruction(varContext));

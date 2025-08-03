@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using GameDialog.Common;
+using GameDialog.Pooling;
 using Godot;
 
 namespace GameDialog.Runner;
@@ -43,7 +44,12 @@ public abstract partial class DialogBase : Control, ITextEventHandler
     /// Called when a dialog line finishes.
     /// </summary>
     /// <param name="next">The next script instruction index</param>
-    protected virtual void OnDialogLineEnded(int next) => ReadNext(next);
+    protected virtual void OnDialogLineEnded(DialogLine line)
+    {
+        int next = line.Next;
+        Pool.Return(line);
+        ReadNext(next);
+    }
     /// <summary>
     /// Called when the script encounters a choice set.
     /// </summary>

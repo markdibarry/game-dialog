@@ -15,7 +15,6 @@ public struct TextEvent
     public EventType EventType { get; set; }
     public int TextIndex { get; set; }
     public double Value { get; set; }
-    public bool Seen { get; set; }
 }
 
 public enum EventType

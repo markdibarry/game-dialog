@@ -1,8 +1,10 @@
-﻿namespace GameDialog.Compiler;
+﻿using System.Collections.Generic;
+
+namespace GameDialog.Common;
 
 public class BuiltIn
 {
-    private static readonly string[] _builtIns =
+    private static readonly HashSet<string> _builtIns =
     [
         AUTO,
         END,

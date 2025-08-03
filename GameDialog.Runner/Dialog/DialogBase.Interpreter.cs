@@ -22,7 +22,6 @@ public partial class DialogBase
     {
         return span.Current switch
         {
-            OpCode.GetName or
             OpCode.String => VarType.String,
             OpCode.Float or
             OpCode.Mult or
@@ -192,10 +191,8 @@ public partial class DialogBase
         return result;
     }
 
-    private Dictionary<string, string> GetHashResult(StateSpan<ushort> span)
+    private void GetHashResult(StateSpan<ushort> span, Dictionary<string, string> hashCollection)
     {
-        Dictionary<string, string> hashCollection = [];
-
         while (!span.IsAtEnd)
         {
             int valueType = span.Read();
@@ -221,14 +218,11 @@ public partial class DialogBase
 
             hashCollection.Add(key, value);
         }
-
-        return hashCollection;
     }
 
-    private List<Choice> GetChoices(ushort[] array)
+    private void GetChoices(ushort[] array, List<Choice> choices)
     {
         StateSpan<ushort> span = new(array, 1);
-        List<Choice> choices = [];
 
         while (span.Index < span.Length)
         {
@@ -242,8 +236,6 @@ public partial class DialogBase
             else
                 AddCondChoices(ref span, choices, false);
         }
-
-        return choices;
 
         void AddChoice(ref StateSpan<ushort> span, List<Choice> choices, bool isDisabled)
         {
@@ -346,7 +338,6 @@ public partial class DialogBase
     {
         return span.Read() switch
         {
-            OpCode.GetName => GetName(SpeakerIds[span.Read()]),
             OpCode.String => Strings[span.Read()],
             OpCode.Var => EvalVar<string>(ref span) ?? string.Empty,
             OpCode.Func => EvalFunc(ref span).Get<string>() ?? string.Empty,

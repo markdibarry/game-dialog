@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.IO;
 using System.Text.Json;
+using GameDialog.Common;
 
 namespace GameDialog.Runner;
 
@@ -18,6 +19,26 @@ public partial class DialogBase
             ArrayPool<ushort>.Shared.Return(inst, true);
 
         Instructions.Clear();
+    }
+
+    public void LoadSingleLine(string text, string? speakerId = null)
+    {
+        ClearStorage();
+        Strings.Add(text);
+        var arr = ArrayPool<ushort>.Shared.Rent(5);
+        int i = 0;
+        arr[i++] = InstructionType.Line;
+        arr[i++] = 1;
+
+        if (speakerId != null)
+        {
+            SpeakerIds.Add(speakerId);
+            arr[i++] = 1;
+            arr[i++] = 0;
+        }
+
+        arr[i++] = 0;
+        Instructions.Add(arr);
     }
 
     public void LoadScript(string path)

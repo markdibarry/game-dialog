@@ -201,7 +201,7 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
             IParseTree parseTree = content.children[i];
 
             if (parseTree is ITerminalNode node && node.Symbol.Type == LINE_TEXT)
-                sb.Append(parseTree.GetText());
+                sb.Append(parseTree.GetText().Replace("\\n", Environment.NewLine));
             else if (parseTree is TagContext tag)
                 HandleLineTag(sb, tag);
         }

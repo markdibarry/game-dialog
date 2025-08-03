@@ -82,7 +82,7 @@ public static class ListPool
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public static List<T> Get<T>() where T : IPoolable
+    public static List<T> Get<T>()
     {
         Type type = typeof(T);
         LimitedQueue<object> limitedQueue = GetLimitedQueue(type);
@@ -95,12 +95,15 @@ public static class ListPool
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="list"></param>
-    public static void Return<T>(List<T> list) where T : IPoolable
+    public static void Return<T>(List<T> list)
     {
         Type type = typeof(T);
 
         foreach (T item in list)
-            Pool.Return(item);
+        {
+            if (item is IPoolable poolable)
+                Pool.Return(poolable);
+        }
 
         list.Clear();
         LimitedQueue<object> limitedQueue = GetLimitedQueue(type);

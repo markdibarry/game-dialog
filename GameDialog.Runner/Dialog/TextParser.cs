@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using GameDialog.Common;
 
 namespace GameDialog.Runner;
 
@@ -9,13 +10,12 @@ public static class TextParser
     private static readonly StringBuilder s_sb = new();
 
     /// <summary>
-    /// Takes text with BBCode removed and extracts events along with their character positions.
+    /// Takes text with BBCode removed and extracts events along with their character positions
     /// </summary>
-    /// <param name="fullText">The unparsed text.</param>
-    /// <param name="parsedText">The text with BbCode removed. Can be retrieved via RichTextLabel.GetParsedText()</param>
-    /// <param name="events">A list of text events to populate</param>
-    /// <param name="handler">The text event parsing handler.</param>
-    /// <returns>The text with BBCode preserved, but text events removed.</returns>
+    /// <param name="fullText"></param>
+    /// <param name="parsedText"></param>
+    /// <param name="events"></param>
+    /// <returns></returns>
     public static string GetEventParsedText(
         string fullText,
         string parsedText,
@@ -97,12 +97,8 @@ public static class TextParser
         return parsedString;
     }
 
-    private static TextEvent ParseTextEvent(ReadOnlySpan<char> tagContent, int renderedIndex)
+    public static TextEvent ParseTextEvent(ReadOnlySpan<char> tagContent, int renderedIndex)
     {
-        // currently only supports 'pause' and 'speed'
-        if (tagContent.Contains(' '))
-            return TextEvent.Undefined;
-
         bool isClosing = false;
 
         if (tagContent.StartsWith('/'))
@@ -112,34 +108,25 @@ public static class TextParser
         }
 
         int equalsIndex = tagContent.IndexOf('=');
-
-        ReadOnlySpan<char> tagKey = equalsIndex == -1 ? tagContent : tagContent[..equalsIndex];
-        ReadOnlySpan<char> tagValue = equalsIndex == -1 ? string.Empty : tagContent[(equalsIndex + 1)..];
-
+        ReadOnlySpan<char> tagKey = equalsIndex == -1 ? tagContent : tagContent[..equalsIndex].Trim();
+        ReadOnlySpan<char> tagValue = equalsIndex == -1 ? string.Empty : tagContent[(equalsIndex + 1)..].Trim();
         TextEvent result = TextEvent.Undefined;
 
-        if (tagKey.SequenceEqual("speed"))
+        if (tagKey.SequenceEqual(BuiltIn.SPEED))
             result = TryAddSpeedEvent(tagValue, renderedIndex);
-        else if (tagKey.SequenceEqual("pause"))
+        else if (tagKey.SequenceEqual(BuiltIn.PAUSE))
             result = TryAddPauseEvent(tagValue, renderedIndex);
 
         return result;
 
         TextEvent TryAddSpeedEvent(ReadOnlySpan<char> value, int renderedIndex)
         {
-            if (value.IsEmpty && isClosing)
-            {
-                return new(EventType.Speed, renderedIndex, 1);
-            }
-            else if (!value.IsEmpty && !isClosing)
-            {
-                if (!double.TryParse(value, out double parsedValue))
-                    return TextEvent.Undefined;
+            double mult = 1;
 
-                return new(EventType.Speed, renderedIndex, parsedValue);
-            }
+            if (!isClosing && !double.TryParse(value, out mult))
+                return TextEvent.Undefined;
 
-            return TextEvent.Undefined;
+            return new(EventType.Speed, renderedIndex, mult);
         }
 
         TextEvent TryAddPauseEvent(ReadOnlySpan<char> value, int renderedIndex)
@@ -147,10 +134,10 @@ public static class TextParser
             if (isClosing || value.IsEmpty)
                 return TextEvent.Undefined;
 
-            if (!double.TryParse(value, out double parsedValue))
+            if (!double.TryParse(value, out double time))
                 return TextEvent.Undefined;
 
-            return new(EventType.Pause, renderedIndex, parsedValue);
+            return new(EventType.Pause, renderedIndex, time);
         }
     }
 

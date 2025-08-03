@@ -293,30 +293,18 @@ public partial class TextWriter : RichTextLabel, IPoolable
             _isScrolling = false;
     }
 
-    private void RaiseTextEvents()
+    private bool HandleTextEvent(int textIndex)
     {
-        TextEvent te = GetEvent(_textEvents, _textEventIndex);
+        if (_textEventIndex >= _textEvents.Count)
+            return false;
 
-        while (te.EventType != EventType.Undefined && te.TextIndex <= VisibleCharacters)
-        {
-            // TODO: Handle Seen
-            te.Seen = true;
-            HandleTextEvent(te);
-            _textEventIndex++;
-            te = GetEvent(_textEvents, _textEventIndex);
-        }
+        TextEvent textEvent = _textEvents[_textEventIndex];
 
-        static TextEvent GetEvent(List<TextEvent> events, int index)
-        {
-            if (index >= events.Count)
-                return TextEvent.Undefined;
+        if (textIndex < textEvent.TextIndex)
+            return false;
 
-            return events[index];
-        }
-    }
+        _textEventIndex++;
 
-    private void HandleTextEvent(TextEvent textEvent)
-    {
         switch (textEvent.EventType)
         {
             case EventType.Pause:
@@ -336,6 +324,8 @@ public partial class TextWriter : RichTextLabel, IPoolable
                 TextEventHandler?.HandleTextEvent(textEvent);
                 break;
         }
+
+        return true;
     }
 
     private void Reset(bool clearText)
@@ -363,6 +353,9 @@ public partial class TextWriter : RichTextLabel, IPoolable
         int currentChar = VisibleCharacters;
         bool isComplete = currentChar == -1 || currentChar == _totalCharacters;
 
+        if (isComplete && HandleTextEvent(currentChar))
+            return;
+
         if (isComplete || currentChar >= _targetWriteRange.Y)
         {
             _isWriting = false;
@@ -374,44 +367,32 @@ public partial class TextWriter : RichTextLabel, IPoolable
             return;
         }
 
-        int charsToAdd = GetCharsToAdd(currentChar, delta, _targetWriteRange);
-
-        if (charsToAdd <= 0)
-            return;
-
-        VisibleCharacters = currentChar + charsToAdd;
-        RaiseTextEvents();
-
-        if (VisibleCharacters < _targetWriteRange.Y)
-            return;
-
-        _writeCounter = 0;
-
-        if (AutoProceedEnabled)
-            PauseTimer += AutoProceedTimeout;
-    }
-
-    private int GetCharsToAdd(int currentChar, double delta, Vector2I charRange)
-    {
         double totalSpeed = CharsPerSecond * SpeedMultiplier;
 
         if (IsSpeedUpEnabled)
             totalSpeed *= SpeedUpMultiplier;
 
         _writeCounter += delta * totalSpeed;
-        int charsToAdd = (int)_writeCounter;
 
-        if (charsToAdd < 1)
-            return 0;
+        if (currentChar < _targetWriteRange.X)
+            _writeCounter = _targetWriteRange.X - currentChar;
 
-        _writeCounter -= charsToAdd;
+        while (_writeCounter >= 1 && currentChar < _targetWriteRange.Y)
+        {
+            if (HandleTextEvent(currentChar))
+                break;
 
-        // Jump to first char if below
-        if (currentChar < charRange.X)
-            charsToAdd = charRange.X - currentChar;
-        else if (currentChar + charsToAdd >= charRange.Y)
-            charsToAdd = charRange.Y - currentChar;
+            _writeCounter--;
+            currentChar++;
+            VisibleCharacters = currentChar;
+        }
 
-        return charsToAdd;
+        if (currentChar < _targetWriteRange.Y)
+            return;
+
+        _writeCounter = 0;
+
+        if (AutoProceedEnabled)
+            PauseTimer += AutoProceedTimeout;
     }
 }

@@ -10,6 +10,7 @@ public partial class DialogBase
 {
     private const int EndScript = -2;
     private const int SuspendScript = -1;
+    private Dictionary<string, string> _cacheDict = [];
 
     public void StartScript()
     {
@@ -107,8 +108,10 @@ public partial class DialogBase
 
         int HandleChoiceStatement()
         {
-            List<Choice> choices = GetChoices(instr);
+            List<Choice> choices = ListPool.Get<Choice>();
+            GetChoices(instr, choices);
             OnChoice(choices);
+            ListPool.Return(choices);
             return -1;
         }
 
@@ -116,8 +119,9 @@ public partial class DialogBase
         {
             int next = instr[1];
             StateSpan<ushort> span = new(instr, 2);
-            Dictionary<string, string> hashCollection = GetHashResult(span);
-            OnHash(hashCollection);
+            GetHashResult(span, _cacheDict);
+            OnHash(_cacheDict);
+            _cacheDict.Clear();
             return next;
         }
 
@@ -126,8 +130,9 @@ public partial class DialogBase
             int next = instr[1];
             int speakerId = instr[2];
             StateSpan<ushort> span = new(instr, 3);
-            Dictionary<string, string> hashCollection = GetHashResult(span);
-            OnSpeakerHash(SpeakerIds[speakerId], hashCollection);
+            GetHashResult(span, _cacheDict);
+            OnSpeakerHash(SpeakerIds[speakerId], _cacheDict);
+            _cacheDict.Clear();
             return next;
         }
     }
@@ -192,7 +197,7 @@ public partial class DialogBase
     public TextEvent ParseTextEvent(ReadOnlySpan<char> tagContent, int renderedIndex, StringBuilder sb)
     {
         if (!int.TryParse(tagContent, out int instIndex))
-            return TextEvent.Undefined;
+            return ParseEventString(tagContent, renderedIndex, sb);
 
         ushort[] instr = Instructions[instIndex];
         ushort instructionType = instr[0];
@@ -217,7 +222,6 @@ public partial class DialogBase
                 OpCode.DivAssign or
                 OpCode.AddAssign or
                 OpCode.SubAssign => AddAsTextEvent(),
-                OpCode.GetName or
                 OpCode.String or
                 OpCode.Float or
                 OpCode.Mult or
@@ -280,6 +284,65 @@ public partial class DialogBase
         }
     }
 
+    private TextEvent ParseEventString(ReadOnlySpan<char> tagContent, int renderedIndex, StringBuilder sb)
+    {
+        tagContent = tagContent.Trim();
+
+        if (tagContent.StartsWith(nameof(GetName)))
+        {
+            tagContent = tagContent[nameof(GetName).Length..];
+
+            if (!tagContent.StartsWith('(') || !tagContent.EndsWith(')'))
+                return TextEvent.Undefined;
+
+            tagContent = tagContent[1..^1].Trim();
+
+            if (!tagContent.StartsWith('\"') || !tagContent.EndsWith('\"'))
+                return TextEvent.Undefined;
+
+            tagContent = tagContent[1..^1];
+            sb.Append(GetName(tagContent.ToString()));
+            return TextEvent.Ignore;
+        }
+        else if (tagContent.StartsWith(BuiltIn.SPEED))
+        {
+            tagContent = tagContent[BuiltIn.SPEED.Length..].Trim();
+
+            if (!tagContent.StartsWith('='))
+                return TextEvent.Undefined;
+
+            tagContent = tagContent[1..].TrimStart();
+
+            if (!float.TryParse(tagContent, out float speed))
+                return TextEvent.Undefined;
+
+            return new TextEvent(EventType.Speed, renderedIndex, speed);
+        }
+        else if (tagContent.StartsWith('/'))
+        {
+            if (!tagContent[1..].Trim().SequenceEqual(BuiltIn.SPEED))
+                return TextEvent.Undefined;
+
+            return new TextEvent(EventType.Speed, renderedIndex, 1);
+        }
+        else if (tagContent.StartsWith(BuiltIn.PAUSE))
+        {
+            tagContent = tagContent[BuiltIn.PAUSE.Length..].Trim();
+
+            if (!tagContent.StartsWith('='))
+                return TextEvent.Undefined;
+
+            tagContent = tagContent[1..].TrimStart();
+
+            if (!float.TryParse(tagContent, out float pauseTime))
+                return TextEvent.Undefined;
+
+            return new TextEvent(EventType.Pause, renderedIndex, pauseTime);
+        }
+
+        return TextEvent.Undefined;
+    }
+
     public void HandleTextEvent(TextEvent textEvent)
     {
         int value = (int)textEvent.Value;
@@ -292,15 +355,17 @@ public partial class DialogBase
             case EventType.Hash:
                 ushort[] hashInstr = Instructions[value];
                 StateSpan<ushort> hashSpan = new(hashInstr, 2);
-                Dictionary<string, string> hashCollection = GetHashResult(hashSpan);
-                OnHash(hashCollection);
+                GetHashResult(hashSpan, _cacheDict);
+                OnHash(_cacheDict);
+                _cacheDict.Clear();
                 break;
             case EventType.Speaker:
                 ushort[] speakerInstr = Instructions[value];
                 ushort speakerId = speakerInstr[2];
                 StateSpan<ushort> speakerSpan = new(speakerInstr, 3);
-                Dictionary<string, string> speakerCollection = GetHashResult(speakerSpan);
-                OnSpeakerHash(SpeakerIds[speakerId], speakerCollection);
+                GetHashResult(speakerSpan, _cacheDict);
+                OnSpeakerHash(SpeakerIds[speakerId], _cacheDict);
+                _cacheDict.Clear();
                 break;
         }
     }

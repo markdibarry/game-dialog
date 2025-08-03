@@ -43,8 +43,6 @@ public static class OpCode
     public const ushort Speed = 26;
     // [Op, float index (pause time)]
     public const ushort Pause = 27;
-    // [Op, speaker index]
-    public const ushort GetName = 28;
     // [Op, string index (func name), is Awaiting (0 or 1), number of args, instr indices...]
-    public const ushort AsyncFunc = 29;
+    public const ushort AsyncFunc = 28;
 }
