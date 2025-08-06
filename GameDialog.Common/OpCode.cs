@@ -43,4 +43,8 @@ public static class OpCode
     public const ushort Speed = 26;
     // [Op, float index (pause time)]
     public const ushort Pause = 27;
+    // [Op]
+    public const ushort Prompt = 28;
+    // [Op]
+    public const ushort Page = 29;
 }

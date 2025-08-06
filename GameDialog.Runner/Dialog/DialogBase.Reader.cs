@@ -237,6 +237,8 @@ public partial class DialogBase
                 OpCode.Speed => AddSpeedEvent(),
                 OpCode.Pause => AddPauseEvent(),
                 OpCode.Auto => HandleAuto(),
+                OpCode.Prompt => HandlePrompt(),
+                OpCode.Page => HandlePage(),
                 _ => TextEvent.Undefined
             };
         }
@@ -262,7 +264,8 @@ public partial class DialogBase
                     result = GetFloatInstResult(instr).ToString();
                     break;
                 case VarType.Void:
-                    return AddAsTextEvent();
+                    bool isAwait = instr[4] == 1;
+                    return new(EventType.Instruction, renderedIndex, instIndex, isAwait);
             }
 
             sb.Append(result.AsSpan());
@@ -285,6 +288,16 @@ public partial class DialogBase
         {
             float time = Floats[floatIndex];
             return new TextEvent(EventType.Auto, renderedIndex, time);
+        }
+
+        TextEvent HandlePrompt()
+        {
+            return new TextEvent(EventType.Prompt, renderedIndex - 1, 0);
+        }
+
+        TextEvent HandlePage()
+        {
+            return new TextEvent(EventType.Page, renderedIndex - 1, 0);
         }
     }
 
@@ -342,6 +355,14 @@ public partial class DialogBase
                 return TextEvent.Undefined;
 
             return new TextEvent(EventType.Pause, renderedIndex, pauseTime);
+        }
+        else if (tagContent.SequenceEqual(BuiltIn.PROMPT))
+        {
+            return new TextEvent(EventType.Prompt, renderedIndex - 1, 0);
+        }
+        else if (tagContent.SequenceEqual(BuiltIn.PAGE))
+        {
+            return new TextEvent(EventType.Page, renderedIndex - 1, 0);
         }
 
         return TextEvent.Undefined;

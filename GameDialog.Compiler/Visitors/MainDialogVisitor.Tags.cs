@@ -120,6 +120,18 @@ public partial class MainDialogVisitor
             case BuiltIn.SPEED:
                 ints.AddRange([OpCode.Speed, _scriptData.Floats.GetOrAdd(1)]);
                 return ints;
+            case BuiltIn.PROMPT:
+                if (isClose)
+                    return _diagnostics.AddError(context, $"Tag {expName} is not supported as a closing tag.");
+
+                ints.AddRange([OpCode.Prompt]);
+                return ints;
+            case BuiltIn.PAGE:
+                if (isClose)
+                    return _diagnostics.AddError(context, $"Tag {expName} is not supported as a closing tag.");
+
+                ints.AddRange([OpCode.Page]);
+                return ints;
         }
 
         // Nothing matched

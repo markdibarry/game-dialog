@@ -195,6 +195,15 @@ Stalone: Waffles are my favorite too!
 Stalone: Pancakes are good, but have you tried waffles?
 ```
 
+### `prompt`
+
+The `prompt` tag will stop the text at this position and wait for the user's input.
+
+### `page`
+
+The `page` tag works the same as the `prompt` tag, but will also scroll the current line to the top of the `TextWriter` display upon user input.
+This is useful for long, multi-line text that needs broken up into distinct pages for effect.
+
 ### `await`
 
 Sometimes, a dialog script needs to wait for something to happen before continuing. If you have predefined a global method and it's of a `void` return type, you can tell the dialog to suspend execution until a later time by prepending it with the `await` keyword. To resume, call `Resume()` on your `DialogBase` object.

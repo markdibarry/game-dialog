@@ -28,5 +28,7 @@ public enum EventType
     Speaker,
     Pause,
     Speed,
-    Auto
+    Auto,
+    Prompt,
+    Page
 }

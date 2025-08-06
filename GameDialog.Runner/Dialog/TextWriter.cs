@@ -32,6 +32,7 @@ public partial class TextWriter : RichTextLabel, IPoolable
     private double _movingScrollValue;
     private readonly List<TextEvent> _textEvents = [];
     private int _textEventIndex;
+    private bool _scrollPageOverride;
 
     [Export]
     public int CharsPerSecond { get; set; }
@@ -165,13 +166,20 @@ public partial class TextWriter : RichTextLabel, IPoolable
         if (currentChar == _totalCharacters)
             return;
 
+        if (_scrollPageOverride)
+        {
+            _scrollPageOverride = false;
+            int currentLine = GetCharacterLine(currentChar);
+            BeginScrollToLine(currentLine);
+        }
+
         // Is this screen fully written?
-        int lastLine = GetLastVisibleLine(_scrollBar.Value);
+        int lastLine = GetLastVisibleLine(_targetScrollValue);
         int lastChar = GetLineRange(lastLine).Y;
 
         if (currentChar != lastChar)
         {
-            int firstLine = GetFirstVisibleLine(_scrollBar.Value);
+            int firstLine = GetFirstVisibleLine(_targetScrollValue);
             int firstChar = GetLineRange(firstLine).X;
             _targetWriteRange = new(firstChar, lastChar);
             _isWriting = true;
@@ -181,17 +189,24 @@ public partial class TextWriter : RichTextLabel, IPoolable
         int nextLine;
 
         if (isLine)
-            nextLine = GetFirstLineWithNextVisible(_scrollBar.Value);
+            nextLine = GetFirstLineWithNextVisible(_targetScrollValue);
         else
             nextLine = lastLine + 1;
 
-        _movingScrollValue = _scrollBar.Value;
-        _targetScrollValue = GetLineOffset(nextLine);
-        _isScrolling = true;
+        BeginScrollToLine(nextLine);
         int charStart = GetLineRange(nextLine).X;
         int charEnd = GetLastVisibleCharacter(_targetScrollValue);
         _targetWriteRange = new(charStart, charEnd);
         _isWriting = true;
+
+        void BeginScrollToLine(int line)
+        {
+            _movingScrollValue = _scrollBar.Value;
+            _targetScrollValue = GetLineOffset(line);
+
+            if (_targetScrollValue != _movingScrollValue)
+                _isScrolling = true;
+        }
     }
 
     private int GetFirstVisibleLine(double startingOffset)
@@ -328,6 +343,15 @@ public partial class TextWriter : RichTextLabel, IPoolable
                 float autoValue = (float)textEvent.Value;
                 AutoProceedEnabled = autoValue != -2;
                 AutoProceedTimeout = autoValue;
+                break;
+            case EventType.Prompt:
+            case EventType.Page:
+                int endChar = VisibleCharacters == -1 ? _totalCharacters : VisibleCharacters;
+                _targetWriteRange.Y = endChar + 1;
+
+                if (textEvent.EventType == EventType.Page)
+                    _scrollPageOverride = true;
+
                 break;
             default:
                 TextEventHandler?.HandleTextEvent(textEvent);

@@ -10,7 +10,9 @@ public class BuiltIn
         END,
         GOTO,
         PAUSE,
-        SPEED
+        SPEED,
+        PROMPT,
+        PAGE
     ];
 
     public const string AUTO = "auto";
@@ -18,6 +20,8 @@ public class BuiltIn
     public const string GOTO = "goto";
     public const string PAUSE = "pause";
     public const string SPEED = "speed";
+    public const string PROMPT = "prompt";
+    public const string PAGE = "page";
 
     public static bool IsBuiltIn(string text)
     {
