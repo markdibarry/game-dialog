@@ -54,10 +54,17 @@ public partial class MainDialogVisitor
         if (ints == null || ints.Count == 0)
             return;
 
-        if (ints[0] == InstructionType.Instruction && ints[2] == OpCode.Goto)
+        if (ints[0] == InstructionType.Instruction)
         {
-            _diagnostics.AddError(context, "Goto is only available on a separate line.");
-            return;
+            // Something went wrong and we couldn't get instructions.
+            if (ints.Count < 3)
+                return;
+
+            if (ints[2] == OpCode.Goto)
+            {
+                _diagnostics.AddError(context, "Goto is only available on a separate line.");
+                return;
+            }
         }
 
         _scriptData.Instructions.Add(ints);

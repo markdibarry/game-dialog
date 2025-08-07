@@ -1,6 +1,6 @@
+using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using GameDialog.Common;
 
 namespace GameDialog.Runner;
@@ -50,9 +50,10 @@ public partial class DialogBase
         {
             ushort nameIndex = span[span.Index + 1];
             string varName = Strings[nameIndex];
+            VarType varType = GetPredefinedPropertyType(varName);
 
-            if (DialogBridgeBase.Properties.TryGetValue(varName, out VarDef? varDef))
-                return varDef.VarType;
+            if (varType != VarType.Undefined)
+                return varType;
 
             if (!_textStorage.TryGetValue(varName, out TextVariant tVar))
                 return default;
@@ -64,11 +65,7 @@ public partial class DialogBase
         {
             ushort nameIndex = span[span.Index + 1];
             string funcName = Strings[nameIndex];
-
-            if (!DialogBridgeBase.Methods.TryGetValue(funcName, out FuncDef? funcDef))
-                return default;
-
-            return funcDef.ReturnType;
+            return GetPredefinedMethodReturnType(funcName);
         }
     }
 
@@ -114,17 +111,18 @@ public partial class DialogBase
         void EvalAssign(ref StateSpan<ushort> span)
         {
             string varName = Strings[span.Read()];
+            VarType varType = GetPredefinedPropertyType(varName);
 
-            if (DialogBridgeBase.Properties.TryGetValue(varName, out VarDef? varDef))
+            if (varType != VarType.Undefined)
             {
-                TextVariant variant = varDef.VarType switch
+                TextVariant variant = varType switch
                 {
                     VarType.Float => new(EvalFloatExp(ref span)),
                     VarType.Bool => new(EvalBoolExp(ref span)),
                     VarType.String => new(EvalStringExp(ref span)),
                     _ => throw new System.Exception("Unknown Variant type")
                 };
-                varDef.Setter.Invoke(variant);
+                SetPredefinedProperty(varName, variant);
             }
             else
             {
@@ -146,12 +144,13 @@ public partial class DialogBase
         void EvalMathAssign(ref StateSpan<ushort> span, ushort instructionType)
         {
             string varName = Strings[span.Read()];
+            VarType varType = GetPredefinedPropertyType(varName);
 
-            if (DialogBridgeBase.Properties.TryGetValue(varName, out VarDef? varDef))
+            if (varType != VarType.Undefined)
             {
-                float originalValue = varDef.Getter.Invoke().Get<float>();
+                float originalValue = GetPredefinedProperty(varName).Float;
                 float result = GetOpResult(ref span, instructionType, originalValue);
-                varDef.Setter.Invoke(new(result));
+                SetPredefinedProperty(varName, new(result));
             }
             else if (_textStorage != null)
             {
@@ -374,8 +373,8 @@ public partial class DialogBase
     {
         string varName = Strings[span.Read()];
 
-        if (DialogBridgeBase.Properties.TryGetValue(varName, out VarDef? varDef))
-            return varDef.Getter.Invoke().Get<T>();
+        if (GetPredefinedPropertyType(varName) != VarType.Undefined)
+            return GetPredefinedProperty(varName).Get<T>();
 
         if (_textStorage.TryGetValue(varName, out T? tVar))
             return tVar;
@@ -387,20 +386,17 @@ public partial class DialogBase
     {
         string funcName = Strings[span.Read()];
         bool isAwait = span.Read() == 1;
-
-        if (!DialogBridgeBase.Methods.TryGetValue(funcName, out FuncDef? funcDef))
-            return default;
-
         int argNum = span.Read();
 
         if (argNum == 0)
-            return funcDef.Method.Invoke([]);
+            return CallPredefinedMethod(funcName, []);
 
         TextVariant[] args = ArrayPool<TextVariant>.Shared.Rent(argNum);
 
         for (int i = 0; i < argNum; i++)
         {
-            args[i] = funcDef.ArgTypes[i] switch
+            VarType argType = GetReturnType(ref span);
+            args[i] = argType switch
             {
                 VarType.Float => new(EvalFloatExp(ref span)),
                 VarType.Bool => new(EvalBoolExp(ref span)),
@@ -409,8 +405,17 @@ public partial class DialogBase
             };
         }
 
-        TextVariant result = funcDef.Method.Invoke([.. args]);
+        TextVariant result = CallPredefinedMethod(funcName, args);
         ArrayPool<TextVariant>.Shared.Return(args, true);
         return result;
+    }
+
+    protected virtual VarType GetPredefinedMethodReturnType(string funcName)
+    {
+        if (funcName == nameof(GetName))
+            return VarType.String;
+        else if (funcName == nameof(GetRand))
+            return VarType.Float;
+        return new();
     }
 }

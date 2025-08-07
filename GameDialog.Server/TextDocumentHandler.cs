@@ -44,10 +44,11 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
 
     public override Task<Unit> Handle(DidOpenTextDocumentParams notification, CancellationToken ct)
     {
-        _compiler.ClearMemberRegister();
+        if (notification.TextDocument.Uri.Path.EndsWith(".cs"))
+            return Unit.Task;
+
         string rootPath = _server.ClientSettings.RootPath!;
-        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeBaseName, rootPath, false);
-        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, true);
+        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, false);
         _compiler.UpdateDoc(notification.TextDocument.Uri, notification.TextDocument.Text);
         Dictionary<DocumentUri, CompilationResult> results = _compiler.Compile();
         PublishDiagnostics(results);
@@ -56,6 +57,9 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
 
     public override Task<Unit> Handle(DidChangeTextDocumentParams notification, CancellationToken ct)
     {
+        if (notification.TextDocument.Uri.Path.EndsWith(".cs"))
+            return Unit.Task;
+
         if (!notification.ContentChanges.Any())
             return Unit.Task;
 
@@ -67,19 +71,27 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
 
     public override Task<Unit> Handle(DidCloseTextDocumentParams notification, CancellationToken ct)
     {
+        if (notification.TextDocument.Uri.Path.EndsWith(".cs"))
+            return Unit.Task;
+
         _compiler.RemoveDoc(notification.TextDocument.Uri);
         return Unit.Task;
     }
 
     public override Task<Unit> Handle(DidSaveTextDocumentParams notification, CancellationToken ct)
     {
+        string rootPath = _server.ClientSettings.RootPath!;
+
+        if (notification.TextDocument.Uri.Path.EndsWith(".cs"))
+        {
+            _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, true);
+            return Unit.Task;
+        }
+
         if (string.IsNullOrEmpty(notification.Text))
             return Unit.Task;
 
-        _compiler.ClearMemberRegister();
-        string rootPath = _server.ClientSettings.RootPath!;
-        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeBaseName, rootPath, false);
-        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, true);
+        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, false);
         DocumentUri uri = notification.TextDocument.Uri;
         _compiler.UpdateDoc(uri, notification.Text);
 
@@ -113,7 +125,9 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
     {
         return new TextDocumentSyncRegistrationOptions()
         {
-            DocumentSelector = new(new TextDocumentFilter() { Pattern = "**/*.dia" }),
+            DocumentSelector = new(
+                new() { Pattern = "**/*.dia" },
+                new() { Pattern = "**/*.DialogBridge.cs" }),
             Change = TextDocumentSyncKind.Full,
             Save = new SaveOptions() { IncludeText = true }
         };

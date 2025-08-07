@@ -21,6 +21,7 @@ public abstract partial class DialogBase : Control, ITextEventHandler
     public static DialogBase? CurrentDialog { get; private set; }
 
     private readonly TextStorage _textStorage = new();
+    private static readonly Random s_random = new();
 
     protected List<string> SpeakerIds { get; private set; } = [];
     protected List<string> Strings { get; private set; } = [];
@@ -60,12 +61,6 @@ public abstract partial class DialogBase : Control, ITextEventHandler
     /// <param name="choices">The choices</param>
     protected abstract void OnChoice(List<Choice> choices);
     /// <summary>
-    /// Returns a speaker name.
-    /// </summary>
-    /// <param name="speakerId"></param>
-    /// <returns></returns>
-    public virtual string GetName(string speakerId) => speakerId;
-    /// <summary>
     /// Called when the script encounters a Hash Tag set.
     /// </summary>
     /// <param name="hashData">The hash data set</param>
@@ -76,4 +71,47 @@ public abstract partial class DialogBase : Control, ITextEventHandler
     /// <param name="speakerId">The speaker id</param>
     /// <param name="hashData">The hash data set</param>
     protected virtual void OnSpeakerHash(string speakerId, Dictionary<string, string> hashData) { }
+    /// <summary>
+    /// Gets a random float.
+    /// </summary>
+    /// <returns></returns>
+    protected static float GetRand() => s_random.NextSingle();
+    /// <summary>
+    /// Returns a speaker name.
+    /// </summary>
+    /// <param name="speakerId"></param>
+    /// <returns></returns>
+    protected virtual string GetName(string speakerId) => speakerId;
+    /// <summary>
+    /// Gets the VarType of a predefined property.
+    /// </summary>
+    /// <param name="propertyName"></param>
+    /// <returns></returns>
+    protected virtual VarType GetPredefinedPropertyType(string propertyName) => new();
+    /// <summary>
+    /// Calls a predefined method.
+    /// </summary>
+    /// <param name="funcName"></param>
+    /// <param name="args"></param>
+    /// <returns></returns>
+    protected virtual TextVariant CallPredefinedMethod(string funcName, ReadOnlySpan<TextVariant> args)
+    {
+        if (funcName == nameof(GetName))
+            return new(GetName(args[0].String));
+        else if (funcName == nameof(GetRand))
+            return new(GetRand());
+        return new();
+    }
+    /// <summary>
+    /// Gets a predefined property.
+    /// </summary>
+    /// <param name="propertyName"></param>
+    /// <returns></returns>
+    protected virtual TextVariant GetPredefinedProperty(string propertyName) => new();
+    /// <summary>
+    /// Sets a predefined property.
+    /// </summary>
+    /// <param name="propertyName"></param>
+    /// <param name="value"></param>
+    protected virtual void SetPredefinedProperty(string propertyName, TextVariant value) { }
 }

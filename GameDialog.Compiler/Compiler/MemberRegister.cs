@@ -1,4 +1,5 @@
-﻿using GameDialog.Common;
+﻿using System.Text;
+using GameDialog.Common;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -18,86 +19,65 @@ public class MemberRegister
     public List<VarDef> VarDefs { get; set; } = [];
     public List<FuncDef> FuncDefs { get; set; } = [];
 
-    private readonly HashSet<string> s_ignoreNames =
-    [
-        "DialogBridge",
-        "Properties",
-        "Methods",
-        "Init",
-        "RegisterProperty",
-        "RegisterMethod",
-        "RegisterProperties",
-        "RegisterMethods",
-    ];
-
-    public void SetMembersFromFile(string fileName, string rootPath, bool generateRegister)
+    public void SetMembersFromFile(string fileName, string rootPath, bool generate)
     {
         if (string.IsNullOrEmpty(rootPath))
             return;
 
         string[] files = Directory.GetFiles(rootPath, fileName, SearchOption.AllDirectories);
 
-        if (files.Length == 0)
+        if (files.Length != 1)
             return;
 
-        foreach (var filePath in files)
+        FuncDefs.Clear();
+        VarDefs.Clear();
+        FuncDefs.Add(new(BuiltIn.GET_NAME_METHOD, VarType.String, [VarType.String]));
+        FuncDefs.Add(new(BuiltIn.GET_RAND_METHOD, VarType.Float, []));
+        string filePath = files[0];
+        var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(filePath), path: filePath);
+        CompilationUnitSyntax? root = tree.GetCompilationUnitRoot();
+        var members = root.DescendantNodes().OfType<MemberDeclarationSyntax>();
+
+        string fileNamespace = string.Empty;
+        string fileClassName = string.Empty;
+        List<VarDef> varDefs = [];
+        List<FuncDef> funcDefs = [];
+
+        foreach (var member in members)
         {
-            var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(filePath), path: filePath);
-            CompilationUnitSyntax? root = tree.GetCompilationUnitRoot();
-            var members = root.DescendantNodes().OfType<MemberDeclarationSyntax>();
-
-            string fileNamespace = string.Empty;
-            string fileClassName = string.Empty;
-            List<VarDef> varDefs = [];
-            List<FuncDef> funcDefs = [];
-
-            foreach (var member in members)
+            if (member is BaseNamespaceDeclarationSyntax namespaceDeclaration)
             {
-                if (member is BaseNamespaceDeclarationSyntax namespaceDeclaration)
+                fileNamespace = namespaceDeclaration.Name.ToString();
+            }
+            else if (member is ClassDeclarationSyntax classDeclaration)
+            {
+                fileClassName = classDeclaration.Identifier.Text;
+            }
+            else if (member is PropertyDeclarationSyntax propDeclaration)
+            {
+                VarType varType = GetVarType(propDeclaration.Type.ToString());
+
+                if (varType == VarType.Undefined)
+                    continue;
+
+                VarDef varDef = new(propDeclaration.Identifier.Text, varType);
+                varDefs.Add(varDef);
+                VarDefs.Add(varDef);
+            }
+            else if (member is MethodDeclarationSyntax methodDeclaration)
+            {
+                FuncDef? funcDef = GetFuncDef(methodDeclaration);
+
+                if (funcDef != null)
                 {
-                    fileNamespace = namespaceDeclaration.Name.ToString();
-                }
-                else if (member is ClassDeclarationSyntax classDeclaration)
-                {
-                    fileClassName = classDeclaration.Identifier.Text;
-                }
-                else if (member is PropertyDeclarationSyntax propDeclaration)
-                {
-                    VarType varType = GetVarType(propDeclaration.Type.ToString());
-
-                    if (varType == VarType.Undefined)
-                        continue;
-
-                    if (s_ignoreNames.Contains(propDeclaration.Identifier.Text))
-                        continue;
-
-                    VarDef varDef = new(propDeclaration.Identifier.Text, varType);
-                    varDefs.Add(varDef);
-                    VarDefs.Add(varDef);
-                }
-                else if (member is MethodDeclarationSyntax methodDeclaration)
-                {
-                    // ignore override methods
-                    if (methodDeclaration.Modifiers.Any(x => x.Text == "override"))
-                        continue;
-
-                    if (s_ignoreNames.Contains(methodDeclaration.Identifier.Text))
-                        continue;
-
-                    string returnTypeString = methodDeclaration.ReturnType.ToString();
-                    FuncDef? funcDef = GetFuncDef(methodDeclaration);
-
-                    if (funcDef != null)
-                    {
-                        funcDefs.Add(funcDef);
-                        FuncDefs.Add(funcDef);
-                    }
+                    funcDefs.Add(funcDef);
+                    FuncDefs.Add(funcDef);
                 }
             }
-
-            if (generateRegister)
-                GenerateMemberFile(filePath, fileNamespace, fileClassName, varDefs, funcDefs);
         }
+
+        if (generate)
+            GenerateMemberFile(filePath, fileNamespace, fileClassName, varDefs, funcDefs);
     }
 
     private static void GenerateMemberFile(
@@ -107,70 +87,131 @@ public class MemberRegister
         List<VarDef> varDefs,
         List<FuncDef> funcDefs)
     {
+        StringBuilder sb = new();
         string newFilePath = Path.ChangeExtension(filePath, "Generated.cs");
-
-        string content = "using GameDialog.Common;\nusing GameDialog.Runner;\n\n";
+        sb.AppendLine("using System;");
+        sb.AppendLine("using GameDialog.Common;");
+        sb.AppendLine("using GameDialog.Runner;");
+        sb.AppendLine();
 
         if (fileNamespace.Length > 0)
-            content += $"namespace {fileNamespace};\n\n";
-
-        string varDefContent = string.Join("\n\n        ", varDefs.Select(x =>
         {
-            return $$"""
-            DialogBridgeBase.RegisterProperty(
-                        name: nameof({{x.Name}}),
-                        varType: VarType.{{x.Type}},
-                        getter: () => new({{x.Name}}),
-                        setter: (x) => {{x.Name}} = x.{{x.Type}});
-            """;
-        }));
-
-        string funcDefContent = string.Join("\n\n        ", funcDefs.Select(x =>
-        {
-            string literalArgs = string.Empty;
-
-            for (int i = 0; i < x.ArgTypes.Count; i++)
-            {
-                if (i > 0)
-                    literalArgs += ", ";
-
-                literalArgs += $"args[{i}].{x.ArgTypes[i]}";
-            }
-
-            string argTypesArg = string.Join(", ", x.ArgTypes.Select(argType => $"VarType.{argType}"));
-            string func = "";
-
-            if (x.ReturnType == VarType.Void)
-                func = $"(args) => {{ {x.Name}({literalArgs}); return new(); }});";
-            else
-                func = $"(args) => new({x.Name}({literalArgs})));";
-
-            return $$"""
-            DialogBridgeBase.RegisterMethod(
-                        name: nameof({{x.Name}}),
-                        argTypes: [{{argTypesArg}}],
-                        returnType: VarType.{{x.ReturnType}},
-                        func: {{func}}
-            """;
-        }));
-
-        content += $$"""
-        public partial class {{fileClassName}}
-        {
-            public override void RegisterProperties()
-            {
-                base.RegisterProperties();
-                {{varDefContent}}
-            }
-
-            public override void RegisterMethods()
-            {
-                base.RegisterMethods();
-                {{funcDefContent}}
-            }
+            sb.AppendLine($"namespace {fileNamespace};");
+            sb.AppendLine();
         }
-        """;
-        File.WriteAllText(newFilePath, content);
+
+        sb.AppendLine($"public partial class {fileClassName}");
+        sb.AppendLine("{");
+
+        sb.AppendLine($$"""
+            protected override VarType GetPredefinedMethodReturnType(string funcName)
+            {
+                VarType varType = base.GetPredefinedMethodReturnType(funcName);
+
+                if (varType != VarType.Undefined)
+                    return varType;
+
+                return funcName switch
+                {
+                    {{
+                        string.Join(
+                            "\n            ",
+                            funcDefs.Select(x => $"nameof({x.Name}) => VarType.{x.ReturnType},"))
+                    }}
+                    _ => VarType.Undefined
+                };
+            }
+        """);
+
+        sb.AppendLine();
+        sb.AppendLine($$"""
+            protected override VarType GetPredefinedPropertyType(string propertyName)
+            {
+                return propertyName switch
+                {
+                    {{
+                        string.Join(
+                            "\n            ",
+                            varDefs.Select(x => $"nameof({x.Name}) => VarType.{x.Type},"))
+                    }}
+                    _ => VarType.Undefined
+                };
+            }
+        """);
+
+        sb.AppendLine();
+        sb.AppendLine($$"""
+            protected override TextVariant CallPredefinedMethod(string funcName, ReadOnlySpan<TextVariant> args)
+            {
+                return funcName switch
+                {
+                    {{
+                        string.Join(
+                        "\n            ",
+                        funcDefs.Select(x =>
+                        {
+                            string args = "";
+
+                            for (int i = 0; i < x.ArgTypes.Count; i++)
+                            {
+                                if (i > 0)
+                                    args += ", ";
+
+                                args += $"args[{i}].{x.ArgTypes[i]}";
+                            }
+
+                            return $$"""
+                            nameof({{x.Name}}) => new({{x.Name}}({{args}})),
+                            """;
+                        }))
+                    }}
+                    _ => base.CallPredefinedMethod(funcName, args)
+                };
+            }
+        """);
+
+        sb.AppendLine();
+        sb.AppendLine($$"""
+            protected override TextVariant GetPredefinedProperty(string propertyName)
+            {
+                return propertyName switch
+                {
+                    {{
+                        string.Join(
+                            "\n        ",
+                            varDefs.Select(x => $"nameof({x.Name}) => new({x.Name}),"))
+                    }}
+                    _ => new()
+                };
+            }
+        """);
+
+        sb.AppendLine();
+        sb.AppendLine($$"""
+            protected override void SetPredefinedProperty(string propertyName, TextVariant value)
+            {
+                switch (propertyName)
+                {
+                    {{
+                        string.Join(
+                            "\n        ",
+                            varDefs.Select(x =>
+                            {
+                                return $$"""
+                                    case nameof({{x.Name}}):
+                                        {{x.Name}} = value.{{x.Type}};
+                                        break;
+                                    """;
+                            }))
+                    }}
+                    default:
+                        break;
+                }
+            }
+        """);
+        sb.AppendLine("}");
+
+        File.WriteAllText(newFilePath, sb.ToString());
     }
 
     private static VarType GetVarType(string typeName)
@@ -193,6 +234,10 @@ public class MemberRegister
             return null;
 
         string funcName = node.Identifier.Text;
+
+        if (funcName == BuiltIn.GET_NAME_METHOD || funcName == BuiltIn.GET_RAND_METHOD)
+            return null;
+
         List<VarType> args = [];
         bool argsValid = true;
 
@@ -217,34 +262,3 @@ public class MemberRegister
     }
 }
 
-public class VarDef
-{
-    public VarDef(string name)
-    {
-        Name = name;
-    }
-
-    public VarDef(string name, VarType type)
-        : this(name)
-    {
-        Type = type;
-    }
-
-    public string Name { get; }
-    public VarType Type { get; set; }
-}
-
-
-public class FuncDef
-{
-    public FuncDef(string name, VarType returnType, List<VarType> argTypes)
-    {
-        Name = name;
-        ReturnType = returnType;
-        ArgTypes = argTypes;
-    }
-
-    public string Name { get; set; } = string.Empty;
-    public VarType ReturnType { get; set; }
-    public List<VarType> ArgTypes { get; set; } = [];
-}

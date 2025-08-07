@@ -4,7 +4,7 @@ namespace GameDialog.Common;
 
 public class BuiltIn
 {
-    private static readonly HashSet<string> _builtIns =
+    private static readonly HashSet<string> _builtInTags =
     [
         AUTO,
         END,
@@ -23,8 +23,11 @@ public class BuiltIn
     public const string PROMPT = "prompt";
     public const string PAGE = "page";
 
+    public const string GET_NAME_METHOD = "GetName";
+    public const string GET_RAND_METHOD = "GetRand";
+
     public static bool IsBuiltIn(string text)
     {
-        return _builtIns.Contains(text);
+        return _builtInTags.Contains(text);
     }
 }

@@ -14,7 +14,10 @@
     "categories": [
         "Programming Languages"
     ],
-    "activationEvents": [],
+    "activationEvents": [
+        "workspaceContains:**/*.DialogBridge.cs",
+        "workspaceContains:*.dia"
+    ],
     "main": "./out/src/extension.js",
     "contributes": {
         "commands": [
