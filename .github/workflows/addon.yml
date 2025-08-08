@@ -17,9 +17,9 @@ jobs:
             rm -rf GameDialog
             mkdir -p GameDialog/{Common,Dialog,ObjectPool}
 
+            cp GameDialog.Common/BuiltIn.cs GameDialog/Common/
             cp GameDialog.Common/Choice.cs GameDialog/Common/
             cp GameDialog.Common/ChoiceOp.cs GameDialog/Common/
-            cp GameDialog.Common/Defs.cs GameDialog/Common/
             cp GameDialog.Common/InstructionType.cs GameDialog/Common/
             cp GameDialog.Common/OpCode.cs GameDialog/Common/
             cp GameDialog.Common/StateSpan.cs GameDialog/Common/
@@ -30,7 +30,6 @@ jobs:
             cp GameDialog.Runner/Dialog/DialogBase.Interpreter.cs GameDialog/Dialog/
             cp GameDialog.Runner/Dialog/DialogBase.Reader.cs GameDialog/Dialog/
             cp GameDialog.Runner/Dialog/DialogBase.ScriptData.cs GameDialog/Dialog/
-            cp GameDialog.Runner/Dialog/DialogBridgeBase.cs GameDialog/Dialog/
             cp GameDialog.Runner/Dialog/DialogLine.cs GameDialog/Dialog/
             cp GameDialog.Runner/Dialog/ITextEventHandler.cs GameDialog/Dialog/
             cp GameDialog.Runner/Dialog/TextEvent.cs GameDialog/Dialog/
