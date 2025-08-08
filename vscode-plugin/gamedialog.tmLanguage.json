@@ -89,7 +89,7 @@
             "match": "^(?:[ \\t]*)\\b(?:else\\s+if|else|if)\\b"
         },
         "functions": {
-            "match": "(\\w+)(\\()(.*)(\\))",
+            "match": "(\\w+)(\\()(.*?)(\\))",
             "captures": {
                 "1": {
                     "name": "keyword.other.unit"

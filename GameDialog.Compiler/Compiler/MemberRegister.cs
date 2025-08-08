@@ -143,7 +143,7 @@ public class MemberRegister
         sb.AppendLine($$"""
             protected override TextVariant CallPredefinedMethod(string funcName, ReadOnlySpan<TextVariant> args)
             {
-                return funcName switch
+                switch (funcName)
                 {
                     {{
                         string.Join(
@@ -160,13 +160,26 @@ public class MemberRegister
                                 args += $"args[{i}].{x.ArgTypes[i]}";
                             }
 
-                            return $$"""
-                            nameof({{x.Name}}) => new({{x.Name}}({{args}})),
-                            """;
+                            if (x.ReturnType == VarType.Void)
+                            {
+                                return $$"""
+                                case nameof({{x.Name}}):
+                                                {{x.Name}}({{args}});
+                                                return new();
+                                """;
+                            }
+                            else
+                            {
+                                return $$"""
+                                case nameof({{x.Name}}):
+                                                return {{x.Name}}({{args}});
+                                """;
+                            }
                         }))
                     }}
-                    _ => base.CallPredefinedMethod(funcName, args)
-                };
+                    default:
+                        return base.CallPredefinedMethod(funcName, args);
+                }
             }
         """);
 
