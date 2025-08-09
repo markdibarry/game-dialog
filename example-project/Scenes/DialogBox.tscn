@@ -1,0 +1,74 @@
+[gd_scene load_steps=7 format=3 uid="uid://cbhx8r6pbetx5"]
+
+[ext_resource type="Script" uid="uid://b45ea4lo7nxml" path="res://Addons/GameDialog/Dialog/TextWriter.cs" id="1_7q3q8"]
+[ext_resource type="Script" uid="uid://dneb2dly73bal" path="res://Scenes/DialogBox.cs" id="1_fqg7g"]
+[ext_resource type="Texture2D" uid="uid://ccdtrsxw8fnb0" path="res://icon.svg" id="2_3f5xn"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fqg7g"]
+content_margin_left = 16.0
+content_margin_top = 16.0
+content_margin_right = 16.0
+content_margin_bottom = 16.0
+bg_color = Color(0.6, 0.6, 0.19607843, 0.42745098)
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+border_color = Color(0.8, 0.8, 0.14901961, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="FontVariation" id="FontVariation_1hct6"]
+spacing_glyph = 1
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_fqg7g"]
+content_margin_left = 4.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+
+[node name="DialogBox" type="MarginContainer"]
+custom_minimum_size = Vector2(0, 180)
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("1_fqg7g")
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_fqg7g")
+
+[node name="PagedText" type="RichTextLabel" parent="PanelContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/default_color = Color(1, 1, 0.8784314, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 8
+theme_override_fonts/normal_font = SubResource("FontVariation_1hct6")
+theme_override_font_sizes/normal_font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxEmpty_fqg7g")
+bbcode_enabled = true
+text = "Test 123! Thanks for playing!"
+visible_characters = 29
+visible_characters_behavior = 1
+script = ExtResource("1_7q3q8")
+CharsPerSecond = 30
+
+[node name="NextArrow" type="MarginContainer" parent="PanelContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
+
+[node name="TextureRect" type="Sprite2D" parent="PanelContainer/NextArrow"]
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("2_3f5xn")
+centered = false
+offset = Vector2(-128, -128)

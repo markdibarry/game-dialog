@@ -1,5 +1,11 @@
 .vs/
 .vscode/**
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+example-project/Addons/*
+!example-project/Addons/AddonGoesHere
 
 # Build results
 [Dd]ebug/

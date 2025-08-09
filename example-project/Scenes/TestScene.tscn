@@ -1,0 +1,68 @@
+[gd_scene load_steps=8 format=4 uid="uid://bygdtl15to16k"]
+
+[ext_resource type="Texture2D" uid="uid://ccdtrsxw8fnb0" path="res://icon.svg" id="1_cguwc"]
+[ext_resource type="Script" uid="uid://dv5hm24pgedr5" path="res://Scenes/Character.cs" id="2_wicfy"]
+[ext_resource type="Script" uid="uid://dp45pp04q7ht8" path="res://Scenes/DialogArea.cs" id="3_wicfy"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sreuk"]
+size = Vector2(64, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_go42g"]
+size = Vector2(64, 64)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_sreuk"]
+texture = ExtResource("1_cguwc")
+texture_region_size = Vector2i(128, 128)
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+
+[sub_resource type="TileSet" id="TileSet_tq6uv"]
+tile_size = Vector2i(128, 128)
+physics_layer_0/collision_layer = 1
+sources/1 = SubResource("TileSetAtlasSource_sreuk")
+
+[node name="TestScene" type="Node2D"]
+
+[node name="Parallax2D" type="Parallax2D" parent="."]
+scroll_scale = Vector2(0.5, 0.5)
+repeat_size = Vector2(512, 512)
+
+[node name="Icon" type="Sprite2D" parent="Parallax2D"]
+modulate = Color(0.2706, 0.41, 0.35423997, 1)
+texture_repeat = 2
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("1_cguwc")
+centered = false
+region_enabled = true
+region_rect = Rect2(0, 0, 1024, 1024)
+
+[node name="DialogArea" type="Area2D" parent="."]
+position = Vector2(407, 327)
+script = ExtResource("3_wicfy")
+DialogPath = "res://DialogScripts/Test.json"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DialogArea"]
+shape = SubResource("RectangleShape2D_sreuk")
+
+[node name="Sprite2D" type="Sprite2D" parent="DialogArea"]
+modulate = Color(0.7602213, 1.5225214, 0.6546721, 0.38039216)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("1_cguwc")
+
+[node name="CharacterBody2D" type="CharacterBody2D" parent="."]
+position = Vector2(94, 352)
+script = ExtResource("2_wicfy")
+
+[node name="Sprite2D" type="Sprite2D" parent="CharacterBody2D"]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("1_cguwc")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D"]
+shape = SubResource("RectangleShape2D_go42g")
+
+[node name="Camera2D" type="Camera2D" parent="CharacterBody2D"]
+
+[node name="TileMapLayer" type="TileMapLayer" parent="."]
+modulate = Color(1, 0.6333333, 0, 1)
+tile_map_data = PackedByteArray("AAD//wMAAQAAAAAAAAAAAAMAAQAAAAAAAAABAAMAAQAAAAAAAAACAAMAAQAAAAAAAAADAAMAAQAAAAAAAAAEAAMAAQAAAAAAAAAFAAMAAQAAAAAAAAAGAAMAAQAAAAAAAAAHAAMAAQAAAAAAAAD/////AQAAAAAAAAAAAP//AQAAAAAAAAABAP//AQAAAAAAAAACAP//AQAAAAAAAAADAP//AQAAAAAAAAAEAP//AQAAAAAAAAAFAP//AQAAAAAAAAAGAP//AQAAAAAAAAAHAP//AQAAAAAAAAAIAP//AQAAAAAAAAAIAAAAAQAAAAAAAAAIAAEAAQAAAAAAAAAIAAIAAQAAAAAAAAAIAAMAAQAAAAAAAAD//wIAAQAAAAAAAAD//wEAAQAAAAAAAAD//wAAAQAAAAAAAAA=")
+tile_set = SubResource("TileSet_tq6uv")
