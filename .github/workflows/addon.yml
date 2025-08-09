@@ -44,11 +44,41 @@ jobs:
         - name: Zip Files
           run: |
             cd GameDialog
-            zip -r ../GameDialog.zip .
+            zip -r ../GameDialog_Addon.zip .
             cd ..
 
-        - name: Upload Files
+        - name: Upload Zip
           uses: actions/upload-artifact@v4
           with:
-            name: GameDialog
-            path: GameDialog.zip
+            name: GameDialog_Addon
+            path: GameDialog_Addon.zip
+
+        - name: Setup Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '20'
+
+        - name: Setup .NET
+          uses: actions/setup-dotnet@v4
+          with:
+            dotnet-version: '9.0.x'
+            dotnet-quality: 'preview'
+
+        - name: Install Extension Dependencies
+          run: |
+            cd vscode-plugin
+            npm ci
+            npm install --global vsce
+            cd ..
+
+        - name: Package VS Code extension
+          run: |
+            cd vscode-plugin
+            vsce package --out ../GameDialog_Extension.vsix
+            cd ..
+
+        - name: Upload VSIX
+          uses: actions/upload-artifact@v4
+          with:
+            name: GameDialog_Extension
+            path: GameDialog_Extension.vsix
