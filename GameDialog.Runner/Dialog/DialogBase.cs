@@ -6,22 +6,17 @@ using Godot;
 
 namespace GameDialog.Runner;
 
-public abstract partial class DialogBase : Control, ITextEventHandler
+public abstract partial class DialogBase : Control
 {
     public DialogBase()
     {
-        CurrentDialog = this;
         Name = "Dialog";
         AnchorBottom = 1.0f;
         AnchorRight = 1.0f;
         SpeedMultiplier = 1;
     }
 
-    // TODO: Support multiple instances
-    public static DialogBase? CurrentDialog { get; private set; }
-
     private readonly TextStorage _textStorage = new();
-    private static readonly Random s_random = new();
 
     protected List<string> SpeakerIds { get; private set; } = [];
     protected List<string> Strings { get; private set; } = [];
@@ -72,16 +67,11 @@ public abstract partial class DialogBase : Control, ITextEventHandler
     /// <param name="hashData">The hash data set</param>
     protected virtual void OnSpeakerHash(string speakerId, Dictionary<string, string> hashData) { }
     /// <summary>
-    /// Gets a random float.
+    /// Gets the VarType of a predefined method.
     /// </summary>
+    /// <param name="funcName"></param>
     /// <returns></returns>
-    protected static float GetRand() => s_random.NextSingle();
-    /// <summary>
-    /// Returns a speaker name.
-    /// </summary>
-    /// <param name="speakerId"></param>
-    /// <returns></returns>
-    protected virtual string GetName(string speakerId) => speakerId;
+    protected virtual VarType GetPredefinedMethodReturnType(string funcName) => VarType.Undefined;
     /// <summary>
     /// Gets the VarType of a predefined property.
     /// </summary>
@@ -94,14 +84,7 @@ public abstract partial class DialogBase : Control, ITextEventHandler
     /// <param name="funcName"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    protected virtual TextVariant CallPredefinedMethod(string funcName, ReadOnlySpan<TextVariant> args)
-    {
-        if (funcName == nameof(GetName))
-            return new(GetName(args[0].String));
-        else if (funcName == nameof(GetRand))
-            return new(GetRand());
-        return new();
-    }
+    protected virtual TextVariant CallPredefinedMethod(string funcName, ReadOnlySpan<TextVariant> args) => new();
     /// <summary>
     /// Gets a predefined property.
     /// </summary>

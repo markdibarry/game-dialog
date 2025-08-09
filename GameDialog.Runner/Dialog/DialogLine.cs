@@ -6,6 +6,9 @@ namespace GameDialog.Runner;
 
 public class DialogLine : IPoolable
 {
+    /// <summary>
+    /// The ids of the speakers present in the line.
+    /// </summary>
     public List<string> SpeakerIds { get; } = [];
     /// <summary>
     /// Text containing BBCode and Event tags

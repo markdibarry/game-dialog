@@ -58,9 +58,9 @@ public partial class TextWriter : RichTextLabel, IPoolable
     public bool AutoProceedEnabled { get; set; }
     public bool Suspended { get; private set; }
     /// <summary>
-    /// Parses and handles text events, usually a DialogBase object.
+    /// The DialogBase object. For parsing and handling text events.
     /// </summary>
-    public ITextEventHandler? TextEventHandler { get; set; }
+    public DialogBase? Dialog { get; set; }
     /// <summary>
     /// A replacement for the base Text property to set parsed text properly.
     /// If set via the editor, this code is not called, even with an [Export] attribute.
@@ -141,7 +141,7 @@ public partial class TextWriter : RichTextLabel, IPoolable
         _textEventIndex = 0;
         VisibleCharacters = 0;
         base.Text = text;
-        base.Text = TextParser.GetEventParsedText(text, GetParsedText(), _textEvents, TextEventHandler);
+        base.Text = DialogBase.GetEventParsedText(text, GetParsedText(), _textEvents, Dialog);
         _totalCharacters = GetTotalCharacterCount();
         _scrollBar.Value = 0;
         _targetWriteRange = new(0, GetLastVisibleCharacter(0));
@@ -354,7 +354,7 @@ public partial class TextWriter : RichTextLabel, IPoolable
 
                 break;
             default:
-                TextEventHandler?.HandleTextEvent(textEvent);
+                Dialog?.HandleTextEvent(textEvent);
                 break;
         }
 

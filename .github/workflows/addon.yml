@@ -30,10 +30,9 @@ jobs:
             cp GameDialog.Runner/Dialog/DialogBase.Interpreter.cs GameDialog/Dialog/
             cp GameDialog.Runner/Dialog/DialogBase.Reader.cs GameDialog/Dialog/
             cp GameDialog.Runner/Dialog/DialogBase.ScriptData.cs GameDialog/Dialog/
+            cp GameDialog.Runner/Dialog/DialogBase.TextParser.cs GameDialog/Dialog/
             cp GameDialog.Runner/Dialog/DialogLine.cs GameDialog/Dialog/
-            cp GameDialog.Runner/Dialog/ITextEventHandler.cs GameDialog/Dialog/
             cp GameDialog.Runner/Dialog/TextEvent.cs GameDialog/Dialog/
-            cp GameDialog.Runner/Dialog/TextParser.cs GameDialog/Dialog/
             cp GameDialog.Runner/Dialog/TextStorage.cs GameDialog/Dialog/
             cp GameDialog.Runner/Dialog/TextWriter.cs GameDialog/Dialog/
 

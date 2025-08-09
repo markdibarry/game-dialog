@@ -23,9 +23,6 @@ public class BuiltIn
     public const string PROMPT = "prompt";
     public const string PAGE = "page";
 
-    public const string GET_NAME_METHOD = "GetName";
-    public const string GET_RAND_METHOD = "GetRand";
-
     public static bool IsBuiltIn(string text)
     {
         return _builtInTags.Contains(text);

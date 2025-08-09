@@ -1,4 +1,3 @@
-using System;
 using System.Buffers;
 using System.Collections.Generic;
 using GameDialog.Common;
@@ -174,116 +173,6 @@ public partial class DialogBase
         }
     }
 
-    private ushort GetConditionResult(ushort[] array)
-    {
-        StateSpan<ushort> span = new(array, 1);
-        ushort result = span.Read();
-
-        while (!span.IsAtEnd && span.Current != OpCode.Undefined)
-        {
-            if (EvalBoolExp(ref span))
-                return span.Current;
-
-            span.MoveNext();
-        }
-
-        return result;
-    }
-
-    private void GetHashResult(StateSpan<ushort> span, Dictionary<string, string> hashCollection)
-    {
-        while (!span.IsAtEnd)
-        {
-            int valueType = span.Read();
-
-            if (valueType == 0)
-                break;
-
-            string key = Strings[span.Read()];
-            string value = string.Empty;
-
-            if (valueType == 2)
-            {
-                VarType returnType = GetReturnType(ref span);
-
-                value = returnType switch
-                {
-                    VarType.String => EvalStringExp(ref span),
-                    VarType.Float => EvalFloatExp(ref span).ToString(),
-                    VarType.Bool => EvalBoolExp(ref span).ToString(),
-                    _ => string.Empty
-                };
-            }
-
-            hashCollection.Add(key, value);
-        }
-    }
-
-    private void GetChoices(ushort[] array, List<Choice> choices)
-    {
-        StateSpan<ushort> span = new(array, 1);
-
-        while (span.Index < span.Length)
-        {
-            ushort op = span.Read();
-
-            if (op == ChoiceOp.Undefined)
-                break;
-
-            if (op == ChoiceOp.Choice)
-                AddChoice(ref span, choices, false);
-            else
-                AddCondChoices(ref span, choices, false);
-        }
-
-        void AddChoice(ref StateSpan<ushort> span, List<Choice> choices, bool isDisabled)
-        {
-            int next = span.Read();
-            string text = Strings[span.Read()];
-            text = Tr(text);
-            text = TextParser.GetEventParsedText(text, text, null, this);
-            choices.Add(new(next, text, isDisabled));
-        }
-
-        void AddCondChoices(ref StateSpan<ushort> span, List<Choice> choices, bool outerDisabled)
-        {
-            bool condMet = GetBoolResult(ref span, outerDisabled);
-            bool isDisabled = !condMet;
-            ushort op = span.Read();
-
-            while (op != ChoiceOp.EndIf)
-            {
-                switch (op)
-                {
-                    case ChoiceOp.Choice:
-                        AddChoice(ref span, choices, isDisabled);
-                        break;
-                    case ChoiceOp.If:
-                        AddCondChoices(ref span, choices, isDisabled);
-                        break;
-                    case ChoiceOp.ElseIf:
-                        condMet = condMet || GetBoolResult(ref span, outerDisabled);
-                        isDisabled = !condMet || !isDisabled;
-                        break;
-                    case ChoiceOp.Else:
-                        condMet = true;
-                        isDisabled = !isDisabled;
-                        break;
-                    default:
-                        throw new System.Exception("Choices are invalid.");
-                }
-
-                op = span.Read();
-            }
-
-            bool GetBoolResult(ref StateSpan<ushort> span, bool isDisabled)
-            {
-                ushort[] expIndex = Instructions[span.Read()];
-                return !isDisabled && GetBoolInstResult(expIndex);
-            }
-        }
-    }
-
     private bool EvalBoolExp(ref StateSpan<ushort> span)
     {
         ushort opCode = span.Read();
@@ -410,12 +299,113 @@ public partial class DialogBase
         return result;
     }
 
-    protected virtual VarType GetPredefinedMethodReturnType(string funcName)
+    private ushort GetConditionResult(ushort[] array)
     {
-        if (funcName == nameof(GetName))
-            return VarType.String;
-        else if (funcName == nameof(GetRand))
-            return VarType.Float;
-        return new();
+        StateSpan<ushort> span = new(array, 1);
+        ushort result = span.Read();
+
+        while (!span.IsAtEnd && span.Current != OpCode.Undefined)
+        {
+            if (EvalBoolExp(ref span))
+                return span.Current;
+
+            span.MoveNext();
+        }
+
+        return result;
+    }
+
+    private void GetHashResult(StateSpan<ushort> span, Dictionary<string, string> hashCollection)
+    {
+        while (!span.IsAtEnd)
+        {
+            int valueType = span.Read();
+
+            if (valueType == 0)
+                break;
+
+            string key = Strings[span.Read()];
+            string value = string.Empty;
+
+            if (valueType == 2)
+            {
+                VarType returnType = GetReturnType(ref span);
+
+                value = returnType switch
+                {
+                    VarType.String => EvalStringExp(ref span),
+                    VarType.Float => EvalFloatExp(ref span).ToString(),
+                    VarType.Bool => EvalBoolExp(ref span).ToString(),
+                    _ => string.Empty
+                };
+            }
+
+            hashCollection.Add(key, value);
+        }
+    }
+
+    private void GetChoices(ushort[] array, List<Choice> choices)
+    {
+        StateSpan<ushort> span = new(array, 1);
+
+        while (span.Index < span.Length)
+        {
+            ushort op = span.Read();
+
+            if (op == ChoiceOp.Undefined)
+                break;
+
+            if (op == ChoiceOp.Choice)
+                AddChoice(ref span, choices, false);
+            else
+                AddCondChoices(ref span, choices, false);
+        }
+
+        void AddChoice(ref StateSpan<ushort> span, List<Choice> choices, bool isDisabled)
+        {
+            int next = span.Read();
+            string text = Strings[span.Read()];
+            text = Tr(text);
+            text = GetEventParsedText(text, text, null, this);
+            choices.Add(new(next, text, isDisabled));
+        }
+
+        void AddCondChoices(ref StateSpan<ushort> span, List<Choice> choices, bool outerDisabled)
+        {
+            bool condMet = GetBoolResult(ref span, outerDisabled);
+            bool isDisabled = !condMet;
+            ushort op = span.Read();
+
+            while (op != ChoiceOp.EndIf)
+            {
+                switch (op)
+                {
+                    case ChoiceOp.Choice:
+                        AddChoice(ref span, choices, isDisabled);
+                        break;
+                    case ChoiceOp.If:
+                        AddCondChoices(ref span, choices, isDisabled);
+                        break;
+                    case ChoiceOp.ElseIf:
+                        condMet = condMet || GetBoolResult(ref span, outerDisabled);
+                        isDisabled = !condMet || !isDisabled;
+                        break;
+                    case ChoiceOp.Else:
+                        condMet = true;
+                        isDisabled = !isDisabled;
+                        break;
+                    default:
+                        throw new System.Exception("Choices are invalid.");
+                }
+
+                op = span.Read();
+            }
+
+            bool GetBoolResult(ref StateSpan<ushort> span, bool isDisabled)
+            {
+                ushort[] expIndex = Instructions[span.Read()];
+                return !isDisabled && GetBoolInstResult(expIndex);
+            }
+        }
     }
 }

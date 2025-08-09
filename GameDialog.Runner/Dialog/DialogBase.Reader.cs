@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using GameDialog.Common;
 using GameDialog.Pooling;
 
@@ -12,6 +11,9 @@ public partial class DialogBase
     private const int SuspendScript = -1;
     private Dictionary<string, string> _cacheDict = [];
 
+    /// <summary>
+    /// Begins a loaded dialog script.
+    /// </summary>
     public void StartScript()
     {
         Next = 0;
@@ -195,203 +197,6 @@ public partial class DialogBase
             float value = Floats[instr[1]];
             AutoProceedGlobalEnabled = value == -2;
             AutoProceedGlobalTimeout = value;
-        }
-    }
-
-    public TextEvent ParseTextEvent(ReadOnlySpan<char> tagContent, int renderedIndex, StringBuilder sb)
-    {
-        if (!int.TryParse(tagContent, out int instIndex))
-            return ParseEventString(tagContent, renderedIndex, sb);
-
-        ushort[] instr = Instructions[instIndex];
-        ushort instructionType = instr[0];
-        // ushort unusedNextIndex = instr[1];
-        ushort opCode = instr[2];
-        ushort floatIndex = instr[3];
-
-        if (instructionType == InstructionType.Hash)
-        {
-            return new(EventType.Hash, renderedIndex, instIndex);
-        }
-        else if (instructionType == InstructionType.Speaker)
-        {
-            return new(EventType.Speaker, renderedIndex, instIndex);
-        }
-        else if (instructionType == InstructionType.Instruction)
-        {
-            return opCode switch
-            {
-                OpCode.Assign or
-                OpCode.MultAssign or
-                OpCode.DivAssign or
-                OpCode.AddAssign or
-                OpCode.SubAssign => AddAsTextEvent(),
-                OpCode.String or
-                OpCode.Float or
-                OpCode.Mult or
-                OpCode.Div or
-                OpCode.Add or
-                OpCode.Sub or
-                OpCode.Var or
-                OpCode.Func => AppendResult(),
-                OpCode.Speed => AddSpeedEvent(),
-                OpCode.Pause => AddPauseEvent(),
-                OpCode.Auto => HandleAuto(),
-                OpCode.Prompt => HandlePrompt(),
-                OpCode.Page => HandlePage(),
-                _ => TextEvent.Undefined
-            };
-        }
-
-        return TextEvent.Undefined;
-
-        TextEvent AddAsTextEvent()
-        {
-            return new(EventType.Instruction, renderedIndex, instIndex);
-        }
-
-        TextEvent AppendResult()
-        {
-            string result = string.Empty;
-            VarType returnType = GetReturnType(instr);
-
-            switch (returnType)
-            {
-                case VarType.String:
-                    result = GetStringInstResult(instr);
-                    break;
-                case VarType.Float:
-                    result = GetFloatInstResult(instr).ToString();
-                    break;
-                case VarType.Void:
-                    bool isAwait = instr[4] == 1;
-                    return new(EventType.Instruction, renderedIndex, instIndex, isAwait);
-            }
-
-            sb.Append(result.AsSpan());
-            return TextEvent.Ignore;
-        }
-
-        TextEvent AddSpeedEvent()
-        {
-            float speed = Floats[floatIndex];
-            return new TextEvent(EventType.Speed, renderedIndex, speed);
-        }
-
-        TextEvent AddPauseEvent()
-        {
-            float time = Floats[floatIndex];
-            return new TextEvent(EventType.Pause, renderedIndex, time);
-        }
-
-        TextEvent HandleAuto()
-        {
-            float time = Floats[floatIndex];
-            return new TextEvent(EventType.Auto, renderedIndex, time);
-        }
-
-        TextEvent HandlePrompt()
-        {
-            return new TextEvent(EventType.Prompt, renderedIndex - 1, 0);
-        }
-
-        TextEvent HandlePage()
-        {
-            return new TextEvent(EventType.Page, renderedIndex - 1, 0);
-        }
-    }
-
-    private TextEvent ParseEventString(ReadOnlySpan<char> tagContent, int renderedIndex, StringBuilder sb)
-    {
-        tagContent = tagContent.Trim();
-
-        if (tagContent.StartsWith(nameof(GetName)))
-        {
-            tagContent = tagContent[nameof(GetName).Length..];
-
-            if (!tagContent.StartsWith('(') || !tagContent.EndsWith(')'))
-                return TextEvent.Undefined;
-
-            tagContent = tagContent[1..^1].Trim();
-
-            if (!tagContent.StartsWith('\"') || !tagContent.EndsWith('\"'))
-                return TextEvent.Undefined;
-
-            tagContent = tagContent[1..^1];
-            sb.Append(GetName(tagContent.ToString()));
-            return TextEvent.Ignore;
-        }
-        else if (tagContent.StartsWith(BuiltIn.SPEED))
-        {
-            tagContent = tagContent[BuiltIn.SPEED.Length..].Trim();
-
-            if (!tagContent.StartsWith('='))
-                return TextEvent.Undefined;
-
-            tagContent = tagContent[1..].TrimStart();
-
-            if (!float.TryParse(tagContent, out float speed))
-                return TextEvent.Undefined;
-
-            return new TextEvent(EventType.Speed, renderedIndex, speed);
-        }
-        else if (tagContent.StartsWith('/'))
-        {
-            if (!tagContent[1..].Trim().SequenceEqual(BuiltIn.SPEED))
-                return TextEvent.Undefined;
-
-            return new TextEvent(EventType.Speed, renderedIndex, 1);
-        }
-        else if (tagContent.StartsWith(BuiltIn.PAUSE))
-        {
-            tagContent = tagContent[BuiltIn.PAUSE.Length..].Trim();
-
-            if (!tagContent.StartsWith('='))
-                return TextEvent.Undefined;
-
-            tagContent = tagContent[1..].TrimStart();
-
-            if (!float.TryParse(tagContent, out float pauseTime))
-                return TextEvent.Undefined;
-
-            return new TextEvent(EventType.Pause, renderedIndex, pauseTime);
-        }
-        else if (tagContent.SequenceEqual(BuiltIn.PROMPT))
-        {
-            return new TextEvent(EventType.Prompt, renderedIndex - 1, 0);
-        }
-        else if (tagContent.SequenceEqual(BuiltIn.PAGE))
-        {
-            return new TextEvent(EventType.Page, renderedIndex - 1, 0);
-        }
-
-        return TextEvent.Undefined;
-    }
-
-    public void HandleTextEvent(TextEvent textEvent)
-    {
-        int value = (int)textEvent.Value;
-
-        switch (textEvent.EventType)
-        {
-            case EventType.Instruction:
-                EvaluateInstructions(Instructions[value]);
-                break;
-            case EventType.Hash:
-                ushort[] hashInstr = Instructions[value];
-                StateSpan<ushort> hashSpan = new(hashInstr, 2);
-                GetHashResult(hashSpan, _cacheDict);
-                OnHash(_cacheDict);
-                _cacheDict.Clear();
-                break;
-            case EventType.Speaker:
-                ushort[] speakerInstr = Instructions[value];
-                ushort speakerId = speakerInstr[2];
-                StateSpan<ushort> speakerSpan = new(speakerInstr, 3);
-                GetHashResult(speakerSpan, _cacheDict);
-                OnSpeakerHash(SpeakerIds[speakerId], _cacheDict);
-                _cacheDict.Clear();
-                break;
         }
     }
 }

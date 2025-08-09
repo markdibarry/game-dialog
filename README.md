@@ -1,10 +1,42 @@
 # Game Dialog
 
-A free game dialog language I'm making for my personal game framework.
+A free game dialog language I'm making for my personal game framework. Obligatory "this is a WIP and probably only works on my machine".
 
-## Creating a file
+## Getting started
 
-New dialog scripts should be made using the `.dia` extension. The name of the file should be unique to the project.
+While this is a WIP, to use the dialog system in your project, download the addon and add it somewhere in your project. The addon is available in the github repo under "Actions", clicking the most recent workflow run, and downloading the .zip file under "Artifacts".
+
+## VSCode/VSCodium extension
+
+WIP - To install the extension for vscodium, a .vsix file will be provided soon.
+
+## Integration
+
+In order to use this system, you need to create your own dialog class inheriting from the supplied `GameDialog.Runner.DialogBase` class. You may notice that there is no built in dialog box or choice menu display. Dialog systems tend to be just as bespoke as menu systems, so it's intentionally not implemented to allow the user more freedom in how this system is used. A custom `RichTextLabel` node (`TextWriter`) is provided, however, to support some of the built-in tags. A current goal of this project is to make it easier to plug into in the future.
+
+With a custom class in place you can run a script with the following code:
+
+```csharp
+Dialog dialog = new Dialog();
+dialog.LoadScript("HelloWorld.dia");
+dialog.StartScript();
+```
+
+> For more on creating a script, see the "Creating a script" section.
+
+For testing purposes or one-liners, you can also run a single-line dialog via the following:
+
+```csharp
+Dialog dialog = new Dialog();
+dialog.LoadSingleLine("Hello world! I'm writing dialog.");
+dialog.StartScript();
+```
+
+By default, you won't see anything happen, of course. When a dialog line is served, you need to decide what to do with it! For this, there are a few methods to override in your custom dialog class allowing you to hook into certain parts of the system. See the API section of the docs for more.
+
+## Creating a script
+
+New dialog scripts are made using the `.dia` extension. The name of the file should be unique to the project.
 
 ## Section Title
 
@@ -20,8 +52,6 @@ Each section is made up of one or more lines of dialog. Each line begins with th
 --Greeting--
 Stalone: Hello World!
 ```
-
-Internally, the dialog system will call `GetName(string id)` to get the speaker's name for display. If none is defined, it will display the ID.
 
 Add multiple speakers by separating names with a comma:
 ```gamedialog
@@ -206,7 +236,7 @@ This is useful for long, multi-line text that needs broken up into distinct page
 
 ### `await`
 
-Sometimes, a dialog script needs to wait for something to happen before continuing. If you have predefined a global method and it's of a `void` return type, you can tell the dialog to suspend execution until a later time by prepending it with the `await` keyword. To resume, call `Resume()` on your `DialogBase` object.
+Sometimes, a dialog script needs to wait for something to happen before continuing. If you have a predefined method and it's of a `void` return type, you can tell the dialog to suspend execution until a later time by prepending it with the `await` keyword. To resume, call `Resume()` on your `DialogBase` object.
 
 ```
 Stalone: Hey, look! A plane is flying overhead!

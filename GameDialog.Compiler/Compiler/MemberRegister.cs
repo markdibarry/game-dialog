@@ -31,8 +31,6 @@ public class MemberRegister
 
         FuncDefs.Clear();
         VarDefs.Clear();
-        FuncDefs.Add(new(BuiltIn.GET_NAME_METHOD, VarType.String, [VarType.String]));
-        FuncDefs.Add(new(BuiltIn.GET_RAND_METHOD, VarType.Float, []));
         string filePath = files[0];
         var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(filePath), path: filePath);
         CompilationUnitSyntax? root = tree.GetCompilationUnitRoot();
@@ -106,11 +104,6 @@ public class MemberRegister
         sb.AppendLine($$"""
             protected override VarType GetPredefinedMethodReturnType(string funcName)
             {
-                VarType varType = base.GetPredefinedMethodReturnType(funcName);
-
-                if (varType != VarType.Undefined)
-                    return varType;
-
                 return funcName switch
                 {
                     {{
@@ -178,7 +171,7 @@ public class MemberRegister
                         }))
                     }}
                     default:
-                        return base.CallPredefinedMethod(funcName, args);
+                        return new();
                 }
             }
         """);
@@ -247,10 +240,6 @@ public class MemberRegister
             return null;
 
         string funcName = node.Identifier.Text;
-
-        if (funcName == BuiltIn.GET_NAME_METHOD || funcName == BuiltIn.GET_RAND_METHOD)
-            return null;
-
         List<VarType> args = [];
         bool argsValid = true;
 
