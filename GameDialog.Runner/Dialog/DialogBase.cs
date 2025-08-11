@@ -66,35 +66,4 @@ public abstract partial class DialogBase : Control
     /// <param name="speakerId">The speaker id</param>
     /// <param name="hashData">The hash data set</param>
     protected virtual void OnSpeakerHash(string speakerId, Dictionary<string, string> hashData) { }
-    /// <summary>
-    /// Gets the VarType of a predefined method.
-    /// </summary>
-    /// <param name="funcName"></param>
-    /// <returns></returns>
-    protected virtual VarType GetPredefinedMethodReturnType(string funcName) => VarType.Undefined;
-    /// <summary>
-    /// Gets the VarType of a predefined property.
-    /// </summary>
-    /// <param name="propertyName"></param>
-    /// <returns></returns>
-    protected virtual VarType GetPredefinedPropertyType(string propertyName) => new();
-    /// <summary>
-    /// Calls a predefined method.
-    /// </summary>
-    /// <param name="funcName"></param>
-    /// <param name="args"></param>
-    /// <returns></returns>
-    protected virtual TextVariant CallPredefinedMethod(string funcName, ReadOnlySpan<TextVariant> args) => new();
-    /// <summary>
-    /// Gets a predefined property.
-    /// </summary>
-    /// <param name="propertyName"></param>
-    /// <returns></returns>
-    protected virtual TextVariant GetPredefinedProperty(string propertyName) => new();
-    /// <summary>
-    /// Sets a predefined property.
-    /// </summary>
-    /// <param name="propertyName"></param>
-    /// <param name="value"></param>
-    protected virtual void SetPredefinedProperty(string propertyName, TextVariant value) { }
 }

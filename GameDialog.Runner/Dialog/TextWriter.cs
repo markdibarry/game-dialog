@@ -18,7 +18,7 @@ public partial class TextWriter : RichTextLabel, IPoolable
 
     private const int DefaultCharsPerSecond = 30;
     private const int SpeedUpMultiplier = 3;
-    private const float AutoTimeoutMultiplier = 0.2f;
+    private const float AutoTimeoutMultiplier = 0.05f;
 
     private bool _isWriting;
     private double _writeCounter;
@@ -60,21 +60,7 @@ public partial class TextWriter : RichTextLabel, IPoolable
     /// <summary>
     /// The DialogBase object. For parsing and handling text events.
     /// </summary>
-    public DialogBase? Dialog
-    {
-        get => field;
-        set
-        {
-            field = value;
-
-            if (value != null)
-            {
-                AutoProceedTimeout = value.AutoProceedGlobalTimeout;
-                AutoProceedEnabled = value.AutoProceedGlobalEnabled;
-                SpeedMultiplier = value.SpeedMultiplier;
-            }
-        }
-    }
+    public DialogBase? Dialog { get; set; }
     /// <summary>
     /// A replacement for the base Text property to set parsed text properly.
     /// If set via the editor, this code is not called, even with an [Export] attribute.
@@ -158,7 +144,16 @@ public partial class TextWriter : RichTextLabel, IPoolable
         base.Text = DialogBase.GetEventParsedText(text, GetParsedText(), _textEvents, Dialog);
         _totalCharacters = GetTotalCharacterCount();
         _scrollBar.Value = 0;
+        _targetScrollValue = 0;
+        _movingScrollValue = 0;
         _targetWriteRange = new(0, GetLastVisibleCharacter(0));
+
+        if (Dialog != null)
+        {
+            AutoProceedEnabled = Dialog.AutoProceedGlobalEnabled;
+            AutoProceedTimeout = Dialog.AutoProceedGlobalTimeout;
+            SpeedMultiplier = Dialog.SpeedMultiplier;
+        }
     }
 
     public void ClearObject()
@@ -398,6 +393,9 @@ public partial class TextWriter : RichTextLabel, IPoolable
         _scrollBar.AllowGreater = true;
         _scrollBar.Scale = Vector2.Zero;
         _scrollBar.Value = 0;
+        _targetScrollValue = 0;
+        _movingScrollValue = 0;
+        _scrollPageOverride = false;
         _targetWriteRange = new(0, GetLastVisibleCharacter(0));
     }
 

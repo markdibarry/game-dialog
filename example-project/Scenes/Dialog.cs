@@ -13,7 +13,7 @@ public partial class Dialog : DialogBase
     protected override void OnDialogLineStarted(DialogLine line)
     {
         DialogBox ??= CreateDialogBox();
-        // Passes global tag values over
+        // Gives access to script when parsing
         DialogBox.TextWriter.Dialog = this;
         _ = DialogBox.WriteDialogLine(line);
     }
