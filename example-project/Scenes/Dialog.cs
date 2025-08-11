@@ -13,6 +13,8 @@ public partial class Dialog : DialogBase
     protected override void OnDialogLineStarted(DialogLine line)
     {
         DialogBox ??= CreateDialogBox();
+        // Passes global tag values over
+        DialogBox.TextWriter.Dialog = this;
         _ = DialogBox.WriteDialogLine(line);
     }
 
@@ -23,6 +25,12 @@ public partial class Dialog : DialogBase
 
     protected override void OnChoice(List<Choice> choices)
     {
+        ProcessMode = ProcessModeEnum.Disabled;
+        PackedScene packedScene = GD.Load<PackedScene>("./Scenes/OptionBox.tscn");
+        OptionBox optionBox = packedScene.Instantiate<OptionBox>();
+        optionBox.Dialog = this;
+        Game.Root.GUI.AddChild(optionBox);
+        optionBox.Init(choices);
     }
 
     protected override void OnHash(Dictionary<string, string> hashData)
@@ -35,8 +43,6 @@ public partial class Dialog : DialogBase
         DialogBox newBox = packedScene.Instantiate<DialogBox>();
         newBox.LineEnded += OnDialogLineEnded;
         AddChild(newBox);
-        newBox.TextWriter.Dialog = this;
-        newBox.TextWriter.SpeedMultiplier = SpeedMultiplier;
         return newBox;
     }
 }

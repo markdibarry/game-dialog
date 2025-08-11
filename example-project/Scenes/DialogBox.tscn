@@ -9,7 +9,7 @@ content_margin_left = 16.0
 content_margin_top = 16.0
 content_margin_right = 16.0
 content_margin_bottom = 16.0
-bg_color = Color(0.6, 0.6, 0.19607843, 0.42745098)
+bg_color = Color(0.6, 0.6, 0.19607843, 0.69411767)
 border_width_left = 8
 border_width_top = 8
 border_width_right = 8
@@ -30,7 +30,7 @@ content_margin_right = 0.0
 content_margin_bottom = 0.0
 
 [node name="DialogBox" type="MarginContainer"]
-custom_minimum_size = Vector2(0, 180)
+custom_minimum_size = Vector2(0, 220)
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
@@ -39,35 +39,50 @@ grow_horizontal = 2
 grow_vertical = 0
 script = ExtResource("1_fqg7g")
 
-[node name="PanelContainer" type="PanelContainer" parent="."]
-custom_minimum_size = Vector2(0, 48)
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 2
+
+[node name="NameContainer" type="PanelContainer" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_fqg7g")
 
-[node name="PagedText" type="RichTextLabel" parent="PanelContainer"]
+[node name="NameLabel" type="Label" parent="VBoxContainer/NameContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_fqg7g")
+
+[node name="PagedText" type="RichTextLabel" parent="VBoxContainer/PanelContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/default_color = Color(1, 1, 0.8784314, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 8
 theme_override_fonts/normal_font = SubResource("FontVariation_1hct6")
-theme_override_font_sizes/normal_font_size = 32
+theme_override_font_sizes/normal_font_size = 26
 theme_override_styles/normal = SubResource("StyleBoxEmpty_fqg7g")
 bbcode_enabled = true
-text = "Test 123! Thanks for playing!"
-visible_characters = 29
+text = "[pag]"
+visible_characters = 0
 visible_characters_behavior = 1
+visible_ratio = 0.0
 script = ExtResource("1_7q3q8")
 CharsPerSecond = 30
 
-[node name="NextArrow" type="MarginContainer" parent="PanelContainer"]
+[node name="NextArrow" type="MarginContainer" parent="VBoxContainer/PanelContainer"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 8
 
-[node name="TextureRect" type="Sprite2D" parent="PanelContainer/NextArrow"]
+[node name="TextureRect" type="Sprite2D" parent="VBoxContainer/PanelContainer/NextArrow"]
 scale = Vector2(0.25, 0.25)
 texture = ExtResource("2_3f5xn")
 centered = false

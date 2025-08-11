@@ -23,9 +23,9 @@ public abstract partial class DialogBase : Control
     protected List<float> Floats { get; private set; } = [];
     protected List<ushort[]> Instructions { get; private set; } = [];
     protected bool SpeedUpEnabled { get; set; }
-    protected double SpeedMultiplier { get; set; }
-    protected bool AutoProceedGlobalEnabled { get; private set; }
-    protected float AutoProceedGlobalTimeout { get; private set; }
+    public double SpeedMultiplier { get; private set; }
+    public bool AutoProceedGlobalEnabled { get; private set; }
+    public float AutoProceedGlobalTimeout { get; private set; }
 
     public int? Next { get; set; }
 

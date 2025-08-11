@@ -108,7 +108,7 @@ public partial class MainDialogVisitor
 
         bool isClose = context.OPEN_BRACKET().GetText().EndsWith('/');
 
-        if (expName != BuiltIn.SPEED && isClose)
+        if (expName != BuiltIn.SPEED && expName != BuiltIn.AUTO && isClose)
             return _diagnostics.AddError(context, $"Tag {expName} is not supported as a closing tag.");
         else if (expName == BuiltIn.SPEED && !isClose)
             return _diagnostics.AddError(context, $"Tag {expName} can only be assigned to or be part of a closing tag.");

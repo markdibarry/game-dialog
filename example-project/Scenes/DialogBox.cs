@@ -8,6 +8,8 @@ namespace ExampleProject;
 [Tool]
 public partial class DialogBox : MarginContainer
 {
+    public PanelContainer NameContainer { get; set; } = null!;
+    public Label NameLabel { get; set; } = null!;
     public TextWriter TextWriter { get; set; } = null!;
     public DialogLine DialogLine { get; private set; } = null!;
     public MarginContainer NextArrow { get; set; } = null!;
@@ -15,6 +17,8 @@ public partial class DialogBox : MarginContainer
 
     public override void _Ready()
     {
+        NameContainer = GetNode<PanelContainer>("%NameContainer");
+        NameLabel = GetNode<Label>("%NameLabel");
         NextArrow = GetNode<MarginContainer>("%NextArrow");
         TextWriter = GetNode<TextWriter>("%PagedText");
         TextWriter.FinishedWriting += OnFinishedWriting;
@@ -49,8 +53,19 @@ public partial class DialogBox : MarginContainer
         DialogLine = dialogLine;
         // In Godot, when a new Control is created, it is incorrect size until the next frame.
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        if (dialogLine.SpeakerIds.Count == 0)
+        {
+            NameContainer.Visible = false;
+        }
+        else
+        {
+            NameContainer.Visible = true;
+            NameLabel.Text = string.Join(", ", dialogLine.SpeakerIds);
+        }
+        
         TextWriter.SetParsedText(dialogLine.Text);
-        TextWriter.WriteNextLine();
+        TextWriter.WriteNextPage();
     }
 
     private void HandleNext()
@@ -58,7 +73,7 @@ public partial class DialogBox : MarginContainer
         NextArrow.Hide();
 
         if (!TextWriter.IsComplete())
-            TextWriter.WriteNextLine();
+            TextWriter.WriteNextPage();
         else
             LineEnded?.Invoke(DialogLine);
     }

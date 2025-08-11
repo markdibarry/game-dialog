@@ -23,3 +23,7 @@ window/size/viewport_height=400
 [dotnet]
 
 project/assembly_name="GameDialogExample"
+
+[gui]
+
+theme/custom="uid://go6vx2xu6kvf"

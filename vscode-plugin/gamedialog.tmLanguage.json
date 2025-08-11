@@ -23,9 +23,6 @@
         },
         {
             "include": "#choices"
-        },
-        {
-            "include": "#functions"
         }
     ],
     "repository": {
@@ -56,8 +53,8 @@
         },
         "tags": {
             "name": "keyword.other",
-            "begin": "\\[",
-            "end": "\\]",
+            "begin": "(?<!\\\\)\\[",
+            "end": "(?<!\\\\)\\]",
             "patterns": [
                 {
                     "include": "#functions"
@@ -85,8 +82,20 @@
             "match": "true|false"
         },
         "controls": {
-            "name": "keyword.control",
-            "match": "^(?:[ \\t]*)\\b(?:else\\s+if|else|if)\\b"
+            "patterns": [
+                {
+                "name": "keyword.control",
+                "match": "^(?:[ \\t]*)\\belse\\s+if\\b(?=\\s*\\[)"
+                },
+                {
+                "name": "keyword.control",
+                "match": "^(?:[ \\t]*)\\bif\\b(?=\\s*\\[)"
+                },
+                {
+                "name": "keyword.control",
+                "match": "^(?:[ \\t]*)\\belse\\b[ \\t]*$"
+                }
+            ]
         },
         "functions": {
             "match": "(\\w+)(\\()(.*?)(\\))",

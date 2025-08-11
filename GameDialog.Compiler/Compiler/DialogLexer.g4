@@ -13,7 +13,7 @@ CHOICE: '?' ' '+ -> pushMode(Line);
 IF: 'if' -> pushMode(ExpressionMode);
 ELSEIF: 'else if' -> pushMode(ExpressionMode);
 ELSE: 'else';
-TAG_ENTER: OPEN_BRACKET -> type(OPEN_BRACKET), pushMode(ExpressionMode);
+TAG_ENTER: OPEN_BRACKET (WS* '/')? -> type(OPEN_BRACKET), pushMode(ExpressionMode);
 SPEAKER_NAME: (NAME | UNDERSCORE) -> type(NAME), pushMode(Speaker);
 ANY: .;
 

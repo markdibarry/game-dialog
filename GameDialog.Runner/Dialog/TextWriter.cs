@@ -60,7 +60,21 @@ public partial class TextWriter : RichTextLabel, IPoolable
     /// <summary>
     /// The DialogBase object. For parsing and handling text events.
     /// </summary>
-    public DialogBase? Dialog { get; set; }
+    public DialogBase? Dialog
+    {
+        get => field;
+        set
+        {
+            field = value;
+
+            if (value != null)
+            {
+                AutoProceedTimeout = value.AutoProceedGlobalTimeout;
+                AutoProceedEnabled = value.AutoProceedGlobalEnabled;
+                SpeedMultiplier = value.SpeedMultiplier;
+            }
+        }
+    }
     /// <summary>
     /// A replacement for the base Text property to set parsed text properly.
     /// If set via the editor, this code is not called, even with an [Export] attribute.
@@ -76,7 +90,7 @@ public partial class TextWriter : RichTextLabel, IPoolable
         get => field;
         set => field = value >= 0 ? value : field;
     }
-    private float AutoProceedTimeout
+    public float AutoProceedTimeout
     {
         get
         {
@@ -343,6 +357,12 @@ public partial class TextWriter : RichTextLabel, IPoolable
                 float autoValue = (float)textEvent.Value;
                 AutoProceedEnabled = autoValue != -2;
                 AutoProceedTimeout = autoValue;
+                int currentChar = VisibleCharacters;
+                bool isComplete = currentChar == -1 || currentChar == _totalCharacters;
+
+                if (isComplete)
+                    PauseTimer += AutoProceedTimeout;
+
                 break;
             case EventType.Prompt:
             case EventType.Page:

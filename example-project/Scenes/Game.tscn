@@ -7,5 +7,6 @@
 script = ExtResource("1_xkndl")
 
 [node name="TestScene" parent="." instance=ExtResource("2_u44n3")]
+modulate = Color(0.9098039, 0.9098039, 0.9098039, 1)
 
 [node name="GUI" type="CanvasLayer" parent="."]
