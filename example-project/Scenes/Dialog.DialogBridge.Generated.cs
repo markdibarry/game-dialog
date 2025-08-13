@@ -10,6 +10,7 @@ public partial class Dialog
     {
         return funcName switch
         {
+            nameof(Shake) => VarType.Void,
             nameof(Flash) => VarType.Void,
             _ => VarType.Undefined
         };
@@ -28,6 +29,9 @@ public partial class Dialog
     {
         switch (funcName)
         {
+            case nameof(Shake):
+                Shake();
+                return new();
             case nameof(Flash):
                 Flash();
                 return new();

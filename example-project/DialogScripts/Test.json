@@ -32,9 +32,15 @@
     "We just turned it on and didn\u0027t set a pause time (\\[auto\\]) so it\u0027ll auto proceed based on the length of the line.",
     "This will also auto-proceed. ",
     "\\[/auto\\] closes the tag, so you\u0027ll need to proceed manually from here!",
-    "await",
+    "members",
+    "You can define methods and properties to be used in your scripts! To do so, make an additional partial class to go with your Dialog class that is named *.DialogBridge.cs. We made one and added a \u0022Flash()\u0022 method! Let\u0027s try it.",
     "Flash",
-    "In Dialog.DialogBridge we created a custom method, Flash(), that modulates the test scene. Internally, it\u0027s handled asynchronously (Take a look!). You can wait for it to finish before continuing writing by writing \\[await Flash()\\][30], or if you don\u0027t want to wait, simply call the method name like so: \\[Flash()\\][31]. Cool, right?",
+    "Flash![31]",
+    "Go to Dialog.DialogBridge.cs to take a look!",
+    "await",
+    "Shake",
+    "In Dialog.DialogBridge we created a custom method, Shake(), that shakes the dialog box. Internally, it\u0027s handled asynchronously (Take a look!). You can wait for it to finish before continuing with the script by writing \\[await Shake()\\][34], or if you don\u0027t want to wait, simply call the method name.",
+    "\\[Shake()\\][36]. Notice that it\u0027s still writing during the effect. Cool, right?",
     "end",
     "\\[end\\] ends the script. Goodbye!"
   ],
@@ -90,8 +96,11 @@
       29,
       23,
       1,
-      32,
-      26
+      33,
+      28,
+      1,
+      37,
+      32
     ],
     [
       3,
@@ -242,24 +251,23 @@
     ],
     [
       3,
-      2,
+      30,
       1,
       0,
-      25
+      24
+    ],
+    [
+      3,
+      32,
+      1,
+      0,
+      26
     ],
     [
       4,
       0,
       5,
-      24,
-      1,
-      0
-    ],
-    [
-      4,
-      0,
-      5,
-      24,
+      25,
       0,
       0
     ],
@@ -269,6 +277,43 @@
       1,
       0,
       27
+    ],
+    [
+      3,
+      35,
+      1,
+      0,
+      30
+    ],
+    [
+      4,
+      0,
+      5,
+      29,
+      1,
+      0
+    ],
+    [
+      3,
+      2,
+      1,
+      0,
+      31
+    ],
+    [
+      4,
+      0,
+      5,
+      29,
+      0,
+      0
+    ],
+    [
+      3,
+      2,
+      1,
+      0,
+      33
     ]
   ]
 }
