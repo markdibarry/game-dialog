@@ -12,6 +12,7 @@ public partial class Dialog
         {
             nameof(Shake) => VarType.Void,
             nameof(Flash) => VarType.Void,
+            nameof(GetTimesTalked) => VarType.Float,
             _ => VarType.Undefined
         };
     }
@@ -35,6 +36,8 @@ public partial class Dialog
             case nameof(Flash):
                 Flash();
                 return new();
+            case nameof(GetTimesTalked):
+                return new(GetTimesTalked(args[0].String));
             default:
                 return new();
         }

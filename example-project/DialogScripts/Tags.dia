@@ -1,36 +1,36 @@
 --HelloWorld--
-Devs: Hello world! Thanks for trying out our dialog system!
+Devs: The dialog system supports helper tags you can put between square brackets.
 [goto Examples]
 
 --Examples--
-Devs: What feature would you like to see an example of?
+Devs: What tag would you like to see an example of?
 ? prompt
-    Devs: Adding a \[prompt\] tag adds a prompt[prompt] after[prompt] every[prompt] word.
+    Devs: Adding a [color=Bisque]\[prompt\][/color] tag adds a prompt[prompt] after[prompt] every[prompt] word.
 ? page
-    Devs: ^^Even though this is a single dialog line, when it hits a \[page\] tag...\n
+    Devs: ^^Even though this is a single dialog line, when it hits a [color=Bisque]\[page\][/color] tag...\n
         [page]...it'll scroll the current line to a new page to read the rest!^^
 ? goto
-    Devs: ^^The name of this section is "Examples". \[goto Examples\] will return you 
+    Devs: ^^The name of this section is "Examples". [color=Bisque]\[goto Examples\][/color] will return you 
         to the beginning of the section. Let's go!^^
     [goto Examples]
 ? speed
     Devs: This text will be read at regular speed.
-    Devs: [speed=0.5]This will be read at half speed because of the tag \[speed=0.5\].
-    Devs: [speed=2]And this will be read at double speed due to a tag of \[speed=2\]!
+    Devs: [speed=0.5]This will be read at half speed because of the tag [color=Bisque]\[speed=0.5\][/color].
+    Devs: [speed=2]And this will be read at double speed due to a tag of [color=Bisque]\[speed=2\][/color]!
 ? pause
     Devs: This text inserts a pause here[pause=2] then continues on!
 ? auto
     Devs: ^^If you add an "auto" tag to the end of a line, it will automatically proceed after 
         a pause.^^
-    Devs: This line ends with \[auto=2\].[auto=2]
+    Devs: This line ends with [color=Bisque]\[auto=2\][/color].[auto=2]
     Devs: ^^You can also set an "auto" tag on its own line. This will make all lines auto-proceed 
         until you turn it off.^^
     [auto]
-    Devs: ^^We just turned it on and didn't set a pause time (\[auto\]) so it'll auto proceed 
+    Devs: ^^We just turned it on and didn't set a pause time ([color=Bisque]\[auto\][/color]) so it'll auto proceed 
         based on the length of the line.^^
     Devs: This will also auto-proceed. 
     [/auto]
-    Devs: \[/auto\] closes the tag, so you'll need to proceed manually from here!
+    Devs: [color=Bisque]\[/auto\][/color] closes the tag, so you'll need to proceed manually from here!
 ? members
     Devs: ^^You can define methods and properties to be used in your scripts! To do so, 
         make an additional partial class to go with your Dialog class that is named 
@@ -40,9 +40,9 @@ Devs: What feature would you like to see an example of?
 ? await
     Devs: ^^In Dialog.DialogBridge we created a custom method, Shake(), that shakes the dialog box. 
         Internally, it's handled asynchronously (Take a look!). You can wait for it to finish 
-        before continuing with the script by writing \[await Shake()\][await Shake()], or if you 
+        before continuing with the script by writing [color=Bisque]\[await Shake()\][/color][await Shake()], or if you 
         don't want to wait, simply call the method name.^^
-    Devs: \[Shake()\][Shake()]. Notice that it's still writing during the effect. Cool, right?
+    Devs: [color=Bisque]\[Shake()\][/color][Shake()]. Notice that it's still writing during the effect. Cool, right?
 ? end
-    Devs: \[end\] ends the script. Goodbye!
+    Devs: [color=Bisque]\[end\][/color] ends the script. Goodbye!
     [end]

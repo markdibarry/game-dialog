@@ -45,4 +45,10 @@ public partial class Dialog
             .SetEase(Tween.EaseType.InOut)
             .SetDelay(0.25f);
     }
+
+    public float GetTimesTalked(string nodeName)
+    {
+        DialogArea? dialogArea = Game.Root.FindChild(nodeName) as DialogArea;
+        return dialogArea?.TimesTalked ?? 0;
+    }
 }

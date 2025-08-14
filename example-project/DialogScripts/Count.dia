@@ -1,0 +1,18 @@
+--Count--
+[timesTalked = GetTimesTalked("CountDialogArea")]
+if [timesTalked < 2]
+    Devs: This is the first time you've interacted with this dialog.
+    Devs: ^^You can create a method that searches for a node and gets data from it... 
+        like the number times you've interacted with a dialog, for example.^^
+    [end]
+else
+    Devs: You've talked to me [timesTalked] times!
+
+if [timesTalked == 2]
+    Devs: Notice that this is different text than the first time we talked.
+else if [timesTalked == 3]
+    Devs: I think you get the idea.
+else if [timesTalked == 4]
+    Devs: Go tell your friends!
+else if [timesTalked > 4]
+    Devs: Bored yet?

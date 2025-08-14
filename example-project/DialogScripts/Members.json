@@ -1,0 +1,27 @@
+{
+  "SpeakerIds": [
+    "Devs"
+  ],
+  "Floats": [],
+  "Strings": [
+    "Members",
+    "To do"
+  ],
+  "Instructions": [
+    [
+      1,
+      2,
+      0
+    ],
+    [
+      2
+    ],
+    [
+      3,
+      1,
+      1,
+      0,
+      1
+    ]
+  ]
+}

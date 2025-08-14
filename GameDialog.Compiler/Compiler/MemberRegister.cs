@@ -165,7 +165,7 @@ public class MemberRegister
                             {
                                 return $$"""
                                 case nameof({{x.Name}}):
-                                                return {{x.Name}}({{args}});
+                                                return new({{x.Name}}({{args}}));
                                 """;
                             }
                         }))

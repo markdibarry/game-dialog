@@ -8,6 +8,7 @@ public partial class DialogArea : Area2D
 {
     [Export(PropertyHint.File, "*.json")]
     public string DialogPath { get; set; } = string.Empty;
+    public int TimesTalked { get; set; }
 
     public override void _Ready()
     {
@@ -38,6 +39,7 @@ public partial class DialogArea : Area2D
         dialog.ScriptEnded += RemoveDialog;
         dialog.LoadScript(DialogPath);
         Game.Root.GUI.AddChild(dialog);
+        TimesTalked++;
         dialog.StartScript();
     }
 
