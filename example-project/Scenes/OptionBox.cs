@@ -12,6 +12,7 @@ public partial class OptionBox : MarginContainer
     public override void _Ready()
     {
         _gridContainer = GetNode<GridContainer>("%GridContainer");
+        _gridContainer.Columns = Dialog.OptionColumns;
     }
 
     public void Init(List<Choice> choices)

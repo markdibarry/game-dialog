@@ -1,0 +1,19 @@
+--HashTags--
+Devs: In your Dialog class, you can override an [color=Gold]OnHash()[/color] method.
+Devs: It gets triggered when your script encounters a hash tag like [color=Gold]\[#MyTag\][/color].
+Devs: ^^You can assign a corresponding value as well, and add many to one block as long as they're 
+    separated by white space. [color=Gold]\[#MyTag #Another=4\][/color]^^
+Devs: In the example [color=Gold]Dialog.cs[/color] we handle an "OptionColumns" tag.
+Devs: Since our example option box is a GridContainer, you can set the columns using it.
+[#OptionColumns=3]
+Devs: We just set the number of columns to three with [color=Gold]\[#OptionColumns=3\][/color].
+? Nice
+? Cool
+? Radical
+? Tubular
+? Jawsome
+[#OptionColumns=2]
+Devs: Now we just set them to two!
+? Neat
+? Wild
+? Fancy

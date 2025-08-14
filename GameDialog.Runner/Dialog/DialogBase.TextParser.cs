@@ -30,8 +30,24 @@ public partial class DialogBase
 
         while (i < fullText.Length)
         {
+            // handle escaped brackets
+            if (fullText[i] == '\\'
+                && i != fullText.Length - 1
+                && (fullText[i + 1] == '[' || fullText[i + 1] == ']'))
+            {
+                if (i != 0)
+                    s_sb.Append(fullText.AsSpan(appendStart..i));
+
+                s_sb.Append(fullText[i + 1]);
+                i += 2;
+                ri++;
+                pi += 2;
+                appendStart = i;
+                continue;
+            }
+
             // Is not in brackets or is escaped character
-            if (fullText[i] != '[' || (i != 0 && fullText[i - 1] == '\\'))
+            if (fullText[i] != '[')
             {
                 i++;
                 ri++;
@@ -52,7 +68,8 @@ public partial class DialogBase
             }
 
             // is bbCode, so only increase Text index
-            if (pi >= parsedText.Length || parsedText[pi] != '[')
+            if (pi + bracketLength > parsedText.Length
+                || !parsedText.AsSpan(pi, bracketLength).SequenceEqual(fullText.AsSpan(i, bracketLength)))
             {
                 i += bracketLength;
                 continue;

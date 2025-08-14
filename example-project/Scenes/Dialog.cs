@@ -9,6 +9,7 @@ namespace ExampleProject;
 public partial class Dialog : DialogBase
 {
     public DialogBox? DialogBox { get; set; }
+    public int OptionColumns { get; private set; } = 1;
 
     protected override void OnDialogLineStarted(DialogLine line)
     {
@@ -35,6 +36,11 @@ public partial class Dialog : DialogBase
 
     protected override void OnHash(Dictionary<string, string> hashData)
     {
+        if (hashData.TryGetValue("OptionColumns", out string? columnString)
+            && int.TryParse(columnString, out int columns))
+        {
+            OptionColumns = Math.Max(columns, 1);
+        }
     }
 
     private DialogBox CreateDialogBox()

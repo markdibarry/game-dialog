@@ -36,29 +36,8 @@ centered = false
 region_enabled = true
 region_rect = Rect2(0, 0, 1024, 1024)
 
-[node name="TagDialogArea" type="Area2D" parent="."]
-position = Vector2(407, 327)
-script = ExtResource("3_wicfy")
-DialogPath = "res://DialogScripts/Tags.json"
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="TagDialogArea"]
-shape = SubResource("RectangleShape2D_sreuk")
-
-[node name="Sprite2D" type="Sprite2D" parent="TagDialogArea"]
-modulate = Color(0.7602213, 1.5225214, 0.6546721, 0.38039216)
-scale = Vector2(0.5, 0.5)
-texture = ExtResource("1_cguwc")
-
-[node name="Label" type="Label" parent="TagDialogArea"]
-anchors_preset = -1
-offset_left = -23.0
-offset_top = -63.0
-offset_right = 23.0
-offset_bottom = -33.0
-text = "Tags"
-
 [node name="MembersDialogArea" type="Area2D" parent="."]
-position = Vector2(253, 327)
+position = Vector2(253, 328)
 script = ExtResource("3_wicfy")
 DialogPath = "res://DialogScripts/Members.json"
 
@@ -73,14 +52,35 @@ texture = ExtResource("1_cguwc")
 [node name="Label" type="Label" parent="MembersDialogArea"]
 anchors_preset = -1
 offset_left = -48.0
-offset_top = -62.0
+offset_top = -60.0
 offset_right = 48.0
-offset_bottom = -32.0
+offset_bottom = -30.0
 text = "Members"
 metadata/_edit_use_anchors_ = true
 
+[node name="TagDialogArea" type="Area2D" parent="."]
+position = Vector2(407, 328)
+script = ExtResource("3_wicfy")
+DialogPath = "res://DialogScripts/Tags.json"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TagDialogArea"]
+shape = SubResource("RectangleShape2D_sreuk")
+
+[node name="Sprite2D" type="Sprite2D" parent="TagDialogArea"]
+modulate = Color(0.7602213, 1.5225214, 0.6546721, 0.38039216)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("1_cguwc")
+
+[node name="Label" type="Label" parent="TagDialogArea"]
+anchors_preset = -1
+offset_left = -23.0
+offset_top = -60.0
+offset_right = 23.0
+offset_bottom = -30.0
+text = "Tags"
+
 [node name="CountDialogArea" type="Area2D" parent="."]
-position = Vector2(551, 327)
+position = Vector2(551, 328)
 script = ExtResource("3_wicfy")
 DialogPath = "res://DialogScripts/Count.json"
 
@@ -95,10 +95,32 @@ texture = ExtResource("1_cguwc")
 [node name="Label" type="Label" parent="CountDialogArea"]
 anchors_preset = -1
 offset_left = -30.0
-offset_top = -62.0
+offset_top = -60.0
 offset_right = 31.0
-offset_bottom = -32.0
+offset_bottom = -30.0
 text = "Count"
+metadata/_edit_use_anchors_ = true
+
+[node name="HashDialogArea" type="Area2D" parent="."]
+position = Vector2(701, 328)
+script = ExtResource("3_wicfy")
+DialogPath = "res://DialogScripts/Hash.json"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HashDialogArea"]
+shape = SubResource("RectangleShape2D_sreuk")
+
+[node name="Sprite2D" type="Sprite2D" parent="HashDialogArea"]
+modulate = Color(0.7602213, 1.5225214, 0.6546721, 0.38039216)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("1_cguwc")
+
+[node name="Label" type="Label" parent="HashDialogArea"]
+anchors_preset = -1
+offset_left = -26.0
+offset_top = -60.0
+offset_right = 25.0
+offset_bottom = -30.0
+text = "Hash"
 metadata/_edit_use_anchors_ = true
 
 [node name="CharacterBody2D" type="CharacterBody2D" parent="."]

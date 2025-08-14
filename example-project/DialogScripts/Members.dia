@@ -1,2 +1,26 @@
 --Members--
-Devs: To do
+Devs: In this system, you can define methods and properties to be used within your scripts!
+Devs: What would you like to know about?
+? How to add them
+    Devs: ^^You'll notice, in the same folder as the example [color=Gold]Dialog.cs[/color] partial 
+        class, there's another partial file named [color=Gold]Dialog.DialogBridge.cs[/color].^^
+    Devs: ^^The system looks for a file ending in [color=Gold].DialogBridge.cs[/color] and grabs all 
+        compatible methods and properties inside.^^
+    Devs: ^^Compatible types for properties and method parameters are string, bool, or float. The 
+        same goes for method return types, but they can also be void.^^
+    Devs: ^^If you have added a compatible method or property to the dialog bridge, it'll be added 
+        to a file ending in [color=Gold].Generated.cs[/color] and will be available for use.^^
+? How to use them
+    Devs: ^^By default, if you try to type an method or property name in your script that you 
+        haven't pre-defined, it'll show you an error. If you have added it to the dialog bridge, 
+        just write it like this: [color=Gold]\[MyMethod()\][/color].^^
+    Devs: We added a method called Flash() as an example. Let's try it!
+    Devs: Flash![Flash()]
+    Devs: Go to [color=Gold]Dialog.DialogBridge.cs[/color] to take a look!
+? How to wait for them
+    Devs: ^^In the example dialog bridge, we created a custom method, Shake(), that shakes the 
+        dialog box. Internally, it's handled asynchronously (Take a look!).^^
+    Devs: ^^You can wait for it to finish before continuing with the script by writing 
+        [color=Gold]\[await Shake()\][/color][await Shake()], or if you don't want to wait, 
+        simply call the method name.^^
+    Devs: [color=Gold]\[Shake()\][/color][Shake()]. Notice that it's still writing during the effect. Cool, right?
