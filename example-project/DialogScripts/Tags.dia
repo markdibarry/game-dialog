@@ -6,7 +6,9 @@ Devs: The dialog system supports helper tags you can put between square brackets
 --Examples--
 Devs: What tag would you like to see an example of?
 ? prompt
-    Devs: Adding a [color=Gold]\[prompt\][/color] tag adds a prompt[prompt] after[prompt] every[prompt] word.
+    Devs: ^^Adding a [color=Gold]\[prompt\][/color] tag will cause the line to prompt even if it's not 
+        the end of a line.^^
+    Devs: In this case we added a prompt[prompt] after[prompt] every[prompt] word.
 ? page
     Devs: ^^Even though this is a single dialog line, when it hits a [color=Gold]\[page\][/color] tag...\n
         [page]...it'll scroll the current line to a new page to read the rest!^^
@@ -15,8 +17,8 @@ Devs: What tag would you like to see an example of?
         to the beginning of the section. Let's go!^^
     [goto Examples]
 ? speed
-    Devs: This text will be read at regular speed.
-    Devs: [speed=0.5]This will be read at half speed because of the tag [color=Gold]\[speed=0.5\][/color].
+    Devs: The "speed" tag will change the speed to a multiplier of the default.
+    Devs: [speed=0.5]This will be read at half speed because of a [color=Gold]\[speed=0.5\][/color] tag.
     Devs: [speed=2]And this will be read at double speed due to a tag of [color=Gold]\[speed=2\][/color]!
 ? pause
     Devs: You can can pause the script for a set amount of time using the "pause" tag.
@@ -32,7 +34,7 @@ Devs: What tag would you like to see an example of?
     Devs: We added an auto tag right before this line so this will automatically proceed.
     Devs: This will also auto-proceed.
     [/auto]
-    Devs: [color=Gold]\[/auto\][/color] closes the tag, so you'll need to proceed manually from here!
+    Devs: An [color=Gold]\[/auto\][/color] tag just turned it off, so you'll need to proceed manually from here!
 ? end
     Devs: [color=Gold]\[end\][/color] ends the script. Goodbye!
     [end]

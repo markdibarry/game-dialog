@@ -40,4 +40,6 @@ dialog.StartScript();
 
 By default, you won't see anything happen, of course. When a dialog line is served, you need to decide what to do with it! For this, there are a few methods to override in your custom dialog class allowing you to hook into certain parts of the system.
 
-WIP
+## Example Project
+
+I've added an example project in the repo. Just copy the "example-project" folder and add the addon to the `Addons` folder.

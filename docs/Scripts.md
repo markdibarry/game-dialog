@@ -1,17 +1,20 @@
 # Creating a Script
 
-New dialog scripts are made using the `.dia` extension. The name of the file should be unique to the project.
+New dialog scripts are made using the `.dia` extension. The name of the file should be unique to 
+the project.
 
 ## Section Title
 
-Dialog files consist of one or more sections. To start a new section of dialog, write the title in PascalCase in between two pairs of dashes:
+Dialog files consist of one or more sections. To start a new section of dialog, write the title in 
+PascalCase in between two pairs of dashes:
 ```gamedialog
 --TestSection--
 ```
 
 ## Speakers and Lines
 
-Each section is made up of one or more lines of dialog. Each line begins with the speaking character's ID, a colon, and the text you want them to say:
+Each section is made up of one or more lines of dialog. Each line begins with the speaking 
+character's ID, a colon, and the text you want them to say:
 ```gamedialog
 --Greeting--
 Stalone: Hello World!
@@ -34,7 +37,8 @@ Stalone: ^^It all started on a Fall night a couple
 
 ## Comments
 
-You can add comments using two forward slashes `//`. For multiline comments, use `/*` to open and `*/` to close:
+You can add comments using two forward slashes `//`. For multiline comments, use `/*` to open and 
+`*/` to close:
 
 ```gamedialog
 --Greeting--
@@ -50,7 +54,10 @@ comment
 
 ## `goto`
 
-By default, the reader starts at the first section in the file. If you have more than one section, it's important to connect them otherwise the dialog script will exit at the end of the current section. To connect them, type an open square bracket, the keyword `goto`, the name of the section you want to "go to", and a closing square bracket:
+By default, the reader starts at the first section in the file. If you have more than one section, 
+it's important to connect them otherwise the dialog script will exit at the end of the current 
+section. To connect them, type an open square bracket, the keyword `goto`, the name of the section 
+you want to "go to", and a closing square bracket:
 
 ```gamedialog
 --Greeting--
@@ -63,7 +70,9 @@ Stalone: See you later!
 
 ## Choices
 
-It's common in dialog for characters to ask questions and let the player answer using multiple choices. To do so, start a line with a `?` and a space after it, then write the choice that will be displayed. Any additional dialog should be indented below the choice.
+It's common in dialog for characters to ask questions and let the player answer using multiple 
+choices. To do so, start a line with a `?` and a space after it, then write the choice that will be 
+displayed. Any additional dialog should be indented below the choice.
 
 ```gamedialog
 --Drinks--
@@ -80,7 +89,8 @@ Stalone: Ah, that hits the spot!
 
 ## Variables
 
-You can store and reuse simple values (floats, strings, or bools) using variables. Define or update a variable inside square brackets anywhere in your dialog.
+You can store and reuse simple values (floats, strings, or bools) using variables. Define or update 
+a variable inside square brackets anywhere in your dialog.
 
 ```gamedialog
 --Color--
@@ -105,13 +115,28 @@ Keep in mind, once you set a variable’s type, it cannot change.
 
 ## Conditional Branching
 
-Variables will help us create branching dialog. Surround some dialog in an "if/else/elseif" condition to conditionally display it.
+Variables will help us create branching dialog. Surround some dialog in an "if/else/elseif" condition 
+to conditionally display it.
 
 ```gamedialog
-WIP
+[timesTalked = GetTimesTalked("Threena")]
+if [timesTalked == 1]
+    Threena: Hello there! You need help finding your way? Turn left to get to the town square!
+else if [timesTalked == 2]
+    Threena: Did you not hear me? Turn left around that building!
+else if [timesTalked == 3]
+    Threena: Is there something on my face? GO. LEFT.
+else
+    Threena: I've called the guards.
 ```
 
-We can use Choices and Variables together to conditionally display options to choose from. When the script reaches a choice branch the abstract method `OnChoice(List<Choice> choices)` is called. All of the options are provided to the method. If you have a choice wrapped around a conditional branch and if fails the check, it will have the `Disabled` property set to `true`. Let's see that previous example with a conditional choice!
+> For more info on using methods see [Properties and Methods](#properties-and-methods)
+
+We can use Choices and Variables together to conditionally display options to choose from. When the 
+script reaches a choice branch the abstract method `OnChoice(List<Choice> choices)` is called. All 
+of the options are provided to the method. If you have a choice wrapped around a conditional branch 
+and if fails the check, it will have the `Disabled` property set to `true`. Let's see that previous 
+example with a conditional choice!
 
 ```gamedialog
 --Drinks--
@@ -136,23 +161,32 @@ This project supports the same BBCode tags Godot does, with some additional tags
 
 ### `speed`
 
-Using the `TextWriter` node, the text will display like a typewriter at a steady pace (30 chars per second by default). You can override this with a `speed` tag. The value is a multiplier of the default, so less than one is faster, and and greater than one is slower. Writing a closing tag resets the speed to the default.
+Using the `TextWriter` node, the text will display like a typewriter at a steady pace (30 chars per 
+second by default). You can override this with a `speed` tag. The value is a multiplier of the 
+default, so less than one is faster, and and greater than one is slower. Writing a closing tag 
+resets the speed to the default.
+
 ```
 Stalone: Hi, how've you been? [speed=0.4]...[/speed] Not much of a talker, huh?
 ```
 
-Setting the speed to a value of 0 will make the text write as fast as it can. If you need it to change for the rest of the line, just omit the closing tag:
+Setting the speed to a value of 0 will make the text write as fast as it can. If you need it to 
+change for the rest of the line, just omit the closing tag:
 ```
 Stalone: One of my favorite things about apples is-[speed=0]OW! I JUST STEPPED ON A MOUSE TRAP!
 ```
 
 ### `pause`
 
-The `pause` tag makes the `TextWriter` node stop for a specified amount of time in seconds (`[pause=2]`).
+The `pause` tag makes the `TextWriter` node stop for a specified amount of time in seconds 
+(`[pause=2]`).
 
 ### `auto`
 
-The `auto` tag can be used to have the `TextWriter` node auto-proceed at the end of a page or line after a short pause, determined by the length of the text displayed. The pause time can also be specified in seconds (`[auto=3]`). If used outside of a dialog line, it will be enabled until the tag is closed `[/auto]` or the dialog script finishes.
+The `auto` tag can be used to have the `TextWriter` node auto-proceed at the end of a page or 
+line after a short pause, determined by the length of the text displayed. The pause time can also 
+be specified in seconds (`[auto=3]`). If used outside of a dialog line, it will be enabled until 
+the tag is closed `[/auto]` or the dialog script finishes.
 
 ### `end`
 
@@ -195,20 +229,50 @@ The `prompt` tag will stop the text at this position and wait for the user's inp
 
 ### `page`
 
-The `page` tag works the same as the `prompt` tag, but will also scroll the current line to the top of the `TextWriter` display upon user input.
-This is useful for long, multi-line text that needs broken up into distinct pages for effect.
-
-### `await`
-
-Sometimes, a dialog script needs to wait for something to happen before continuing. If you have a predefined method and it's of a `void` return type, you can tell the dialog to suspend execution until a later time by prepending it with the `await` keyword. To resume, call `Resume()` on your `DialogBase` object.
-
-```
-Stalone: Hey, look! A plane is flying overhead!
-[await RunEvent("PlaneFlying")]
-Stalone: Wouldn't it be great to be a pilot?
-```
+The `page` tag works the same as the `prompt` tag, but will also scroll the current line to the top 
+of the `TextWriter` display upon user input. This is useful for long, multi-line text that needs 
+broken up into distinct pages for effect.
 
 ## Properties and Methods
 
-WIP
+### Adding members
 
+By default, if you try to type a method or property name in your script that you haven't 
+pre-defined, the extension will show an error. To define a method or property for use in your 
+scripts, you'll need to make a partial class of your custom class inheriting from `DialogBase`. 
+The extension will scan your workspace for a file ending in `.DialogBridge.cs`, and then grab all 
+compatible methods and properties inside and create a file ending in `.DialogBridge.Generated.cs`.
+The runtime will use this file to handle your methods and properties.
+
+Compatible types for properties and method parameters include `string`, `bool`, and `float`. Method 
+return types include `string`, `bool`, `float`, and `void`.
+
+### Using members
+
+If you've added a compatible method or property, you can use them just like tags by surrounding them 
+in square brackets.
+
+```
+[PlaySound("applause")]
+Stalone: Welcome to the show! What a great crowd!
+```
+
+If the method returns a `string` or `float` it'll be appended to your dialog line. You can also 
+assign the result of a method to a variable for use later.
+
+```
+[favoriteFood = GetFavoriteFood()]
+Stalone: My favorite food is [favoriteFood]!
+```
+
+### `await`
+
+Sometimes, a dialog script needs to wait for something to happen before continuing. If your method 
+is of a `void` return type, you can tell the dialog to suspend execution until a later time 
+by prepending it with the `await` keyword. To resume, call `Resume()` on your `DialogBase` object.
+
+```
+Stalone: Hey, what's that over there?
+[await WalkTowards("SuspiciousDresser")]
+Stalone: It's a clue!
+```

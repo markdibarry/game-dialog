@@ -8,21 +8,22 @@
     "In this system, you can define methods and properties to be used within your scripts!",
     "What would you like to know about?",
     "How to add them",
+    "By default, if you try to type a method or property name in your script that you haven\u0027t pre-defined, it\u0027ll show you an error.",
     "You\u0027ll notice, in the same folder as the example [color=Gold]Dialog.cs[/color] partial class, there\u0027s another partial file named [color=Gold]Dialog.DialogBridge.cs[/color].",
-    "The system looks for a file ending in [color=Gold].DialogBridge.cs[/color] and grabs all compatible methods and properties inside.",
-    "Compatible types for properties and method parameters are string, bool, or float. The same goes for method return types, but they can also be void.",
-    "If you have added a compatible method or property to the dialog bridge, it\u0027ll be added to a file ending in [color=Gold].Generated.cs[/color] and will be available for use.",
+    "The extension looks for a file ending in [color=Gold].DialogBridge.cs[/color] and grabs all compatible methods and properties inside.",
+    "Compatible types for properties and method parameters are string, bool, and float. The same goes for method return types, but they can also be void.",
+    "If you\u0027ve added a compatible method or property to the dialog bridge, it\u0027ll be added to the file ending in [color=Gold].Generated.cs[/color] and will be available for use.",
     "How to use them",
-    "By default, if you try to type an method or property name in your script that you haven\u0027t pre-defined, it\u0027ll show you an error. If you have added it to the dialog bridge, just write it like this: [color=Gold]\\[MyMethod()\\][/color].",
-    "We added a method called Flash() as an example. Let\u0027s try it!",
+    "If you have added it to the dialog bridge, just write it like this: [color=Gold]\\[MyMethod()\\][/color].",
+    "We added a method called [color=Gold]Flash()[/color] as an example. Let\u0027s try it!",
     "Flash",
-    "Flash![12]",
+    "Flash![13]",
     "Go to [color=Gold]Dialog.DialogBridge.cs[/color] to take a look!",
     "How to wait for them",
-    "In the example dialog bridge, we created a custom method, Shake(), that shakes the dialog box. Internally, it\u0027s handled asynchronously (Take a look!).",
+    "In the example dialog bridge, we created a custom method, [color=Gold]Shake()[/color], that shakes the dialog box. Internally, it\u0027s handled asynchronously (Take a look!).",
     "Shake",
-    "You can wait for it to finish before continuing with the script by writing [color=Gold]\\[await Shake()\\][/color][16], or if you don\u0027t want to wait, simply call the method name.",
-    "[color=Gold]\\[Shake()\\][/color][18]. Notice that it\u0027s still writing during the effect. Cool, right?"
+    "You can wait for it to finish before continuing with the script by writing [color=Gold]\\[await Shake()\\][/color][17], or if you don\u0027t want to wait, simply call the method name.",
+    "[color=Gold]\\[Shake()\\][/color][19]. Notice that it\u0027s still writing during the effect. Cool, right?"
   ],
   "Instructions": [
     [
@@ -53,11 +54,11 @@
       5,
       3,
       1,
+      10,
       9,
-      8,
       1,
-      14,
-      14
+      15,
+      15
     ],
     [
       3,
@@ -82,17 +83,17 @@
     ],
     [
       3,
-      1,
+      9,
       1,
       0,
       7
     ],
     [
       3,
-      10,
+      1,
       1,
       0,
-      9
+      8
     ],
     [
       3,
@@ -103,51 +104,43 @@
     ],
     [
       3,
-      13,
+      12,
       1,
       0,
-      12
-    ],
-    [
-      4,
-      0,
-      5,
-      11,
-      0,
-      0
+      11
     ],
     [
       3,
-      1,
+      14,
       1,
       0,
       13
     ],
     [
-      3,
-      15,
-      1,
-      0,
-      15
-    ],
-    [
-      3,
-      17,
-      1,
-      0,
-      17
-    ],
-    [
       4,
       0,
       5,
-      16,
-      1,
+      12,
+      0,
       0
     ],
     [
       3,
       1,
+      1,
+      0,
+      14
+    ],
+    [
+      3,
+      16,
+      1,
+      0,
+      16
+    ],
+    [
+      3,
+      18,
       1,
       0,
       18
@@ -156,7 +149,22 @@
       4,
       0,
       5,
-      16,
+      17,
+      1,
+      0
+    ],
+    [
+      3,
+      1,
+      1,
+      0,
+      19
+    ],
+    [
+      4,
+      0,
+      5,
+      17,
       0,
       0
     ]
