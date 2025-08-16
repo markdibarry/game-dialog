@@ -27,7 +27,7 @@ public partial class Dialog : DialogBase
     protected override void OnChoice(List<Choice> choices)
     {
         ProcessMode = ProcessModeEnum.Disabled;
-        PackedScene packedScene = GD.Load<PackedScene>("./Scenes/OptionBox.tscn");
+        PackedScene packedScene = GD.Load<PackedScene>("./Scenes/GUI/OptionBox.tscn");
         OptionBox optionBox = packedScene.Instantiate<OptionBox>();
         optionBox.Dialog = this;
         Game.Root.GUI.AddChild(optionBox);
@@ -45,7 +45,7 @@ public partial class Dialog : DialogBase
 
     private DialogBox CreateDialogBox()
     {
-        PackedScene packedScene = GD.Load<PackedScene>("./Scenes/DialogBox.tscn");
+        PackedScene packedScene = GD.Load<PackedScene>("./Scenes/GUI/DialogBox.tscn");
         DialogBox newBox = packedScene.Instantiate<DialogBox>();
         newBox.LineEnded += OnDialogLineEnded;
         AddChild(newBox);

@@ -1,0 +1,83 @@
+[gd_scene load_steps=8 format=3 uid="uid://mubw576mdkrh"]
+
+[ext_resource type="Script" uid="uid://dv5hm24pgedr5" path="res://Scenes/Characters/Character.cs" id="1_6p7dp"]
+[ext_resource type="Texture2D" uid="uid://p01ry6qp7ibp" path="res://Assets/GodotbotSide.png" id="1_sy4xu"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_6p7dp"]
+size = Vector2(16, 28)
+
+[sub_resource type="Animation" id="Animation_6p7dp"]
+resource_name = "Idle"
+step = 0.0333333
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [0]
+}
+
+[sub_resource type="Animation" id="Animation_an0dn"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [0]
+}
+
+[sub_resource type="Animation" id="Animation_bv4r1"]
+resource_name = "Walk"
+length = 0.5000167
+loop_mode = 1
+step = 0.083333336
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.083333336, 0.16666667, 0.25, 0.33333334, 0.41666666),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [6, 7, 8, 9, 10, 11]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_bv4r1"]
+_data = {
+&"Idle": SubResource("Animation_6p7dp"),
+&"RESET": SubResource("Animation_an0dn"),
+&"Walk": SubResource("Animation_bv4r1")
+}
+
+[node name="Character" type="CharacterBody2D"]
+script = ExtResource("1_6p7dp")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("1_sy4xu")
+offset = Vector2(0, 1)
+hframes = 6
+vframes = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_6p7dp")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+limit_bottom = 320
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_bv4r1")
+}

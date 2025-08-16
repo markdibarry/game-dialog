@@ -112,8 +112,8 @@ public partial class TextWriter : RichTextLabel, IPoolable
 
         if (PauseTimer > 0)
         {
-            if (IsSpeedUpEnabled)
-                delta *= SpeedUpMultiplier;
+            // if (IsSpeedUpEnabled)
+            //     delta *= SpeedUpMultiplier;
 
             PauseTimer = Math.Max(0, PauseTimer - delta);
         }

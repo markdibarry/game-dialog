@@ -12,7 +12,7 @@
     "You\u0027ll notice, in the same folder as the example [color=Gold]Dialog.cs[/color] partial class, there\u0027s another partial file named [color=Gold]Dialog.DialogBridge.cs[/color].",
     "The extension looks for a file ending in [color=Gold].DialogBridge.cs[/color] and grabs all compatible methods and properties inside.",
     "Compatible types for properties and method parameters are string, bool, and float. The same goes for method return types, but they can also be void.",
-    "If you\u0027ve added a compatible method or property to the dialog bridge, it\u0027ll be added to the file ending in [color=Gold].Generated.cs[/color] and will be available for use.",
+    "If you\u0027ve added a compatible method or property to the dialog bridge, it\u0027ll be added to the file ending in [color=Gold].G.cs[/color] and will be available for use.",
     "How to use them",
     "If you have added it to the dialog bridge, just write it like this: [color=Gold]\\[MyMethod()\\][/color].",
     "We added a method called [color=Gold]Flash()[/color] as an example. Let\u0027s try it!",

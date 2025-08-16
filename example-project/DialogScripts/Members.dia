@@ -11,7 +11,7 @@ Devs: What would you like to know about?
     Devs: ^^Compatible types for properties and method parameters are string, bool, and float. The 
         same goes for method return types, but they can also be void.^^
     Devs: ^^If you've added a compatible method or property to the dialog bridge, it'll be added 
-        to the file ending in [color=Gold].Generated.cs[/color] and will be available for use.^^
+        to the file ending in [color=Gold].G.cs[/color] and will be available for use.^^
 ? How to use them
     Devs: ^^If you have added it to the dialog bridge, just write it like this: 
         [color=Gold]\[MyMethod()\][/color].^^

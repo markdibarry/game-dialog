@@ -1,4 +1,7 @@
-﻿using Antlr4.Runtime;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Antlr4.Runtime;
 using GameDialog.Common;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
@@ -86,6 +89,11 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
             varDef.Type = newType;
 
         return VarType.Undefined;
+    }
+
+    public override VarType VisitExpPara(ExpParaContext context)
+    {
+        return Visit(context.expression());
     }
 
     public override VarType VisitExpMultDiv(ExpMultDivContext context)

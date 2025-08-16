@@ -11,7 +11,7 @@
     "Count",
     "timesTalked",
     "GetTimesTalked",
-    "CountDialogArea",
+    "DialogAreaCount",
     "This is the first time you\u0027ve interacted with this dialog.",
     "You can create a method that searches for a node and gets data from it... like the number times you\u0027ve interacted with a dialog, for example.",
     "You\u0027ve talked to me [7] times!",

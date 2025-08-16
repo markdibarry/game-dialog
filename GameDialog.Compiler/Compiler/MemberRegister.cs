@@ -1,4 +1,7 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
 using GameDialog.Common;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -86,7 +89,7 @@ public class MemberRegister
         List<FuncDef> funcDefs)
     {
         StringBuilder sb = new();
-        string newFilePath = Path.ChangeExtension(filePath, "Generated.cs");
+        string newFilePath = Path.ChangeExtension(filePath, "G.cs");
         sb.AppendLine("using System;");
         sb.AppendLine("using GameDialog.Common;");
         sb.AppendLine("using GameDialog.Runner;");

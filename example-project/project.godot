@@ -17,13 +17,33 @@ config/icon="res://icon.svg"
 
 [display]
 
-window/size/viewport_width=500
-window/size/viewport_height=400
+window/size/viewport_width=360
+window/size/viewport_height=270
+window/size/window_width_override=720
+window/size/window_height_override=540
+window/stretch/mode="viewport"
+window/stretch/scale_mode="integer"
 
 [dotnet]
 
 project/assembly_name="GameDialogExample"
 
+[editor]
+
+naming/scene_name_casing=1
+
 [gui]
 
 theme/custom="uid://go6vx2xu6kvf"
+
+[importer_defaults]
+
+font_data_dynamic={
+&"antialiasing": 0
+}
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true
