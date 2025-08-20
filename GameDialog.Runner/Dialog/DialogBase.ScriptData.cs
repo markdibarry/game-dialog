@@ -64,8 +64,45 @@ public partial class DialogBase
         if (fileStream.Length > int.MaxValue)
             throw new DialogException("File length exceeds max value.");
 
-        Span<byte> buffer = stackalloc byte[(int)fileStream.Length];
-        _ = fileStream.Read(buffer);
+        byte[]? rented = null;
+
+        try
+        {
+            int fileLength = (int)fileStream.Length;
+
+            if (fileStream.Length <= 64 * 1024)
+            {
+                Span<byte> stackBuffer = stackalloc byte[fileLength];
+                ParseScript(fileStream, ref stackBuffer);
+            }
+            else
+            {
+                rented = ArrayPool<byte>.Shared.Rent(fileLength);
+                Span<byte> rentedSpan = rented.AsSpan(0, fileLength);
+                ParseScript(fileStream, ref rentedSpan);
+            }
+        }
+        finally
+        {
+            if (rented != null)
+                ArrayPool<byte>.Shared.Return(rented);
+        }
+    }
+
+    private void ParseScript(FileStream fileStream, ref Span<byte> buffer)
+    {
+        int pos = 0;
+
+        while (pos < buffer.Length)
+        {
+            int bytesRead = fileStream.Read(buffer[pos..]);
+
+            if (bytesRead == 0)
+                throw new DialogException("Unexpected end of file.");
+
+            pos += bytesRead;
+        }
+
         var reader = new Utf8JsonReader(buffer);
 
         while (reader.TokenType != JsonTokenType.EndObject)
@@ -128,7 +165,7 @@ public partial class DialogBase
             }
             reader.Read();
         }
-
+        
         static int GetNestedArrayCount(Utf8JsonReader reader)
         {
             int count = 0;
