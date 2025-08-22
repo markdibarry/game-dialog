@@ -11,7 +11,8 @@ public class GameDialogServer
         LanguageServerOptions options = new LanguageServerOptions()
             .WithInput(Console.OpenStandardInput())
             .WithOutput(Console.OpenStandardOutput())
-            .WithHandler<TextDocumentHandler>();
+            .WithHandler<TextDocumentHandler>()
+            .WithHandler<NotificationHandler>();
         var server = await LanguageServer.From(options).ConfigureAwait(false);
         await server.WaitForExit;
     }

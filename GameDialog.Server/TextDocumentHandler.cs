@@ -80,42 +80,7 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
 
     public override Task<Unit> Handle(DidSaveTextDocumentParams notification, CancellationToken ct)
     {
-        string rootPath = _server.ClientSettings.RootPath!;
-
-        if (notification.TextDocument.Uri.Path.EndsWith(".cs"))
-        {
-            _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, true);
-            return Unit.Task;
-        }
-
-        if (string.IsNullOrEmpty(notification.Text))
-            return Unit.Task;
-
-        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, false);
-        DocumentUri uri = notification.TextDocument.Uri;
-        _compiler.UpdateDoc(uri, notification.Text);
-
-        if (!_compiler.Documents.TryGetValue(uri, out DialogDocument? doc))
-        {
-            _server.Window.ShowError($"No JSON document was generated. File {uri} not found.");
-            return Unit.Task;
-        }
-
-        CompilationResult result = _compiler.Compile(doc);
-
-        // Do not generate files with errors
-        if (result.Diagnostics.Any(x => x.Severity == DiagnosticSeverity.Error))
-        {
-            _server.Window.ShowError($"No JSON document was generated. File {uri} contains errors.");
-            return Unit.Task;
-        }
-
-        string uriPath = uri.GetFileSystemPath();
-        string fileName = Path.GetFileNameWithoutExtension(uriPath);
-        string pathDirectory = Path.GetDirectoryName(uriPath) ?? string.Empty;
-        CreateTranslationCSV(fileName, pathDirectory, result.ScriptData);
-        CreateJsonFile(fileName, pathDirectory, result.ScriptData);
-
+        CompileAndGenerateFile(notification.TextDocument.Uri, notification.Text);
         return Unit.Task;
     }
 
@@ -131,6 +96,77 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
             Change = TextDocumentSyncKind.Full,
             Save = new SaveOptions() { IncludeText = true }
         };
+    }
+
+    private void CompileAndGenerateFile(DocumentUri uri, string? text)
+    {
+        string rootPath = _server.ClientSettings.RootPath!;
+
+        if (uri.Path.EndsWith(".cs"))
+        {
+            _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, true);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(text))
+            return;
+
+        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, false);
+        _compiler.UpdateDoc(uri, text);
+
+        if (!_compiler.Documents.TryGetValue(uri, out DialogDocument? doc))
+        {
+            _server.Window.ShowError($"No JSON document was generated. File {uri} not found.");
+            return;
+        }
+
+        CompilationResult result = _compiler.Compile(doc);
+
+        // Do not generate files with errors
+        if (result.Diagnostics.Any(x => x.Severity == DiagnosticSeverity.Error))
+        {
+            _server.Window.ShowError($"No JSON document was generated. File {uri} contains errors.");
+            return;
+        }
+
+        string uriPath = uri.GetFileSystemPath();
+        string fileName = Path.GetFileNameWithoutExtension(uriPath);
+        string pathDirectory = Path.GetDirectoryName(uriPath) ?? string.Empty;
+        CreateTranslationCSV(fileName, pathDirectory, result.ScriptData);
+        CreateJsonFile(fileName, pathDirectory, result.ScriptData);
+    }
+
+    public List<string> CompileAndGenerateAllFiles()
+    {
+        string rootPath = _server.ClientSettings.RootPath!;
+        string[] filePaths = Directory.GetFiles(rootPath, "*.dia", SearchOption.AllDirectories);
+
+        if (filePaths.Length == 0)
+            return [];
+
+        _compiler.MemberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, false);
+        List<string> filesWithErrors = [];
+
+        foreach (string filePath in filePaths)
+        {
+            string fileName = Path.GetFileNameWithoutExtension(filePath);
+            DocumentUri uri = DocumentUri.FromFileSystemPath(filePath);
+            string docText = File.ReadAllText(filePath);
+            DialogDocument doc = new(uri, docText);
+            CompilationResult result = _compiler.Compile(doc);
+
+            if (result.Diagnostics.Any(x => x.Severity == DiagnosticSeverity.Error))
+            {
+                filesWithErrors.Add(filePath);
+                continue;
+            }
+
+            string pathDirectory = Path.GetDirectoryName(filePath)!;
+            CreateTranslationCSV(fileName, pathDirectory, result.ScriptData);
+            CreateJsonFile(fileName, pathDirectory, result.ScriptData);
+        }
+
+        return filesWithErrors;
     }
 
     private static void CreateJsonFile(string fileName, string pathDirectory, ScriptData scriptData)

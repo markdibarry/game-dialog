@@ -34,12 +34,11 @@ public class DialogCompiler
         ParserRuleContext context = document.Parser.script();
         ScriptData scriptData = new();
         List<Diagnostic> diagnostics = [];
-        MemberRegister memberRegister = new(MemberRegister);
         // Get all speaker ids
         SpeakerIdVisitor speakerNameVisitor = new(scriptData);
         speakerNameVisitor.Visit(context);
 
-        MainDialogVisitor visitor = new(scriptData, diagnostics, memberRegister);
+        MainDialogVisitor visitor = new(scriptData, diagnostics, MemberRegister);
         visitor.Visit(context);
         diagnostics.AddRange(document.GetDiagnostics());
         CompilationResult result = new(document.Uri, scriptData, diagnostics);

@@ -24,6 +24,10 @@
             {
                 "command": "extension.createConstants",
                 "title": "Create Constants File"
+            },
+            {
+                "command": "extension.recompileAllFiles",
+                "title": "Recompile All Dialog Files"
             }
         ],
         "menus": {
@@ -31,6 +35,11 @@
                 {
                     "when": "resourceExtname == .csv",
                     "command": "extension.createConstants",
+                    "group": "navigation"
+                },
+                {
+                    "when": "resourceExtname == .dia",
+                    "command": "extension.recompileAllFiles",
                     "group": "navigation"
                 }
             ]

@@ -17,12 +17,17 @@ import * as fs from 'fs';
 import { ChildProcess, spawn } from 'child_process';
 const serverPath = "out/server/GameDialog.Server.dll";
 const extensionId = "gamedialog";
+const notificationMethod = 'dialog/recompileAllFiles';
+
+interface NotificationRequest { }
+interface NotificationResponse { data: Array<string>; }
 
 let client: LanguageClient;
 let server: ChildProcess;
 
 export function activate(context: ExtensionContext) {
     commands.registerCommand('extension.createConstants', createConstants);
+    commands.registerCommand('extension.recompileAllFiles', recompileAllDialogFiles);
     let configuration = workspace.getConfiguration(extensionId);
     let enable = configuration.get("enabled");
     const outputChannel = window.createOutputChannel("Game Dialog");
@@ -100,6 +105,33 @@ async function runServer(context: ExtensionContext, configuration: WorkspaceConf
 async function stopServer(): Promise<void> {
     await client.stop();
     server.kill();
+}
+
+async function recompileAllDialogFiles(): Promise<void> {
+    const message = `This will recompile all dialog files in your workspace.`;
+    const confirm = 'Proceed';
+    const choice = await window.showWarningMessage(message, { modal: true }, confirm );
+
+    if (choice !== confirm) {
+        return;
+    }
+
+    try {
+        const params: NotificationRequest = {};
+        const result = await client.sendRequest<NotificationResponse>(notificationMethod, params);
+
+        if (result.data.length > 0)
+        {
+            let errorText = result.data.join(os.EOL);
+            window.showErrorMessage(`The following files had errors and could not be compiled:${os.EOL}${errorText}`);
+        }
+        else
+        {
+            window.showInformationMessage(`All files compiled successfully.`);
+        }
+    } catch (err) {
+        console.error(err);
+    }
 }
 
 /**
