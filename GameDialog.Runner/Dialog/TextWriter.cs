@@ -14,7 +14,17 @@ public partial class TextWriter : RichTextLabel, IPoolable
         BbcodeEnabled = true;
         _scrollBar = GetVScrollBar();
         Reset(false);
+
+        if (_theme == null)
+        {
+            _theme = new();
+            _theme.SetStylebox("scroll", "VScrollBar", new StyleBoxEmpty());
+        }
+
+        Theme = _theme;
     }
+
+    private static Theme _theme = default!;
 
     private const int DefaultCharsPerSecond = 30;
     private const int SpeedUpMultiplier = 3;
@@ -112,9 +122,6 @@ public partial class TextWriter : RichTextLabel, IPoolable
 
         if (PauseTimer > 0)
         {
-            // if (IsSpeedUpEnabled)
-            //     delta *= SpeedUpMultiplier;
-
             PauseTimer = Math.Max(0, PauseTimer - delta);
         }
         else if (_isScrolling)
