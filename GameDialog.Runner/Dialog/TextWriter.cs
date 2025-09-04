@@ -155,12 +155,9 @@ public partial class TextWriter : RichTextLabel, IPoolable
         _movingScrollValue = 0;
         _targetWriteRange = new(0, GetLastVisibleCharacter(0));
 
-        if (Dialog != null)
-        {
-            AutoProceedEnabled = Dialog.AutoProceedGlobalEnabled;
-            AutoProceedTimeout = Dialog.AutoProceedGlobalTimeout;
-            SpeedMultiplier = Dialog.SpeedMultiplier;
-        }
+        AutoProceedEnabled = Dialog?.AutoProceedGlobalEnabled ?? false;
+        AutoProceedTimeout = Dialog?.AutoProceedGlobalTimeout ?? 0;
+        SpeedMultiplier = Dialog?.SpeedMultiplier ?? 1;
     }
 
     public void ClearObject()

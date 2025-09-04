@@ -258,6 +258,8 @@ public partial class DialogBase
             result = TryAddSpeedEvent(tagValue, renderedIndex, isClosing);
         else if (tagKey.SequenceEqual(BuiltIn.PAUSE))
             result = TryAddPauseEvent(tagValue, renderedIndex, isClosing);
+        else if (tagKey.SequenceEqual(BuiltIn.AUTO))
+            result = TryAddAutoEvent(tagValue, renderedIndex, isClosing);
         else if (tagKey.SequenceEqual(BuiltIn.PROMPT))
             return new TextEvent(EventType.Prompt, renderedIndex - 1, 0);
         else if (tagKey.SequenceEqual(BuiltIn.PAGE))
@@ -284,6 +286,17 @@ public partial class DialogBase
                 return TextEvent.Undefined;
 
             return new(EventType.Pause, renderedIndex, time);
+        }
+
+        static TextEvent TryAddAutoEvent(ReadOnlySpan<char> value, int renderedIndex, bool isClosing)
+        {
+            if (isClosing)
+                return TextEvent.Undefined;
+
+            if (!double.TryParse(value, out double time))
+                time = -1;
+
+            return new(EventType.Auto, renderedIndex, time);
         }
     }
 

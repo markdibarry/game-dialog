@@ -102,9 +102,16 @@ public partial class DialogBase
         int HandleInstructionStatement()
         {
             int next = instr[1];
-            bool isAwait = instr[2] == OpCode.Func && instr[3] == 1;
+            bool isAwait = instr[2] == OpCode.Func && instr[4] == 1;
             EvaluateInstructions(instr);
-            return isAwait ? SuspendScript : next;
+
+            if (isAwait || instr[2] == OpCode.Pause)
+            {
+                Next = next;
+                return SuspendScript;
+            }
+
+            return next;
         }
 
         int HandleConditionalStatement()
@@ -162,6 +169,9 @@ public partial class DialogBase
             case OpCode.Auto:
                 HandleAuto();
                 break;
+            case OpCode.Pause:
+                HandlePause();
+                break;
         }
 
         return default;
@@ -190,13 +200,27 @@ public partial class DialogBase
             }
         }
 
-        void HandleSpeed() => SpeedMultiplier = Floats[instr[1]];
+        void HandleSpeed() => SpeedMultiplier = Floats[instr[3]];
 
         void HandleAuto()
         {
-            float value = Floats[instr[1]];
+            float value = Floats[instr[3]];
             AutoProceedGlobalEnabled = value == -2;
             AutoProceedGlobalTimeout = value;
+        }
+
+        void HandlePause()
+        {
+            float value = Floats[instr[3]];
+
+            if (value > 0)
+                HandlePauseAsync(value);
+        }
+
+        async void HandlePauseAsync(float time)
+        {
+            await Task.Delay((int)(time * 1000));
+            Resume();
         }
     }
 }
