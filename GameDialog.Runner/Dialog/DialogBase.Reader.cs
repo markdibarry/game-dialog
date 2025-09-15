@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using GameDialog.Common;
 using GameDialog.Pooling;
 
@@ -160,6 +161,7 @@ public partial class DialogBase
             case OpCode.DivAssign:
             case OpCode.AddAssign:
             case OpCode.SubAssign:
+            case OpCode.ConcatAssign:
             case OpCode.Func:
                 HandleEvaluate();
                 break;
@@ -205,7 +207,7 @@ public partial class DialogBase
         void HandleAuto()
         {
             float value = Floats[instr[3]];
-            AutoProceedGlobalEnabled = value == -2;
+            AutoProceedGlobalEnabled = value != -2;
             AutoProceedGlobalTimeout = value;
         }
 

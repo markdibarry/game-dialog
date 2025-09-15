@@ -55,7 +55,7 @@ EXP_WS: WS -> skip;
 BOOL: ('true'|'false');
 AWAIT: 'await';
 STRING: '"' (~('"'|'\\'|'\r'|'\n') | '\\'('"'|'\\'))* '"';
-FLOAT: INT ('.'INT)*;
+FLOAT: '-'? INT ('.'INT)*;
 OP_ASSIGN: '=';
 OP_MULT_ASSIGN: '*=';
 OP_DIVIDE_ASSIGN: '/=';

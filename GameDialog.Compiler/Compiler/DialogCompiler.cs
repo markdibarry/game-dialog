@@ -12,12 +12,6 @@ public class DialogCompiler
     public MemberRegister MemberRegister { get; } = new();
     public ConcurrentDictionary<DocumentUri, DialogDocument> Documents { get; } = [];
 
-    public void ClearMemberRegister()
-    {
-        MemberRegister.FuncDefs.Clear();
-        MemberRegister.VarDefs.Clear();
-    }
-
     public Dictionary<DocumentUri, CompilationResult> Compile()
     {
         Dictionary<DocumentUri, CompilationResult> results = [];
@@ -31,6 +25,7 @@ public class DialogCompiler
     public CompilationResult Compile(DialogDocument document)
     {
         document.Parser.Reset();
+        MemberRegister.ResetDefs();
         ParserRuleContext context = document.Parser.script();
         ScriptData scriptData = new();
         List<Diagnostic> diagnostics = [];

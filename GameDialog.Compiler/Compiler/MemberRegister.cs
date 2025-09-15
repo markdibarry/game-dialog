@@ -13,14 +13,18 @@ public class MemberRegister
 {
     public MemberRegister() { }
 
-    public MemberRegister(MemberRegister memberRegister)
-    {
-        VarDefs = [.. memberRegister.VarDefs];
-        FuncDefs = [.. memberRegister.FuncDefs];
-    }
-
+    public List<VarDef> PredefinedVarDefs { get; set; } = [];
+    public List<FuncDef> PredefinedFuncDefs { get; set; } = [];
     public List<VarDef> VarDefs { get; set; } = [];
     public List<FuncDef> FuncDefs { get; set; } = [];
+
+    public void ResetDefs()
+    {
+        VarDefs.Clear();
+        VarDefs.AddRange(PredefinedVarDefs);
+        FuncDefs.Clear();
+        FuncDefs.AddRange(PredefinedFuncDefs);
+    }
 
     public void SetMembersFromFile(string fileName, string rootPath, bool generate)
     {
@@ -32,8 +36,8 @@ public class MemberRegister
         if (files.Length != 1)
             return;
 
-        FuncDefs.Clear();
-        VarDefs.Clear();
+        PredefinedFuncDefs.Clear();
+        PredefinedVarDefs.Clear();
         string filePath = files[0];
         var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(filePath), path: filePath);
         CompilationUnitSyntax? root = tree.GetCompilationUnitRoot();
@@ -63,7 +67,7 @@ public class MemberRegister
 
                 VarDef varDef = new(propDeclaration.Identifier.Text, varType);
                 varDefs.Add(varDef);
-                VarDefs.Add(varDef);
+                PredefinedVarDefs.Add(varDef);
             }
             else if (member is MethodDeclarationSyntax methodDeclaration)
             {
@@ -72,7 +76,7 @@ public class MemberRegister
                 if (funcDef != null)
                 {
                     funcDefs.Add(funcDef);
-                    FuncDefs.Add(funcDef);
+                    PredefinedFuncDefs.Add(funcDef);
                 }
             }
         }

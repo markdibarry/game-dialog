@@ -8,32 +8,23 @@ public readonly record struct TextVariant
     public TextVariant()
     {
         VariantType = VarType.Void;
-        Bool = default;
-        Float = default;
-        String = default!;
     }
 
     public TextVariant(bool myBool)
     {
         VariantType = VarType.Bool;
         Bool = myBool;
-        Float = default;
-        String = default!;
     }
 
     public TextVariant(float myFloat)
     {
         VariantType = VarType.Float;
-        Bool = default;
         Float = myFloat;
-        String = default!;
     }
 
     public TextVariant(string myString)
     {
         VariantType = VarType.String;
-        Bool = default;
-        Float = default;
         String = myString;
     }
 
@@ -44,7 +35,7 @@ public readonly record struct TextVariant
     [FieldOffset(8)]
     public readonly float Float;
     [FieldOffset(16)]
-    public readonly string String;
+    public readonly string String = default!;
 
     public T? Get<T>()
     {

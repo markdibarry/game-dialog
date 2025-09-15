@@ -68,16 +68,24 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
             _memberRegister.VarDefs.Add(varDef);
         }
 
+        if (context.op.Type == DialogLexer.OP_ADD_ASSIGN && varDef.Type == VarType.String)
+        {
+            _currentInst.AddRange([OpCode.ConcatAssign, nameIndex]);
+            VarType rightType = Visit(context.right);
+
+            if (rightType != VarType.String && rightType != VarType.Float)
+                _diagnostics.AddError(context, $"Cannot add a {rightType} to a {varDef.Type}.");
+
+            return VarType.Undefined;
+        }
+
         if (context.op.Type != DialogLexer.OP_ASSIGN && varDef.Type != VarType.Float)
         {
             _diagnostics.AddError(context, $"Operator requires variable to be of type {VarType.Float} and already have a value.");
             return VarType.Undefined;
         }
 
-        VarType newType = PushExp(
-            [InstructionLookup[context.op.Type], nameIndex],
-            varDef.Type,
-            context.right);
+        VarType newType = PushExp([InstructionLookup[context.op.Type], nameIndex], varDef.Type, context.right);
 
         if (newType == VarType.Undefined)
         {
@@ -104,8 +112,36 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
 
     public override VarType VisitExpAddSub(ExpAddSubContext context)
     {
-        PushExp(context.op, VarType.Float, context.left, context.right);
-        return VarType.Float;
+        if (context.op.Type == DialogLexer.OP_SUB)
+        {
+            PushExp(context.op, VarType.Float, context.left, context.right);
+            return VarType.Float;
+        }
+
+        _currentInst.AddRange([InstructionLookup[context.op.Type]]);
+        int currentIndex = _currentInst.Count - 1;
+        VarType leftType = Visit(context.left);
+
+        if (leftType != VarType.Float && leftType != VarType.String)
+        {
+            _diagnostics.AddError(context, $"Cannot add to a {leftType}.");
+            return VarType.Undefined;
+        }
+
+        if (leftType == VarType.String)
+            _currentInst[currentIndex] = OpCode.Concat;
+
+        VarType rightType = Visit(context.right);
+        bool addingToString = leftType == VarType.String && (rightType == VarType.String || rightType == VarType.Float);
+        bool addingToFloat = leftType == VarType.Float && rightType == VarType.Float;
+
+        if (!addingToFloat && !addingToString)
+        {
+            _diagnostics.AddError(context, $"Cannot add a {rightType} to a {leftType}.");
+            return VarType.Undefined;
+        }
+
+        return leftType;
     }
 
     public override VarType VisitExpComp(ExpCompContext context)

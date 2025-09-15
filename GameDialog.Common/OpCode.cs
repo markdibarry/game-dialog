@@ -35,16 +35,18 @@ public static class OpCode
     public const ushort DivAssign = 21;
     public const ushort AddAssign = 22;
     public const ushort SubAssign = 23;
+    public const ushort Concat = 24;
+    public const ushort ConcatAssign = 25;
     // [Op, float index (pause time or -1 == auto or -2 == close)]
-    public const ushort Auto = 24;
+    public const ushort Auto = 26;
     // [Op, section index] (Should be compiler only)
-    public const ushort Goto = 25;
+    public const ushort Goto = 27;
     // [Op, float index (speed multiplier)]
-    public const ushort Speed = 26;
+    public const ushort Speed = 28;
     // [Op, float index (pause time)]
-    public const ushort Pause = 27;
+    public const ushort Pause = 29;
     // [Op]
-    public const ushort Prompt = 28;
+    public const ushort Prompt = 30;
     // [Op]
-    public const ushort Page = 29;
+    public const ushort Page = 31;
 }

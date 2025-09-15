@@ -22,7 +22,8 @@ public partial class DialogBase
     {
         return span.Current switch
         {
-            OpCode.String => VarType.String,
+            OpCode.String or
+            OpCode.Concat => VarType.String,
             OpCode.Float or
             OpCode.Mult or
             OpCode.Div or
@@ -42,7 +43,8 @@ public partial class DialogBase
             OpCode.MultAssign or
             OpCode.DivAssign or
             OpCode.AddAssign or
-            OpCode.SubAssign => VarType.Void,
+            OpCode.SubAssign or
+            OpCode.ConcatAssign => VarType.Void,
             _ => default
         };
 
@@ -102,6 +104,9 @@ public partial class DialogBase
             case OpCode.AddAssign:
             case OpCode.SubAssign:
                 EvalMathAssign(ref span, opCode);
+                break;
+            case OpCode.ConcatAssign:
+                EvalConcatAssign(ref span);
                 break;
             case OpCode.Func:
                 EvalFunc(ref span);
@@ -172,6 +177,32 @@ public partial class DialogBase
                 };
             }
         }
+
+        void EvalConcatAssign(ref StateSpan<ushort> span)
+        {
+            string varName = Strings[span.Read()];
+            VarType varType = GetPredefinedPropertyType(varName);
+            string result;
+            VarType nextType = GetReturnType(ref span);
+
+            if (nextType == VarType.String)
+                result = EvalStringExp(ref span);
+            else if (nextType == VarType.Float)
+                result = EvalFloatExp(ref span).ToString();
+
+            if (varType != VarType.Undefined)
+            {
+                string originalValue = GetPredefinedProperty(varName).String ?? string.Empty;
+                SetPredefinedProperty(varName, new(originalValue + result));
+            }
+            else if (_textStorage != null)
+            {
+                if (!_textStorage.TryGetValue(varName, out string? originalValue))
+                    originalValue = string.Empty;
+
+                _textStorage.SetValue(varName, originalValue + result);
+            }
+        }
     }
 
     private bool EvalBoolExp(ref StateSpan<ushort> span)
@@ -228,10 +259,24 @@ public partial class DialogBase
         return span.Read() switch
         {
             OpCode.String => Strings[span.Read()],
+            OpCode.Concat => EvalConcat(ref span),
             OpCode.Var => EvalVar<string>(ref span) ?? string.Empty,
             OpCode.Func => EvalFunc(ref span).Get<string>() ?? string.Empty,
             _ => string.Empty
         };
+
+        string EvalConcat(ref StateSpan<ushort> span)
+        {
+            string result = EvalStringExp(ref span);
+            VarType nextType = GetReturnType(ref span);
+
+            if (nextType == VarType.String)
+                result += EvalStringExp(ref span);
+            else if (nextType == VarType.Float)
+                result += EvalFloatExp(ref span).ToString();
+
+            return result;
+        }
     }
 
     private float EvalFloatExp(ref StateSpan<ushort> span)
