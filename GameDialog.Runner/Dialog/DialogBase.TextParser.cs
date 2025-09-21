@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 using GameDialog.Common;
@@ -83,7 +84,7 @@ public partial class DialogBase
             if (dialog is not null)
                 textEvent = dialog.ParseTextEvent(tagContent, ri, s_sb);
             else
-                textEvent = ParseTextEventString(tagContent, ri);
+                textEvent = ParseTextEventString(tagContent, ri, s_sb, null);
 
             ri += s_sb.Length - prevSbLength;
 
@@ -139,7 +140,7 @@ public partial class DialogBase
     public TextEvent ParseTextEvent(ReadOnlySpan<char> tagContent, int renderedIndex, StringBuilder sb)
     {
         if (!int.TryParse(tagContent, out int instIndex))
-            return ParseTextEventString(tagContent, renderedIndex);
+            return ParseTextEventString(tagContent, renderedIndex, sb, this);
 
         ushort[] instr = Instructions[instIndex];
         ushort instructionType = instr[0];
@@ -239,9 +240,14 @@ public partial class DialogBase
         }
     }
 
-    public static TextEvent ParseTextEventString(ReadOnlySpan<char> tagContent, int renderedIndex)
+    public static TextEvent ParseTextEventString(
+        ReadOnlySpan<char> tagContent,
+        int renderedIndex,
+        StringBuilder sb,
+        DialogBase? dialog)
     {
         bool isClosing = false;
+        tagContent = tagContent.Trim();
 
         if (tagContent.StartsWith('/'))
         {
@@ -255,17 +261,43 @@ public partial class DialogBase
         TextEvent result = TextEvent.Undefined;
 
         if (tagKey.SequenceEqual(BuiltIn.SPEED))
-            result = TryAddSpeedEvent(tagValue, renderedIndex, isClosing);
+            return TryAddSpeedEvent(tagValue, renderedIndex, isClosing);
         else if (tagKey.SequenceEqual(BuiltIn.PAUSE))
-            result = TryAddPauseEvent(tagValue, renderedIndex, isClosing);
+            return TryAddPauseEvent(tagValue, renderedIndex, isClosing);
         else if (tagKey.SequenceEqual(BuiltIn.AUTO))
-            result = TryAddAutoEvent(tagValue, renderedIndex, isClosing);
+            return TryAddAutoEvent(tagValue, renderedIndex, isClosing);
         else if (tagKey.SequenceEqual(BuiltIn.PROMPT))
             return new TextEvent(EventType.Prompt, renderedIndex - 1, 0);
         else if (tagKey.SequenceEqual(BuiltIn.PAGE))
             return new TextEvent(EventType.Page, renderedIndex - 1, 0);
 
-        return result;
+        if (dialog == null)
+            return result;
+
+        VarType varType = dialog.GetPredefinedPropertyType(tagKey);
+
+        if (varType != VarType.Undefined)
+        {
+            TextVariant variant = dialog.GetPredefinedProperty(tagKey);
+            return AppendString(varType, variant, sb);
+        }
+
+        return TryParseMethod(tagContent, sb, dialog);
+
+        static TextEvent AppendString(VarType varType, TextVariant variant, StringBuilder sb)
+        {
+            switch (varType)
+            {
+                case VarType.String:
+                    sb.Append(variant.Get<string>());
+                    break;
+                case VarType.Float:
+                    sb.Append(variant.Get<float>());
+                    break;
+            }
+
+            return TextEvent.Ignore;
+        }
 
         static TextEvent TryAddSpeedEvent(ReadOnlySpan<char> value, int renderedIndex, bool isClosing)
         {
@@ -297,6 +329,100 @@ public partial class DialogBase
                 time = -1;
 
             return new(EventType.Auto, renderedIndex, time);
+        }
+
+        static TextEvent TryParseMethod(ReadOnlySpan<char> tagContent, StringBuilder sb, DialogBase dialog)
+        {
+            int openIndex = tagContent.IndexOf('(');
+
+            if (openIndex == -1 || !tagContent.EndsWith(')'))
+                return TextEvent.Undefined;
+
+            ReadOnlySpan<char> funcName = tagContent[..openIndex].Trim();
+            VarType varType = dialog.GetPredefinedMethodReturnType(funcName);
+
+            if (varType != VarType.String && varType != VarType.Float)
+                return TextEvent.Undefined;
+
+            ReadOnlySpan<char> argString = tagContent[(openIndex + 1)..^1].Trim();
+            TextVariant[]? args = GetPooledArguments(argString);
+
+            if (args == null)
+                return TextEvent.Undefined;
+
+            TextVariant result = dialog.CallPredefinedMethod(funcName, args);
+
+            if (args.Length > 0)
+                ArrayPool<TextVariant>.Shared.Return(args, true);
+
+            return AppendString(varType, result, sb);
+        }
+
+        static TextVariant[]? GetPooledArguments(ReadOnlySpan<char> argString)
+        {
+            if (argString.Length == 0)
+                return [];
+
+            int maxArgs = 1;
+
+            for (int i = 0; i < argString.Length; i++)
+            {
+                if (argString[i] == ',')
+                    maxArgs++;
+            }
+
+            TextVariant[] args = ArrayPool<TextVariant>.Shared.Rent(maxArgs);
+            int count = 0;
+            int start = 0;
+            bool inQuotes = false;
+
+            for (int i = 0; i <= argString.Length; i++)
+            {
+                bool isEnd = i == argString.Length;
+                char c = isEnd ? '\0' : argString[i];
+
+                if (!isEnd && c == '"')
+                {
+                    int backslashCount = 0, j = i - 1;
+
+                    while (j >= 0 && argString[j] == '\\')
+                    {
+                        backslashCount++;
+                        j--;
+                    }
+
+                    if (backslashCount % 2 == 0)
+                        inQuotes = !inQuotes;
+                }
+
+                if (isEnd || (c == ',' && !inQuotes))
+                {
+                    ReadOnlySpan<char> arg = argString[start..i].Trim();
+
+                    if (arg.Length > 1 && arg[0] == '"' && arg[^1] == '"')
+                    {
+                        args[count] = new TextVariant(arg[1..^1].ToString());
+                    }
+                    else if (double.TryParse(arg, out double f))
+                    {
+                        args[count] = new TextVariant((float)f);
+                    }
+                    else if (arg.Equals("true", StringComparison.OrdinalIgnoreCase) || arg.Equals("false", StringComparison.OrdinalIgnoreCase))
+                    {
+                        args[count] = new TextVariant(arg.Equals("true", StringComparison.OrdinalIgnoreCase));
+                    }
+                    else
+                    {
+                        ArrayPool<TextVariant>.Shared.Return(args);
+                        return null;
+                    }
+
+                    count++;
+                    start = i + 1;
+                }
+            }
+
+            return args;
         }
     }
 

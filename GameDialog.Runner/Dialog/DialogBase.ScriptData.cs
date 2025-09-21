@@ -10,7 +10,7 @@ public partial class DialogBase
 {
     private void ClearStorage()
     {
-        _textStorage.Clear();
+        TextStorage.Clear();
         SpeakerIds.Clear();
         Strings.Clear();
         Floats.Clear();

@@ -109,7 +109,7 @@ public class MemberRegister
         sb.AppendLine("{");
 
         sb.AppendLine($$"""
-            protected override VarType GetPredefinedMethodReturnType(string funcName)
+            protected override VarType GetPredefinedMethodReturnType(ReadOnlySpan<char> funcName)
             {
                 return funcName switch
                 {
@@ -125,7 +125,7 @@ public class MemberRegister
 
         sb.AppendLine();
         sb.AppendLine($$"""
-            protected override VarType GetPredefinedPropertyType(string propertyName)
+            protected override VarType GetPredefinedPropertyType(ReadOnlySpan<char> propertyName)
             {
                 return propertyName switch
                 {
@@ -141,7 +141,7 @@ public class MemberRegister
 
         sb.AppendLine();
         sb.AppendLine($$"""
-            protected override TextVariant CallPredefinedMethod(string funcName, ReadOnlySpan<TextVariant> args)
+            protected override TextVariant CallPredefinedMethod(ReadOnlySpan<char> funcName, ReadOnlySpan<TextVariant> args)
             {
                 switch (funcName)
                 {
@@ -185,7 +185,7 @@ public class MemberRegister
 
         sb.AppendLine();
         sb.AppendLine($$"""
-            protected override TextVariant GetPredefinedProperty(string propertyName)
+            protected override TextVariant GetPredefinedProperty(ReadOnlySpan<char> propertyName)
             {
                 return propertyName switch
                 {
@@ -201,7 +201,7 @@ public class MemberRegister
 
         sb.AppendLine();
         sb.AppendLine($$"""
-            protected override void SetPredefinedProperty(string propertyName, TextVariant value)
+            protected override void SetPredefinedProperty(ReadOnlySpan<char> propertyName, TextVariant value)
             {
                 switch (propertyName)
                 {

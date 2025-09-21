@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using GameDialog.Common;
 
 namespace GameDialog.Runner;
@@ -24,7 +25,7 @@ public class TextStorage
         return _storage.TryGetValue(key, out value);
     }
 
-    public bool TryGetValue<T>(string key, out T? value)
+    public bool TryGetValue<T>(string key, [NotNullWhen(true)] out T? value)
     {
         value = default;
 

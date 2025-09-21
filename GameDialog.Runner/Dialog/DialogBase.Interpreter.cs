@@ -57,7 +57,7 @@ public partial class DialogBase
             if (varType != VarType.Undefined)
                 return varType;
 
-            if (!_textStorage.TryGetValue(varName, out TextVariant tVar))
+            if (!TextStorage.TryGetValue(varName, out TextVariant tVar))
                 return default;
 
             return tVar.VariantType;
@@ -134,13 +134,13 @@ public partial class DialogBase
                 switch (GetReturnType(ref span))
                 {
                     case VarType.Float:
-                        _textStorage.SetValue(varName, EvalFloatExp(ref span));
+                        TextStorage.SetValue(varName, EvalFloatExp(ref span));
                         break;
                     case VarType.Bool:
-                        _textStorage.SetValue(varName, EvalBoolExp(ref span));
+                        TextStorage.SetValue(varName, EvalBoolExp(ref span));
                         break;
                     case VarType.String:
-                        _textStorage.SetValue(varName, EvalStringExp(ref span));
+                        TextStorage.SetValue(varName, EvalStringExp(ref span));
                         break;
                 }
             }
@@ -157,12 +157,12 @@ public partial class DialogBase
                 float result = GetOpResult(ref span, instructionType, originalValue);
                 SetPredefinedProperty(varName, new(result));
             }
-            else if (_textStorage != null)
+            else if (TextStorage != null)
             {
-                if (!_textStorage.TryGetValue(varName, out float originalValue))
+                if (!TextStorage.TryGetValue(varName, out float originalValue))
                     return;
 
-                _textStorage.SetValue(varName, GetOpResult(ref span, instructionType, originalValue));
+                TextStorage.SetValue(varName, GetOpResult(ref span, instructionType, originalValue));
             }
 
             float GetOpResult(ref StateSpan<ushort> span, ushort instructionType, float originalValue)
@@ -182,7 +182,7 @@ public partial class DialogBase
         {
             string varName = Strings[span.Read()];
             VarType varType = GetPredefinedPropertyType(varName);
-            string result;
+            string result = string.Empty;
             VarType nextType = GetReturnType(ref span);
 
             if (nextType == VarType.String)
@@ -195,12 +195,12 @@ public partial class DialogBase
                 string originalValue = GetPredefinedProperty(varName).String ?? string.Empty;
                 SetPredefinedProperty(varName, new(originalValue + result));
             }
-            else if (_textStorage != null)
+            else if (TextStorage != null)
             {
-                if (!_textStorage.TryGetValue(varName, out string? originalValue))
+                if (!TextStorage.TryGetValue(varName, out string? originalValue))
                     originalValue = string.Empty;
 
-                _textStorage.SetValue(varName, originalValue + result);
+                TextStorage.SetValue(varName, originalValue + result);
             }
         }
     }
@@ -311,7 +311,7 @@ public partial class DialogBase
         if (GetPredefinedPropertyType(varName) != VarType.Undefined)
             return GetPredefinedProperty(varName).Get<T>();
 
-        if (_textStorage.TryGetValue(varName, out T? tVar))
+        if (TextStorage.TryGetValue(varName, out T? tVar))
             return tVar;
 
         return default;
@@ -460,30 +460,30 @@ public partial class DialogBase
     /// </summary>
     /// <param name="funcName"></param>
     /// <returns></returns>
-    protected virtual VarType GetPredefinedMethodReturnType(string funcName) => VarType.Undefined;
+    protected virtual VarType GetPredefinedMethodReturnType(ReadOnlySpan<char> funcName) => VarType.Undefined;
     /// <summary>
     /// Gets the VarType of a predefined property.
     /// </summary>
     /// <param name="propertyName"></param>
     /// <returns></returns>
-    protected virtual VarType GetPredefinedPropertyType(string propertyName) => new();
+    protected virtual VarType GetPredefinedPropertyType(ReadOnlySpan<char> propertyName) => new();
     /// <summary>
     /// Calls a predefined method.
     /// </summary>
     /// <param name="funcName"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    protected virtual TextVariant CallPredefinedMethod(string funcName, ReadOnlySpan<TextVariant> args) => new();
+    protected virtual TextVariant CallPredefinedMethod(ReadOnlySpan<char> funcName, ReadOnlySpan<TextVariant> args) => new();
     /// <summary>
     /// Gets a predefined property.
     /// </summary>
     /// <param name="propertyName"></param>
     /// <returns></returns>
-    protected virtual TextVariant GetPredefinedProperty(string propertyName) => new();
+    protected virtual TextVariant GetPredefinedProperty(ReadOnlySpan<char> propertyName) => new();
     /// <summary>
     /// Sets a predefined property.
     /// </summary>
     /// <param name="propertyName"></param>
     /// <param name="value"></param>
-    protected virtual void SetPredefinedProperty(string propertyName, TextVariant value) { }
+    protected virtual void SetPredefinedProperty(ReadOnlySpan<char> propertyName, TextVariant value) { }
 }

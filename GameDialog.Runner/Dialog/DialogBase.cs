@@ -16,13 +16,12 @@ public abstract partial class DialogBase : Control
         SpeedMultiplier = 1;
     }
 
-    private readonly TextStorage _textStorage = new();
-
     protected List<string> SpeakerIds { get; private set; } = [];
     protected List<string> Strings { get; private set; } = [];
     protected List<float> Floats { get; private set; } = [];
     protected List<ushort[]> Instructions { get; private set; } = [];
     protected bool SpeedUpEnabled { get; set; }
+    public TextStorage TextStorage { get; } = new();
     public double SpeedMultiplier { get; private set; }
     public bool AutoProceedGlobalEnabled { get; private set; }
     public float AutoProceedGlobalTimeout { get; private set; }

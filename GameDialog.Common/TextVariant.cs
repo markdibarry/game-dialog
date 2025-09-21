@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace GameDialog.Common;
@@ -58,7 +59,7 @@ public readonly record struct TextVariant
         return default;
     }
 
-    public bool TryGetValue<T>(out T? value)
+    public bool TryGetValue<T>([NotNullWhen(true)] out T? value)
     {
         if (VariantType == VarType.Bool)
         {
