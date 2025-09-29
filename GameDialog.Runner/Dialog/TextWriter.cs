@@ -59,11 +59,7 @@ public partial class TextWriter : RichTextLabel, IPoolable
     [ExportToolButton("Reset")]
     public Callable ResetButton => Callable.From(() => Reset(false));
     public bool Writing => _isWriting;
-    public double SpeedMultiplier
-    {
-        get => field;
-        set => field = value > 0 ? value : field;
-    }
+    public double SpeedMultiplier { get; set; }
     public bool IsSpeedUpEnabled { get; set; }
     public bool AutoProceedEnabled { get; set; }
     public bool Suspended { get; private set; }
@@ -160,6 +156,8 @@ public partial class TextWriter : RichTextLabel, IPoolable
         SpeedMultiplier = Dialog?.SpeedMultiplier ?? 1;
     }
 
+    public bool IsOnLastPage() => _scrollBar.Value >= _scrollBar.MaxValue - Size.Y;
+
     public void ClearObject()
     {
         Reset(true);
@@ -214,6 +212,14 @@ public partial class TextWriter : RichTextLabel, IPoolable
 
         void BeginScrollToLine(int line)
         {
+            if (ScrollSpeed == 0)
+            {
+                _targetScrollValue = GetLineOffset(line);
+                _scrollBar.Value = _targetScrollValue;
+                _isScrolling = false;
+                return;
+            }
+
             _movingScrollValue = _scrollBar.Value;
             _targetScrollValue = GetLineOffset(line);
 
@@ -424,13 +430,21 @@ public partial class TextWriter : RichTextLabel, IPoolable
 
         double totalSpeed = CharsPerSecond * SpeedMultiplier;
 
-        if (IsSpeedUpEnabled)
-            totalSpeed *= SpeedUpMultiplier;
+        if (totalSpeed <= 0) // Instant write
+        {
+            _writeCounter = _targetWriteRange.Y - currentChar;
+        }
+        else
+        {
+            if (IsSpeedUpEnabled)
+                totalSpeed *= SpeedUpMultiplier;
 
-        _writeCounter += delta * totalSpeed;
+            _writeCounter += delta * totalSpeed;
 
-        if (currentChar < _targetWriteRange.X)
-            _writeCounter = _targetWriteRange.X - currentChar;
+            // catch up to target range start
+            if (currentChar < _targetWriteRange.X)
+                _writeCounter = _targetWriteRange.X - currentChar;
+        }
 
         while (_writeCounter >= 1 && currentChar < _targetWriteRange.Y)
         {
