@@ -110,8 +110,9 @@ public partial class DialogBase
             if (reader.TokenType == JsonTokenType.PropertyName)
             {
                 bool isSpeakerIds = reader.ValueTextEquals(nameof(SpeakerIds));
+                bool isSectionIds = reader.ValueTextEquals(nameof(SectionIds));
 
-                if (isSpeakerIds || reader.ValueTextEquals(nameof(Strings)))
+                if (isSpeakerIds || isSectionIds || reader.ValueTextEquals(nameof(Strings)))
                 {
                     reader.Read();
                     reader.Read();
@@ -121,6 +122,8 @@ public partial class DialogBase
                     {
                         if (isSpeakerIds)
                             SpeakerIds.Add(reader.GetString() ?? string.Empty);
+                        else if (isSectionIds)
+                            SectionIds.Add(reader.GetString() ?? string.Empty);
                         else
                             Strings.Add(reader.GetString() ?? string.Empty);
 

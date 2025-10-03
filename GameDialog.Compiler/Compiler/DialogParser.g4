@@ -11,13 +11,14 @@ stmt
     : condStmt
     | tag NEWLINE+
     | lineStmt
+    | choiceStmt
     | INDENT stmt+ DEDENT;
 
 lineStmt:
     (speakerIds | UNDERSCORE) lineText NEWLINE+
-        choiceStmt*
+        choiceStmt?
     | (speakerIds | UNDERSCORE) mlText NEWLINE+
-        DEDENT choiceStmt*;
+        DEDENT choiceStmt?;
 
 textContent: (LINE_TEXT | tag)*;
 
@@ -64,18 +65,21 @@ tag:
 attrExpression: NAME (expression | assignment)+;
 
 choiceStmt:
+    choiceSingleStmt+;
+
+choiceSingleStmt:
     choiceCondStmt
     | CHOICE textContent NEWLINE+ (INDENT stmt* DEDENT)?;
 choiceCondStmt: choiceIfStmt choiceElseifStmt* choiceElseStmt?;
 choiceIfStmt:
     IF OPEN_BRACKET expression CLOSE_BRACKET NEWLINE+
-    INDENT choiceStmt+ DEDENT;
+    INDENT choiceStmt DEDENT;
 choiceElseifStmt:
     ELSEIF OPEN_BRACKET expression CLOSE_BRACKET NEWLINE+
-    INDENT choiceStmt+ DEDENT;
+    INDENT choiceStmt DEDENT;
 choiceElseStmt:
     ELSE NEWLINE+
-    INDENT choiceStmt+ DEDENT;
+    INDENT choiceStmt DEDENT;
 
 expression:
     OPEN_PAREN right=expression CLOSE_PAREN #ExpPara

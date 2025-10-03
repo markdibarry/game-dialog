@@ -15,10 +15,29 @@ public partial class DialogBase
     /// <summary>
     /// Begins a loaded dialog script.
     /// </summary>
-    public void StartScript()
+    /// <param name="sectionId">Optional starting section id</param>
+    public void StartScript(string sectionId = "")
     {
-        Next = 0;
+        Next = sectionId.Length > 0 ? GetSectionIndex(sectionId) : 0;
         Resume();
+    }
+
+    private ushort GetSectionIndex(string sectionId)
+    {
+        for (int i = 0; i < Instructions.Count; i++)
+        {
+            ushort[] current = Instructions[i];
+
+            if (current[0] != InstructionType.Section)
+                break;
+
+            ushort sectionIdIndex = current[2];
+
+            if (SectionIds[sectionIdIndex] == sectionId)
+                return current[1];
+        }
+
+        return 0;
     }
 
     public void Resume()

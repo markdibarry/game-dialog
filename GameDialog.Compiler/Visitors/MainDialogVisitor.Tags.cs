@@ -165,12 +165,12 @@ public partial class MainDialogVisitor
 
             float value = float.Parse(floatContext.GetText());
 
-            if (expName == BuiltIn.AUTO && value < 0)
+            if (expName is BuiltIn.AUTO or BuiltIn.SPEED && value < 0)
             {
-                _diagnostics.AddError(context, "Invalid value: Auto timeout cannot be less than 0.");
+                _diagnostics.AddError(context, "Invalid value: Cannot be less than zero.");
                 return null;
             }
-            else if (expName is BuiltIn.SPEED or BuiltIn.PAUSE && value <= 0)
+            else if (expName is BuiltIn.PAUSE && value <= 0)
             {
                 _diagnostics.AddError(context, "Invalid value: Cannot be zero or lesser.");
                 return null;

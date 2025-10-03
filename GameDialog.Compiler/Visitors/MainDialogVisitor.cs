@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
 using GameDialog.Common;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
@@ -51,13 +52,13 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
                 _diagnostics.AddError(section.sectionTitle(), $"Title \"{title}\" already used in this script.");
 
             titles.Add(title);
-            int titleStringIndex = _scriptData.Strings.GetOrAdd(title);
+            int sectionIdIndex = _scriptData.SectionIds.GetOrAdd(title);
 
             if (string.Equals(title, BuiltIn.END, StringComparison.OrdinalIgnoreCase))
                 _diagnostics.AddError(section.sectionTitle(), "\"end\" is a reserved name.");
 
             // Will set the "next" while traversing dialog
-            _scriptData.Instructions.Add([InstructionType.Section, 0, titleStringIndex]);
+            _scriptData.Instructions.Add([InstructionType.Section, 0, sectionIdIndex]);
             _sections.Add(title);
         }
 
@@ -178,9 +179,15 @@ public partial class MainDialogVisitor : DialogParserBaseVisitor<int>
         ResolveStatements(lineIndex);
         _unresolvedStmts.Add((_nestLevel, line));
 
-        if (context.choiceStmt().Length > 0)
-            HandleChoices(context.choiceStmt());
+        if (context.choiceStmt()?.choiceSingleStmt().Length > 0)
+            HandleChoices(context.choiceStmt().choiceSingleStmt());
 
+        return 0;
+    }
+
+    public override int VisitChoiceStmt([NotNull] ChoiceStmtContext context)
+    {
+        HandleChoices(context.choiceSingleStmt());
         return 0;
     }
 

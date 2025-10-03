@@ -16,6 +16,7 @@ public abstract partial class DialogBase : Control
         SpeedMultiplier = 1;
     }
 
+    protected List<string> SectionIds { get; private set; } = [];
     protected List<string> SpeakerIds { get; private set; } = [];
     protected List<string> Strings { get; private set; } = [];
     protected List<float> Floats { get; private set; } = [];
@@ -43,10 +44,13 @@ public abstract partial class DialogBase : Control
     /// Called when a dialog line finishes.
     /// </summary>
     /// <param name="line">The dialog line</param>
-    protected virtual void OnDialogLineEnded(DialogLine line)
+    protected virtual void OnDialogLineEnded(DialogLine? line)
     {
-        Next = line.Next;
-        Pool.Return(line);
+        Next = line?.Next;
+
+        if (line != null)
+            Pool.Return(line);
+
         Resume();
     }
     /// <summary>

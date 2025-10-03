@@ -37,8 +37,8 @@ public class DialogCompiler
         visitor.Visit(context);
         diagnostics.AddRange(document.GetDiagnostics());
         CompilationResult result = new(document.Uri, scriptData, diagnostics);
-        // File.WriteAllText("/mnt/general_storage/Coding/godot/Projects/Longterm/game-dialog/tokens.txt", Utility.PrintTokens((CommonTokenStream)document.Parser.TokenStream));
-        // File.WriteAllText("/mnt/general_storage/Coding/godot/Projects/Longterm/game-dialog/logger.txt", Utility.PrintTree(context));
+        //File.WriteAllText("/mnt/general_storage/Coding/godot/Projects/Longterm/game-dialog/tokens.txt", Utility.PrintTokens((CommonTokenStream)document.Parser.TokenStream));
+        //File.WriteAllText("/mnt/general_storage/Coding/godot/Projects/Longterm/game-dialog/logger.txt", Utility.PrintTree(context));
         return result;
     }
 

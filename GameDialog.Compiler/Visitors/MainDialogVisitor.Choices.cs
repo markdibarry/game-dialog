@@ -8,7 +8,7 @@ namespace GameDialog.Compiler;
 
 public partial class MainDialogVisitor
 {
-    private void HandleChoices(ChoiceStmtContext[] context)
+    private void HandleChoices(ChoiceSingleStmtContext[] context)
     {
         List<int> choiceSet = [InstructionType.Choice];
         _scriptData.Instructions.Add(choiceSet);
@@ -16,11 +16,11 @@ public partial class MainDialogVisitor
         AddChoiceSet(context, choiceSet);
     }
 
-    private void AddChoiceSet(ChoiceStmtContext[] context, List<int> choiceSet)
+    private void AddChoiceSet(ChoiceSingleStmtContext[] context, List<int> choiceSet)
     {
         _nestLevel++;
 
-        foreach (ChoiceStmtContext choiceStmt in context)
+        foreach (ChoiceSingleStmtContext choiceStmt in context)
         {
             if (choiceStmt.CHOICE() != null)
                 AddChoice(choiceStmt, choiceSet);
@@ -34,7 +34,7 @@ public partial class MainDialogVisitor
         _nestLevel--;
     }
 
-    private void AddChoice(ChoiceStmtContext choiceStmt, List<int> choiceSet)
+    private void AddChoice(ChoiceSingleStmtContext choiceStmt, List<int> choiceSet)
     {
         StringBuilder sb = new();
         HandleTextContent(sb, choiceStmt.textContent());
@@ -55,14 +55,14 @@ public partial class MainDialogVisitor
         ChoiceIfStmtContext ifStmt = choiceCond.choiceIfStmt();
         choiceSet.AddRange([ChoiceOp.If, _scriptData.Instructions.Count]);
         _scriptData.Instructions.Add(GetInstrStmt(ifStmt.expression(), VarType.Bool));
-        AddChoiceSet(ifStmt.choiceStmt(), choiceSet);
+        AddChoiceSet(ifStmt.choiceStmt().choiceSingleStmt(), choiceSet);
 
         // else if
         foreach (ChoiceElseifStmtContext elseifStmt in choiceCond.choiceElseifStmt())
         {
             choiceSet.AddRange([ChoiceOp.ElseIf, _scriptData.Instructions.Count]);
             _scriptData.Instructions.Add(GetInstrStmt(ifStmt.expression(), VarType.Bool));
-            AddChoiceSet(elseifStmt.choiceStmt(), choiceSet);
+            AddChoiceSet(elseifStmt.choiceStmt().choiceSingleStmt(), choiceSet);
         }
 
         // else
@@ -70,7 +70,7 @@ public partial class MainDialogVisitor
         {
             choiceSet.AddRange([ChoiceOp.Else]);
             ChoiceElseStmtContext elseStmt = choiceCond.choiceElseStmt();
-            AddChoiceSet(elseStmt.choiceStmt(), choiceSet);
+            AddChoiceSet(elseStmt.choiceStmt().choiceSingleStmt(), choiceSet);
         }
 
         choiceSet.AddRange([ChoiceOp.EndIf]);
