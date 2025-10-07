@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Antlr4.Runtime;
+using Antlr4.Runtime.Misc;
 using GameDialog.Common;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
@@ -54,6 +55,31 @@ public partial class ExpressionVisitor : DialogParserBaseVisitor<VarType>
             _diagnostics.AddError(context, $"Type Mismatch: Expected {expectedType}, but returned {resultType}.");
 
         return result;
+    }
+
+    public override VarType VisitDefineExpression(DefineExpressionContext context)
+    {
+        string varName = context.NAME().GetText();
+        VarDef? varDef = _memberRegister.VarDefs.FirstOrDefault(x => x.Name == varName);
+        int nameIndex = _scriptData.Strings.GetOrAdd(varName);
+
+        if (varDef == null)
+        {
+            if (context.op.Type == DialogLexer.OP_DEFINE_BOOL)
+                varDef = new(varName, VarType.Bool);
+            else if (context.op.Type == DialogLexer.OP_DEFINE_FLOAT)
+                varDef = new(varName, VarType.Float);
+            else
+                varDef = new(varName, VarType.String);
+
+            _memberRegister.VarDefs.Add(varDef);
+        }
+        else
+        {
+            _diagnostics.AddError(context, $"Cannot overwrite an existing variable.");
+        }
+
+        return VarType.Undefined;
     }
 
     public override VarType VisitAssignment(AssignmentContext context)

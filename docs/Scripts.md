@@ -241,7 +241,7 @@ By default, if you try to type a method or property name in your script that you
 pre-defined, the extension will show an error. To define a method or property for use in your 
 scripts, you'll need to make a partial class of your custom class inheriting from `DialogBase`. 
 The extension will scan your workspace for a file ending in `.DialogBridge.cs`, and then grab all 
-compatible methods and properties inside and create a file ending in `.DialogBridge.Generated.cs`.
+compatible methods and properties inside and create a file ending in `.DialogBridge.g.cs`.
 The runtime will use this file to handle your methods and properties.
 
 Compatible types for properties and method parameters include `string`, `bool`, and `float`. Method 
@@ -264,6 +264,29 @@ assign the result of a method to a variable for use later.
 [favoriteFood = GetFavoriteFood()]
 Stalone: My favorite food is [favoriteFood]!
 ```
+
+### Passing members
+
+If you have some data you want available inside your script, but don't want to define it as a 
+global member in the `DialogBridge.cs`, you can pass it in by setting the value on the dialog's
+`TextStorage` property.
+
+```cs
+dialog.TextStorage.SetValue("songName", "Bulls On Parade");
+dialog.StartScript();
+```
+
+Then in your dialog, declare it as a passed-in value by providing the type and the variable name:
+
+```
+--CoolMusic--
+[@string songName]
+Twosen: What're you listening to?
+Stalone: My favorite song, [songName]!
+```
+
+Supported types are `@string`, `@float` and `@bool`. Remember, you need to pass them in for the 
+script to use them!
 
 ### `await`
 

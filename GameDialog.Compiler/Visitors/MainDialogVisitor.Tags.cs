@@ -85,6 +85,14 @@ public partial class MainDialogVisitor
             return GetHashCollectionStmt(context.hashCollection());
         else if (context.speakerCollection() != null)
             return GetSpeakerCollectionStmt(context.speakerCollection());
+        else if (context.defineExpression() != null)
+            return GetDefineExp(context.defineExpression());
+        return null;
+    }
+
+    private List<int>? GetDefineExp(DefineExpressionContext context)
+    {
+        _expressionVisitor.Visit(context);
         return null;
     }
 

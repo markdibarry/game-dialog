@@ -60,6 +60,7 @@ tag:
         | hashCollection
         | speakerCollection
         | BBCODE_NAME BBCODE_EXTRA_TEXT?
+        | defineExpression
     )
     CLOSE_BRACKET;
 attrExpression: NAME (expression | assignment)+;
@@ -80,6 +81,9 @@ choiceElseifStmt:
 choiceElseStmt:
     ELSE NEWLINE+
     INDENT choiceStmt DEDENT;
+
+defineExpression:
+    op=(OP_DEFINE_BOOL | OP_DEFINE_FLOAT | OP_DEFINE_STRING) NAME;
 
 expression:
     OPEN_PAREN right=expression CLOSE_PAREN #ExpPara

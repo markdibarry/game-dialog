@@ -79,7 +79,7 @@
         },
         "keywords": {
             "name": "keyword.other",
-            "match": "true|false"
+            "match": "true|false|@bool|@string|@float"
         },
         "controls": {
             "patterns": [
