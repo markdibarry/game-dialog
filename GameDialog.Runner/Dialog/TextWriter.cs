@@ -46,8 +46,21 @@ public partial class TextWriter : RichTextLabel, IPoolable
 
     [Export]
     public int CharsPerSecond { get; set; }
+
+    /// <summary>
+    /// Scroll speed in pixels per second
+    /// </summary>
     [Export]
     public float ScrollSpeed
+    {
+        get => field;
+        set => field = Math.Max(value, 0);
+    }
+    /// <summary>
+    /// Pixels at which the scroll updates
+    /// </summary>
+    [Export]
+    public float ScrollStep
     {
         get => field;
         set => field = Math.Max(value, 0);
@@ -327,10 +340,19 @@ public partial class TextWriter : RichTextLabel, IPoolable
 
         double speed = ScrollSpeed * delta;
         _movingScrollValue = Mathf.MoveToward(_movingScrollValue, _targetScrollValue, speed);
-        _scrollBar.Value = _movingScrollValue;
 
         if (_movingScrollValue == _targetScrollValue)
+        {
+            _scrollBar.Value = _targetScrollValue;
             _isScrolling = false;
+        }
+        else
+        {
+            if (ScrollStep > 0)
+                _scrollBar.Value = Math.Floor(_movingScrollValue / ScrollStep) * ScrollStep;
+            else
+                _scrollBar.Value = _movingScrollValue;
+        }
     }
 
     private bool HandleTextEvent(int textIndex)
