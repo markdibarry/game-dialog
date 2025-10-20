@@ -188,7 +188,10 @@ public partial class TextWriter : RichTextLabel, IPoolable
         int currentChar = VisibleCharacters == -1 ? _totalCharacters : VisibleCharacters;
 
         if (currentChar == _totalCharacters)
+        {
+            FinishedWriting?.Invoke();
             return;
+        }
 
         if (_scrollPageOverride)
         {
@@ -408,7 +411,7 @@ public partial class TextWriter : RichTextLabel, IPoolable
         return true;
     }
 
-    private void Reset(bool clearText)
+    public void Reset(bool clearText)
     {
         if (clearText)
             Text = string.Empty;
