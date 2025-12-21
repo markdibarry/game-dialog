@@ -1,5 +1,5 @@
 using System;
-using System.Threading.Tasks;
+using System.Collections.Generic;
 using GameDialog.Runner;
 using Godot;
 
@@ -11,9 +11,9 @@ public partial class DialogBox : MarginContainer
     public PanelContainer NameContainer { get; set; } = null!;
     public Label NameLabel { get; set; } = null!;
     public TextWriter TextWriter { get; set; } = null!;
-    public DialogLine DialogLine { get; private set; } = null!;
+    public List<string> SpeakerIds { get; private set; } = [];
     public MarginContainer NextArrow { get; set; } = null!;
-    public event Action<DialogLine>? LineEnded;
+    public event Action? LineEnded;
 
     public override void _Ready()
     {
@@ -48,24 +48,24 @@ public partial class DialogBox : MarginContainer
         inputEvent.Dispose();
     }
 
-    public async ValueTask WriteDialogLine(DialogLine dialogLine)
+    public void WriteDialogLine(string text, ReadOnlySpan<string> speakerIds, ReadOnlySpan<TextEvent> textEvents)
     {
-        DialogLine = dialogLine;
-        // In Godot, when a new Control is created, it is incorrect size until the next frame.
-        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        SpeakerIds.Clear();
+        SpeakerIds.AddRange(speakerIds);
 
-        if (dialogLine.SpeakerIds.Count == 0)
+        if (SpeakerIds.Count == 0)
         {
             NameContainer.Visible = false;
         }
         else
         {
             NameContainer.Visible = true;
-            NameLabel.Text = string.Join(", ", dialogLine.SpeakerIds);
+            NameLabel.Text = string.Join(", ", SpeakerIds);
         }
-        
-        TextWriter.SetParsedText(dialogLine.Text);
-        TextWriter.WriteNextPage();
+
+        TextWriter.SetParsedText(text, textEvents);
+        // In Godot, when a new Control is created, it is incorrect size until the next frame.
+        TextWriter.CallDeferred(TextWriter.MethodName.WriteNextPage);
     }
 
     private void HandleNext()
@@ -75,14 +75,11 @@ public partial class DialogBox : MarginContainer
         if (!TextWriter.IsComplete())
             TextWriter.WriteNextPage();
         else
-            LineEnded?.Invoke(DialogLine);
+            LineEnded?.Invoke();
     }
 
     private void OnFinishedWriting()
     {
-        if (DialogLine == null)
-            return;
-
         if (TextWriter.AutoProceedEnabled)
             HandleNext();
         else

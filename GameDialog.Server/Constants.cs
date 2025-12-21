@@ -7,5 +7,5 @@ public static class Constants
     public const string ConfigCSVTranslationLocation = "gamedialog:csvTranslation:location";
     public const string ConfigCSVTranslationEnabled = "gamedialog:csvTranslation:enabled";
     public const string ConfigCSVTranslationSeparateFiles = "gamedialog:csvTranslation:separateFiles";
-    public const string DialogBridgeName = "*.DialogBridge.cs";
+    public const string DialogBridgeName = "DialogBridge.cs";
 }

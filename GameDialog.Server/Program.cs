@@ -4,7 +4,7 @@ using OmniSharp.Extensions.LanguageServer.Server;
 
 namespace GameDialog.Server;
 
-public class GameDialogServer
+public static class GameDialogServer
 {
     private static async Task Main(string[] args)
     {

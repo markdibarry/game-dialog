@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ExampleProject;
-using GameDialog.Common;
+using GameDialog.Runner;
 using Godot;
 
 public partial class OptionBox : MarginContainer

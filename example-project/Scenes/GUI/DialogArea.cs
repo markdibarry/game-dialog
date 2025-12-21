@@ -6,7 +6,7 @@ namespace ExampleProject;
 
 public partial class DialogArea : Area2D
 {
-    [Export(PropertyHint.File, "*.json")]
+    [Export(PropertyHint.File, "*.dia")]
     public string DialogPath { get; set; } = string.Empty;
     public int TimesTalked { get; set; }
     public Label? Label { get; set; }

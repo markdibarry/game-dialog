@@ -110,6 +110,22 @@ public static class ListPool
         limitedQueue.Enqueue(list);
     }
 
+    /// <summary>
+    /// Returns the items in the provided List to the pool, then clears the List.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="list"></param>
+    public static void ReturnItems<T>(List<T> list)
+    {
+        foreach (T item in list)
+        {
+            if (item is IPoolable poolable)
+                Pool.Return(poolable);
+        }
+
+        list.Clear();
+    }
+
     private static LimitedQueue<object> GetLimitedQueue(Type type)
     {
         if (!s_listPool.TryGetValue(type, out LimitedQueue<object>? limitedQueue))

@@ -9,9 +9,9 @@ Devs: What tag would you like to see an example of?
     Devs: ^^Adding a [color=Gold]\[prompt\][/color] tag will cause the line to prompt even if it's not 
         the end of a line.^^
     Devs: In this case we added a prompt[prompt] after[prompt] every[prompt] word.
-? page
-    Devs: ^^Even though this is a single dialog line, when it hits a [color=Gold]\[page\][/color] tag...\n
-        [page]...it'll scroll the current line to a new page to read the rest!^^
+? scroll
+    Devs: ^^Even though this is a single dialog line, when it hits a [color=Gold]\[scroll\][/color] tag...[br]
+        [scroll]...it'll scroll the current line to a new page to read the rest!^^
 ? goto
     Devs: ^^The name of this section is "Examples". [color=Gold]\[goto Examples\][/color] will return you 
         to the beginning of the section. Let's go!^^

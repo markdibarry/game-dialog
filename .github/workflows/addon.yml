@@ -15,26 +15,27 @@ jobs:
         - name: Grab Files
           run: |
             rm -rf GameDialog
-            mkdir -p GameDialog/{Common,Dialog,ObjectPool}
+            mkdir -p GameDialog/{Models,ObjectPool}
 
-            cp GameDialog.Common/BuiltIn.cs GameDialog/Common/
-            cp GameDialog.Common/Choice.cs GameDialog/Common/
-            cp GameDialog.Common/ChoiceOp.cs GameDialog/Common/
-            cp GameDialog.Common/InstructionType.cs GameDialog/Common/
-            cp GameDialog.Common/OpCode.cs GameDialog/Common/
-            cp GameDialog.Common/StateSpan.cs GameDialog/Common/
-            cp GameDialog.Common/TextVariant.cs GameDialog/Common/
-            cp GameDialog.Common/VarType.cs GameDialog/Common/
+            cp GameDialog.Runner/Models/BBCode.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/BuiltIn.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/Choice.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/Defs.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/IMemberStorage.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/TextEvent.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/TextVariant.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/VarType.cs GameDialog/Models/
 
-            cp GameDialog.Runner/Dialog/DialogBase.cs GameDialog/Dialog/
-            cp GameDialog.Runner/Dialog/DialogBase.Interpreter.cs GameDialog/Dialog/
-            cp GameDialog.Runner/Dialog/DialogBase.Reader.cs GameDialog/Dialog/
-            cp GameDialog.Runner/Dialog/DialogBase.ScriptData.cs GameDialog/Dialog/
-            cp GameDialog.Runner/Dialog/DialogBase.TextParser.cs GameDialog/Dialog/
-            cp GameDialog.Runner/Dialog/DialogLine.cs GameDialog/Dialog/
-            cp GameDialog.Runner/Dialog/TextEvent.cs GameDialog/Dialog/
-            cp GameDialog.Runner/Dialog/TextStorage.cs GameDialog/Dialog/
-            cp GameDialog.Runner/Dialog/TextWriter.cs GameDialog/Dialog/
+            cp GameDialog.Runner/DialogBase.cs GameDialog/
+            cp GameDialog.Runner/DialogBase.Reader.cs GameDialog/
+            cp GameDialog.Runner/DialogBase.TextParser.cs GameDialog/
+            cp GameDialog.Runner/DialogBridgeBase.cs GameDialog/
+            cp GameDialog.Runner/DialogHelpers.cs GameDialog/
+            cp GameDialog.Runner/DialogStorage.cs GameDialog/
+            cp GameDialog.Runner/ExprParser.cs GameDialog/
+            cp GameDialog.Runner/ParserState.cs GameDialog/
+            cp GameDialog.Runner/TextWriter.cs GameDialog/
+            cp GameDialog.Runner/Validator.cs GameDialog/
 
             cp GameDialog.Runner/ObjectPool/IPoolable.cs GameDialog/ObjectPool/
             cp GameDialog.Runner/ObjectPool/LimitedQueue.cs GameDialog/ObjectPool/
@@ -61,7 +62,7 @@ jobs:
         - name: Setup .NET
           uses: actions/setup-dotnet@v4
           with:
-            dotnet-version: '9.0.x'
+            dotnet-version: '10.0.x'
             dotnet-quality: 'preview'
 
         - name: Install Extension Dependencies

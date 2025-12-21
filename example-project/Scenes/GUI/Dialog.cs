@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using GameDialog.Common;
 using GameDialog.Runner;
 using Godot;
 
@@ -11,12 +10,12 @@ public partial class Dialog : DialogBase
     public DialogBox? DialogBox { get; set; }
     public int OptionColumns { get; private set; } = 1;
 
-    protected override void OnDialogLineStarted(DialogLine line)
+    protected override void OnDialogLineStarted(string text, ReadOnlySpan<string> speakerIds, ReadOnlySpan<TextEvent> textEvents)
     {
         DialogBox ??= CreateDialogBox();
         // Gives access to script when parsing
         DialogBox.TextWriter.Dialog = this;
-        _ = DialogBox.WriteDialogLine(line);
+        DialogBox.WriteDialogLine(text, speakerIds, textEvents);
     }
 
     protected override void OnDialogLineResumed()

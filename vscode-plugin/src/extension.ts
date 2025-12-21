@@ -27,7 +27,7 @@ let server: ChildProcess;
 
 export function activate(context: ExtensionContext) {
     commands.registerCommand('extension.createConstants', createConstants);
-    commands.registerCommand('extension.recompileAllFiles', recompileAllDialogFiles);
+    //commands.registerCommand('extension.recompileAllCSVFiles', recompileAllCSVFiles);
     let configuration = workspace.getConfiguration(extensionId);
     let enable = configuration.get("enabled");
     const outputChannel = window.createOutputChannel("Game Dialog");
@@ -43,7 +43,7 @@ async function runServer(context: ExtensionContext, configuration: WorkspaceConf
         const dotnetAcquisition = await commands.executeCommand<IDotnetAcquireResult>(
             'dotnet.acquire',
             {
-                version: '9.0',
+                version: '10.0',
                 requestingExtensionId: extensionId
             }
         );
@@ -107,8 +107,8 @@ async function stopServer(): Promise<void> {
     server.kill();
 }
 
-async function recompileAllDialogFiles(): Promise<void> {
-    const message = `This will recompile all dialog files in your workspace.`;
+async function recompileAllCSVFiles(): Promise<void> {
+    const message = `This will recompile all dialog csv translation files in your workspace.`;
     const confirm = 'Proceed';
     const choice = await window.showWarningMessage(message, { modal: true }, confirm );
 

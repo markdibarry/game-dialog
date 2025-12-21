@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "GameDialog": {
-      "commandName": "Project",
-      "commandLineArgs": "-tokens"
-    }
-  }
-}

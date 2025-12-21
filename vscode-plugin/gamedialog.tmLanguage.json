@@ -31,11 +31,6 @@
                 {
                     "name": "comment.line.double-slash",
                     "match": "//.*"
-                },
-                {
-                    "name": "comment.block",
-                    "begin": "/\\*",
-                    "end": "\\*/"
                 }
             ]
         },
@@ -49,7 +44,7 @@
         },
         "choices": {
             "name": "keyword.control",
-            "match": "^\\s*\\?\\s"
+            "match": "^\\s*\\?\\s+(?:if\\s+)?"
         },
         "tags": {
             "name": "keyword.other",
