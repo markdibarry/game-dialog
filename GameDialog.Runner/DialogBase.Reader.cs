@@ -18,14 +18,11 @@ public partial class DialogBase
     /// <summary>
     /// Updates Errors with issues.
     /// </summary>
-    /// <param name="fileLines">The script lines to validate</param>
     /// <param name="errors">The error list to populate</param>
-    public void ValidateScript(string[] fileLines, List<Error> errors, StringBuilder? chart = null)
+    public void ValidateScript(List<Error> errors, StringBuilder? chart = null)
     {
-        _validator ??= new(_state, _exprParser, [], []);
-        _state.MemberStorage = _validator;
-        _validator.ValidateScript(fileLines, errors, chart);
-        _state.MemberStorage = DialogStorage;
+        _validator ??= new(_state, [], []);
+        _validator.ValidateScript(errors, chart);
     }
 
     /// <summary>
@@ -40,9 +37,9 @@ public partial class DialogBase
 
     private int GetSectionIndex(ReadOnlySpan<char> sectionId)
     {
-        for (int i = 0; i < Script.Length; i++)
+        for (int i = 0; i < Script.Count; i++)
         {
-            ReadOnlySpan<char> current = Script[i].AsSpan();
+            ReadOnlySpan<char> current = Script[i].Span.StripLineComment();
 
             if (!TitleRegex().IsMatch(current))
                 continue;
@@ -73,7 +70,7 @@ public partial class DialogBase
         int? nextIndex = Next;
         Next = null;
 
-        while (nextIndex >= 0 && nextIndex < Script.Length)
+        while (nextIndex >= 0 && nextIndex < Script.Count)
             nextIndex = ReadStatement(nextIndex.Value);
 
         if (nextIndex == SuspendScript)
@@ -89,7 +86,7 @@ public partial class DialogBase
 
         Next = null;
 
-        while (nextIndex >= 0 && nextIndex < Script.Length)
+        while (nextIndex >= 0 && nextIndex < Script.Count)
             nextIndex = ReadStatement(nextIndex.Value);
 
         if (nextIndex == SuspendScript)
@@ -101,7 +98,7 @@ public partial class DialogBase
     private int ReadStatement(int lineIdx)
     {
         _state.MoveLine(lineIdx);
-        ReadOnlySpan<char> line = Script[LineIdx].AsSpan();
+        ReadOnlySpan<char> line = Script[LineIdx].Span;
         int start = DialogHelpers.GetNextNonWhitespace(line, 0);
         ReadOnlySpan<char> trimmed = line[start..];
 
@@ -139,15 +136,15 @@ public partial class DialogBase
         int charIdx = baseIndent;
         charIdx += "if".Length;
         charIdx = DialogHelpers.GetNextNonWhitespace(line, charIdx) + 1;
-        _exprParser.TryGetExprEndIdx(charIdx, out int exprEnd);
-        TextVariant result = _exprParser.Parse(charIdx, exprEnd);
+        ExprParser.TryGetExprInfo(_state.Line, _state.LineIdx, charIdx, null, out ExprInfo exprInfo);
+        TextVariant result = ExprParser.Parse(exprInfo, DialogStorage);
         _state.MoveNextLine();
 
         if (result.VariantType == VarType.Bool && result.Bool)
             return LineIdx;
 
         // Skip if branch
-        while (LineIdx < Script.Length)
+        while (LineIdx < Script.Count)
         {
             if (_state.CurrentIndentLevel < baseIndent)
                 return LineIdx;
@@ -157,21 +154,21 @@ public partial class DialogBase
             _state.MoveNextLine();
         }
 
-        while (LineIdx < Script.Length && ElseIfRegex().IsMatch(Script[LineIdx]))
+        while (LineIdx < Script.Count && ElseIfRegex().IsMatch(Script[LineIdx].Span))
         {
             line = _state.Line;
             charIdx = DialogHelpers.GetNextNonWhitespace(line, 0);
             charIdx += "else if".Length;
             charIdx = DialogHelpers.GetNextNonWhitespace(line, charIdx) + 1;
-            _exprParser.TryGetExprEndIdx(charIdx, out exprEnd);
-            result = _exprParser.Parse(charIdx, exprEnd);
+            ExprParser.TryGetExprInfo(_state.Line, _state.LineIdx, charIdx, null, out exprInfo);
+            result = ExprParser.Parse(exprInfo, DialogStorage);
             _state.MoveNextLine();
 
             if (result.VariantType == VarType.Bool && result.Bool)
                 return LineIdx;
 
             // skip else if branch
-            while (LineIdx < Script.Length)
+            while (LineIdx < Script.Count)
             {
                 if (_state.CurrentIndentLevel < baseIndent)
                     return LineIdx;
@@ -182,7 +179,7 @@ public partial class DialogBase
             }
         }
 
-        if (LineIdx >= Script.Length)
+        if (LineIdx >= Script.Count)
             return EndScript;
 
         line = _state.Line;
@@ -206,12 +203,12 @@ public partial class DialogBase
 
         bool IsPartOfEarlierChoiceSet()
         {
-            int currentIndent = DialogHelpers.GetNextNonWhitespace(Script[LineIdx], 0);
+            int currentIndent = DialogHelpers.GetNextNonWhitespace(Script[LineIdx].Span, 0);
             int lineIdx = LineIdx - 1;
 
             while (lineIdx >= 0)
             {
-                ReadOnlySpan<char> prevLine = Script[lineIdx].AsSpan();
+                ReadOnlySpan<char> prevLine = Script[lineIdx].Span;
                 int prevIndent = DialogHelpers.GetNextNonWhitespace(prevLine, 0);
 
                 if (prevIndent >= prevLine.Length || prevLine[prevIndent..].StartsWith("//"))
@@ -235,12 +232,12 @@ public partial class DialogBase
         List<Choice> GetChoices()
         {
             List<Choice> choices = ListPool.Get<Choice>();
-            int currentIndent = DialogHelpers.GetNextNonWhitespace(Script[LineIdx], 0);
+            int currentIndent = DialogHelpers.GetNextNonWhitespace(Script[LineIdx].Span, 0);
             int lineIdx = LineIdx;
 
-            while (lineIdx < Script.Length)
+            while (lineIdx < Script.Count)
             {
-                ReadOnlySpan<char> line = Script[lineIdx].AsSpan();
+                ReadOnlySpan<char> line = Script[lineIdx].Span;
                 int indent = DialogHelpers.GetNextNonWhitespace(line, 0);
 
                 if (indent > currentIndent || line[indent..].StartsWith("//"))
@@ -260,13 +257,13 @@ public partial class DialogBase
                 {
                     choiceStart += "if".Length;
                     choiceStart = DialogHelpers.GetNextNonWhitespace(line, choiceStart) + 1;
-                    _exprParser.TryGetExprEndIdx(choiceStart, out int exprEnd);
-                    TextVariant result = _exprParser.Parse(choiceStart, exprEnd);
+                    ExprParser.TryGetExprInfo(_state.Line, _state.LineIdx, choiceStart, null, out ExprInfo exprInfo);
+                    TextVariant result = ExprParser.Parse(exprInfo, DialogStorage);
 
                     if (result.VariantType == VarType.Bool)
                         disabled = !result.Bool;
 
-                    choiceStart = DialogHelpers.GetNextNonWhitespace(line, exprEnd + 1);
+                    choiceStart = DialogHelpers.GetNextNonWhitespace(line, exprInfo.End + 1);
                 }
 
                 lineIdx++;
@@ -293,9 +290,9 @@ public partial class DialogBase
 
         int GetChoiceBranchLineIdx(int lineIdx, int indent)
         {
-            while (lineIdx < Script.Length)
+            while (lineIdx < Script.Count)
             {
-                ReadOnlySpan<char> line = Script[lineIdx].AsSpan();
+                ReadOnlySpan<char> line = Script[lineIdx].Span;
                 int currentIndent = DialogHelpers.GetNextNonWhitespace(line, 0);
 
                 if (line[currentIndent..].StartsWith("//"))
@@ -321,12 +318,12 @@ public partial class DialogBase
     /// <returns></returns>
     private int GetLineSkipping(Func<ReadOnlySpan<char>, bool> condition)
     {
-        int currentIndent = DialogHelpers.GetNextNonWhitespace(Script[LineIdx], 0);
+        int currentIndent = DialogHelpers.GetNextNonWhitespace(Script[LineIdx].Span, 0);
         int lineIdx = LineIdx + 1;
 
-        while (lineIdx < Script.Length)
+        while (lineIdx < Script.Count)
         {
-            ReadOnlySpan<char> line = Script[lineIdx].AsSpan();
+            ReadOnlySpan<char> line = Script[lineIdx].Span;
             int indent = DialogHelpers.GetNextNonWhitespace(line, 0);
 
             if (indent >= line.Length || line[indent..].StartsWith("//"))
@@ -338,11 +335,8 @@ public partial class DialogBase
             if (indent < currentIndent)
                 return lineIdx;
 
-            if (indent == currentIndent)
-            {
-                if (!condition(line[indent..]))
-                    return lineIdx;
-            }
+            if (indent == currentIndent && !condition(line[indent..]))
+                return lineIdx;
 
             lineIdx++;
         }
@@ -352,21 +346,21 @@ public partial class DialogBase
 
     private TextVariant HandleExpression(int lineIdx, int startChar)
     {
-        ReadOnlySpan<char> line = Script[lineIdx].StripLineComment();
+        ReadOnlySpan<char> line = Script[lineIdx].Span.StripLineComment();
         int charIdx = DialogHelpers.GetNextNonWhitespace(line, startChar);
 
-        if (!_exprParser.TryGetExprEndIdx(line, lineIdx, charIdx, out int exprEnd))
+        if (!ExprParser.TryGetExprInfo(line, lineIdx, charIdx, null, out ExprInfo exprInfo))
             return TextVariant.Undefined;
 
         if (line[charIdx] == '#')
         {
-            HandleHashExpression(charIdx, exprEnd);
+            HandleHashExpression(charIdx, exprInfo.End);
             OnHash(_cacheDict);
             _cacheDict.Clear();
             return new();
         }
 
-        return _exprParser.Parse(line, lineIdx, charIdx, exprEnd);
+        return ExprParser.Parse(exprInfo, DialogStorage);
     }
 
     private int HandleExpressionStatement()
@@ -374,14 +368,14 @@ public partial class DialogBase
         ReadOnlySpan<char> line = _state.Line;
         int charIdx = DialogHelpers.GetNextNonWhitespace(line, 0) + 1;
 
-        if (!_exprParser.TryGetExprEndIdx(charIdx, out int exprEnd))
+        if (!ExprParser.TryGetExprInfo(_state.Line, _state.LineIdx, charIdx, null, out ExprInfo exprInfo))
             return EndScript;
 
         charIdx = DialogHelpers.GetNextNonWhitespace(line, charIdx);
 
         if (line[charIdx] == '#')
         {
-            HandleHashExpression(charIdx, exprEnd);
+            HandleHashExpression(charIdx, exprInfo.End);
             OnHash(_cacheDict);
             _cacheDict.Clear();
             return LineIdx + 1;
@@ -403,7 +397,7 @@ public partial class DialogBase
             return EndScript;
 
         start = end;
-        ReadOnlySpan<char> restOfExpr = line[start..exprEnd];
+        ReadOnlySpan<char> restOfExpr = line[start..exprInfo.End];
         bool isAssignment = restOfExpr.Length >= 2 && restOfExpr[0] == '=' && restOfExpr[1] != '=';
 
         if (isAssignment)
@@ -419,27 +413,30 @@ public partial class DialogBase
         {
             if (firstToken.SequenceEqual("await"))
             {
-                _exprParser.Parse(start, exprEnd);
+                exprInfo = exprInfo with { Start = start };
+                ExprParser.Parse(exprInfo, DialogStorage);
                 return SuspendScript;
             }
             else
             {
                 start = charIdx;
-                _exprParser.Parse(start, exprEnd);
+                exprInfo = exprInfo with { Start = start };
+                ExprParser.Parse(exprInfo, DialogStorage);
                 return LineIdx + 1;
             }
         }
 
         charIdx = start;
-        VarType varType = _state.MemberStorage.GetVariableType(firstToken);
+        VarType varType = DialogStorage.GetVariableType(firstToken);
 
         while (char.IsWhiteSpace(line[charIdx]) || line[charIdx] == '=')
             charIdx++;
 
-        TextVariant exprResult = _exprParser.Parse(start, exprEnd);
+        exprInfo = exprInfo with { Start = start };
+        TextVariant exprResult = ExprParser.Parse(exprInfo, DialogStorage);
 
         if (varType == VarType.Undefined || varType == exprResult.VariantType)
-            _state.MemberStorage.SetVariable(firstToken, exprResult);
+            DialogStorage.SetVariable(firstToken, exprResult);
 
         return LineIdx + 1;
     }
@@ -496,7 +493,8 @@ public partial class DialogBase
                 end++;
             }
 
-            TextVariant result = _exprParser.Parse(rightStart, end);
+            ExprInfo exprInfo = new(_state.Line, _state.LineIdx, rightStart, end);
+            TextVariant result = ExprParser.Parse(exprInfo, DialogStorage);
 
             if (result.VariantType == VarType.Undefined)
                 return;
@@ -529,7 +527,8 @@ public partial class DialogBase
                 if (isClosingTag || !isAssignment)
                     return LineIdx + 1;
 
-                TextVariant result = _exprParser.Parse(start, end);
+                ExprInfo exprInfo = new(_state.Line, _state.LineIdx, start, end);
+                TextVariant result = ExprParser.Parse(exprInfo, DialogStorage);
 
                 if (result.VariantType != VarType.Float)
                     return LineIdx + 1;
@@ -557,7 +556,8 @@ public partial class DialogBase
             if (isClosingTag || !isAssignment)
                 return LineIdx + 1;
 
-            TextVariant result = _exprParser.Parse(start, end);
+            ExprInfo exprInfo = new(_state.Line, _state.LineIdx, start, end);
+            TextVariant result = ExprParser.Parse(exprInfo, DialogStorage);
 
             if (result.VariantType != VarType.Float || result.Float < 0)
                 return LineIdx + 1;
@@ -569,7 +569,8 @@ public partial class DialogBase
             if (isClosingTag || !isAssignment)
                 return LineIdx + 1;
 
-            TextVariant result = _exprParser.Parse(start, end);
+            ExprInfo exprInfo = new(_state.Line, _state.LineIdx, start, end);
+            TextVariant result = ExprParser.Parse(exprInfo, DialogStorage);
 
             if (result.VariantType != VarType.Float || result.Float <= 0)
                 return LineIdx + 1;
@@ -633,11 +634,11 @@ public partial class DialogBase
             {
                 int exprStart = charIdx + 1;
 
-                if (_exprParser.TryGetExprEndIdx(exprStart, out int exprEnd))
+                if (ExprParser.TryGetExprInfo(_state.Line, _state.LineIdx, exprStart, null, out ExprInfo exprInfo))
                 {
-                    charIdx = exprEnd;
+                    charIdx = exprInfo.End;
 
-                    if (TryGetTextEvent(exprStart, exprEnd, out TextEvent textEvent))
+                    if (TryGetTextEvent(exprStart, exprInfo.End, out TextEvent textEvent))
                     {
                         textEvents.Add(textEvent);
                         _sb.Append(line[lineStart..(exprStart - 1)]);
@@ -709,7 +710,8 @@ public partial class DialogBase
 
             if (eventType == EventType.Evaluate)
             {
-                VarType varType = _exprParser.GetVarType(exprStart, exprEnd);
+                ExprInfo exprInfo = new(_state.Line, _state.LineIdx, exprStart, exprEnd);
+                VarType varType = ExprParser.GetVarType(exprInfo, DialogStorage);
 
                 if (varType == VarType.Float || varType == VarType.String)
                     eventType = EventType.Append;
@@ -737,7 +739,8 @@ public partial class DialogBase
         {
             if (isAssignment)
             {
-                TextVariant result = _exprParser.Parse(start, exprEnd);
+                ExprInfo exprInfo = new(_state.Line, _state.LineIdx, start, exprEnd);
+                TextVariant result = ExprParser.Parse(exprInfo, DialogStorage);
 
                 if (isClosingTag || result.VariantType != VarType.Float || result.Float < 0)
                     return false;
@@ -773,7 +776,8 @@ public partial class DialogBase
             if (!isAssignment || isClosingTag)
                 return false;
 
-            TextVariant result = _exprParser.Parse(start, exprEnd);
+            ExprInfo exprInfo = new(_state.Line, _state.LineIdx, start, exprEnd);
+            TextVariant result = ExprParser.Parse(exprInfo, DialogStorage);
 
             if (result.VariantType != VarType.Float || result.Float <= 0)
                 return false;
@@ -792,7 +796,8 @@ public partial class DialogBase
                 if (isClosingTag)
                     return false;
 
-                TextVariant result = _exprParser.Parse(start, exprEnd);
+                ExprInfo exprInfo = new(_state.Line, _state.LineIdx, start, exprEnd);
+                TextVariant result = ExprParser.Parse(exprInfo, DialogStorage);
 
                 if (result.VariantType != VarType.Float || result.Float <= 0)
                     return false;

@@ -17,12 +17,10 @@ public abstract partial class DialogBase : Control
         DialogBridgeBase dialogBridge = DialogBridgeBase.InternalCreate(this);
         DialogStorage = new(dialogBridge);
         _state = new();
-        _state.MemberStorage = DialogStorage;
-        _exprParser = new(_state);
     }
 
     protected List<string> SpeakerIds { get; private set; }
-    protected string[] Script => _state.Script;
+    protected List<ReadOnlyMemory<char>> Script => _state.Script;
     protected int LineIdx => _state.LineIdx;
     protected bool SpeedUpEnabled { get; set; }
 
@@ -32,8 +30,7 @@ public abstract partial class DialogBase : Control
     public bool AutoProceedGlobalEnabled { get; private set; }
     public float AutoProceedGlobalTimeout { get; private set; }
 
-    private Validator? _validator;
-    private readonly ExprParser _exprParser;
+    private DialogValidator? _validator;
     private readonly ParserState _state;
 
     public event Action<DialogBase>? ScriptEnded;
@@ -45,8 +42,7 @@ public abstract partial class DialogBase : Control
         if (!File.Exists(gPath))
             return;
 
-        string[] script = File.ReadAllLines(gPath);
-        _state.Script = script;
+        ParserState.ReadFileToList(gPath, _state.Script);
     }
 
     /// <summary>

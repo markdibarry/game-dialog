@@ -23,16 +23,14 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
     public TextDocumentHandler(ILanguageServerFacade languageServer, ILanguageServerConfiguration configuration)
     {
         _memberRegister = new();
-        ParserState parserState = new();
-        ExprParser exprParser = new(parserState);
-        _validator = new(parserState, exprParser, _memberRegister.PredefinedVarDefs, _memberRegister.PredefinedFuncDefs);
+        _validator = new(new(), _memberRegister.PredefinedVarDefs, _memberRegister.PredefinedFuncDefs);
         _server = languageServer;
         _configuration = configuration;
     }
 
     private readonly ILanguageServerFacade _server;
     private readonly ILanguageServerConfiguration _configuration;
-    private readonly Validator _validator;
+    private readonly DialogValidator _validator;
     private readonly MemberRegister _memberRegister = new();
 
     public override TextDocumentAttributes GetTextDocumentAttributes(DocumentUri uri)
@@ -48,8 +46,7 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
         string rootPath = _server.ClientSettings.RootPath!;
         _memberRegister.SetMembersFromFile(Constants.DialogBridgeName, rootPath, false);
         List<Error> errors = [];
-        string[] lines = notification.TextDocument.Text.Split(Environment.NewLine);
-        _validator.ValidateScript(lines, errors);
+        _validator.ValidateScript(notification.TextDocument.Text, errors);
         PublishDiagnostics(notification.TextDocument.Uri, errors);
         return Unit.Task;
     }
@@ -63,9 +60,8 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
             return Unit.Task;
 
         List<Error> errors = [];
-        string[] lines = notification.ContentChanges.First().Text.Split(Environment.NewLine);
         StringBuilder sb = new();
-        _validator.ValidateScript(lines, errors, sb);
+        _validator.ValidateScript(notification.ContentChanges.First().Text, errors, sb);
         PublishDiagnostics(notification.TextDocument.Uri, errors);
         return Unit.Task;
     }

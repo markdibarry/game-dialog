@@ -42,12 +42,46 @@ public static class DialogHelpers
         return line;
     }
 
-    public static int GetNextNonEmptyLine(this string[] script, int lineIdx)
+    public static ReadOnlyMemory<char> StripLineComment(this ReadOnlyMemory<char> line)
     {
-        while (lineIdx < script.Length)
+        ReadOnlySpan<char> span = line.Span;
+
+        for (int i = 0; i < line.Length - 1; i++)
+        {
+            // matches "//" not preceded by a backslash
+            if (span[i] == '/'
+                && i + 1 < span.Length && span[i + 1] == '/'
+                && (i == 0 || span[i - 1] != '\\'))
+            {
+                return line[..i];
+            }
+        }
+
+        return line;
+    }
+
+    public static bool ContainsSequence(this List<ReadOnlyMemory<char>> col, ReadOnlySpan<char> seq)
+    {
+        foreach (var item in col)
+        {
+            ReadOnlySpan<char> span = item.Span;
+
+            if (span.Length != seq.Length)
+                continue;
+
+            if (span.SequenceEqual(seq))
+                return true;
+        }
+
+        return false;
+    }
+
+    public static int GetNextNonEmptyLine(this List<ReadOnlyMemory<char>> script, int lineIdx)
+    {
+        while (lineIdx < script.Count)
         {
             int i = 0;
-            ReadOnlySpan<char> span = script[lineIdx].AsSpan();
+            ReadOnlySpan<char> span = script[lineIdx].Span;
 
             while (i < span.Length && char.IsWhiteSpace(span[i]))
                 i++;
@@ -59,6 +93,11 @@ public static class DialogHelpers
         }
 
         return lineIdx;
+    }
+
+    public static void AddError(this List<Error> errors, ExprInfo exprInfo, string message)
+    {
+        errors.Add(new(exprInfo.LineIdx, exprInfo.Start, exprInfo.End, message));
     }
 
     public static void AddError(this List<Error> errors, int lineIdx, int charStart, int charEnd, string message)

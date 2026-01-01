@@ -7,59 +7,79 @@ using GameDialog.Pooling;
 
 namespace GameDialog.Runner;
 
-public partial class Validator : IMemberStorage
+public partial class DialogValidator : IMemberStorage
 {
-    public Validator(
+    public DialogValidator(
         ParserState state,
-        ExprParser exprParser,
         List<VarDef> predefinedVarDefs,
         List<FuncDef> predefinedFuncDefs)
     {
         _state = state;
-        _exprParser = exprParser;
         _predefinedVarDefs = predefinedVarDefs;
         _predefinedFuncDefs = predefinedFuncDefs;
     }
 
-    private readonly HashSet<string> _sectionTitles = [];
-    private readonly ExprParser _exprParser;
+    private readonly List<ReadOnlyMemory<char>> _sectionTitles = [];
     private readonly ParserState _state;
     private readonly List<VarDef> _predefinedVarDefs;
     private readonly List<FuncDef> _predefinedFuncDefs;
     private readonly List<VarDef> _localVarDefs = [];
+    private List<Error>? _errors;
     private int _charIdx;
     private bool _lineVisited;
     private bool _exitSection;
     public StringBuilder? _chart;
 
-    public void ValidateScript(string[] fileLines, List<Error> errors, StringBuilder? chart = null)
-    {
-        _state.Reset();
-        IMemberStorage storage = _state.MemberStorage;
-        _state.MemberStorage = this;
-        _sectionTitles.Clear();
-        _state.Errors = errors;
-        _chart = chart;
+    [GeneratedRegex(@"^\s*--\w+--\s*$")]
+    private static partial Regex TitleRegex();
+    [GeneratedRegex(@"^\s*\w+(?:,\s*\w+)*:\s")]
+    private static partial Regex SpeakerRegex();
+    [GeneratedRegex(@"^\s*if\s*\[")]
+    private static partial Regex IfRegex();
+    [GeneratedRegex(@"^\s*else if\s*\[")]
+    private static partial Regex ElseIfRegex();
 
-        if (fileLines.Length == 0)
+    public void ValidateScript(string text, List<Error> errors, StringBuilder? chart = null)
+    {
+        ParserState.ReadStringToList(text, _state.Script);
+        ValidateScript(errors, chart);
+    }
+
+    public void ValidateScript(List<Error> errors, StringBuilder? chart = null)
+    {
+        if (_state.Script.Count == 0)
         {
-            _state.Errors?.AddError(0, 0, 0, "Script is empty");
-            _state.Reset();
+            errors?.AddError(0, 0, 0, "Script is empty");
             return;
         }
 
-        _state.Script = fileLines;
-        _charIdx = 0;
-        _lineVisited = false;
-        _exitSection = false;
-        _state.MoveLine(0);
-        ValidateAllTitles();
-        ValidateSections();
-        _state.MemberStorage = storage;
+        _errors = errors;
+        _chart = chart;
+
+        try
+        {
+            ValidateAllTitles();
+            ValidateSections();
+        }
+        finally
+        {
+            Reset();
+        }
+    }
+
+    private void Reset()
+    {
+        foreach (var def in _localVarDefs)
+            def.ReturnToPool();
+
         _localVarDefs.Clear();
         _state.Reset();
         _sectionTitles.Clear();
+        _errors = null;
         _chart = null;
+        _charIdx = 0;
+        _lineVisited = false;
+        _exitSection = false;
     }
 
     private void MoveNextLine()
@@ -67,23 +87,33 @@ public partial class Validator : IMemberStorage
         _charIdx = 0;
         _lineVisited = false;
         _exitSection = false;
-        _state.MoveNextLine();
+        _state.MoveNextLine(_errors);
     }
 
     private void ValidateAllTitles()
     {
-        while (_state.LineIdx < _state.Script.Length)
+        _state.MoveLine(0, _errors);
+
+        while (_state.LineIdx < _state.Script.Count)
         {
             ReadOnlySpan<char> span = _state.Line;
 
-            if (TryGetTitle(span, out string? title) && !_sectionTitles.Add(title))
-                _state.Errors?.AddError(_state.LineIdx, 0, span.Length, $"Duplicate section title '{title}'");
+            if (TryGetTitleRange(span, out (int Start, int Length) range))
+            {
+                ReadOnlyMemory<char> mem = _state.Script[_state.LineIdx];
+                mem = mem.Slice(range.Start, range.Length);
+
+                if (_sectionTitles.ContainsSequence(mem.Span))
+                    _errors?.AddError(_state.LineIdx, 0, span.Length, $"Duplicate section title '{mem.Span}'");
+                else
+                    _sectionTitles.Add(mem);
+            }
 
             MoveNextLine();
         }
 
         if (_sectionTitles.Count == 0)
-            _state.Errors?.AddError(0, 0, _state.Script[0].Length - 1, "No section titles found. Ensure your script has at least one title using letters, numbers or underscores.");
+            _errors?.AddError(0, 0, _state.Script[0].Length - 1, "No section titles found. Ensure your script has at least one title using letters, numbers or underscores.");
     }
 
     private void ValidateSections()
@@ -91,22 +121,22 @@ public partial class Validator : IMemberStorage
         _lineVisited = false;
         _exitSection = false;
         _charIdx = 0;
-        _state.MoveLine(0);
+        _state.MoveLine(0, _errors);
 
-        while (_state.LineIdx < _state.Script.Length)
+        while (_state.LineIdx < _state.Script.Count)
         {
             ReadOnlySpan<char> span = _state.Line;
 
             if (!TitleRegex().IsMatch(span))
-                _state.Errors?.AddError(_state.LineIdx, 0, _state.Script[0].Length - 1, "Section must start with a title.");
+                _errors?.AddError(_state.LineIdx, 0, _state.Script[0].Length - 1, "Section must start with a title.");
 
             if (_chart != null)
             {
                 if (_state.LineIdx > 0)
                     _chart.AppendLine();
 
-                TryGetTitle(span, out string? title);
-                _chart.AppendChart(_state, $"Title: {title}");
+                if (TryGetTitleRange(span, out (int Start, int Length) range))
+                    _chart.AppendChart(_state, $"Title: {span.Slice(range.Start, range.Length)}");
             }
 
             MoveNextLine();
@@ -116,7 +146,7 @@ public partial class Validator : IMemberStorage
 
     private void ValidateBlocks()
     {
-        while (_state.LineIdx < _state.Script.Length)
+        while (_state.LineIdx < _state.Script.Count)
         {
             ValidateBlock();
 
@@ -167,9 +197,9 @@ public partial class Validator : IMemberStorage
             _lineVisited = true;
 
             if (ElseIfRegex().IsMatch(trimmed) || trimmed.StartsWith("else"))
-                _state.Errors?.AddError(_state.LineIdx, 0, _state.Line.Length - 1, "No matching if block.");
+                _errors?.AddError(_state.LineIdx, 0, _state.Line.Length - 1, "No matching if block.");
             else
-                _state.Errors?.AddError(_state.LineIdx, 0, _state.Line.Length - 1, "Invalid block.");
+                _errors?.AddError(_state.LineIdx, 0, _state.Line.Length - 1, "Invalid block.");
         }
     }
 
@@ -188,7 +218,7 @@ public partial class Validator : IMemberStorage
 
     private void ValidateExpression(ExprContext exprContext)
     {
-        if (!_exprParser.TryGetExprEndIdx(_charIdx, out int exprEnd))
+        if (!ExprParser.TryGetExprInfo(_state.Line, _state.LineIdx, _charIdx, _errors, out ExprInfo exprInfo))
         {
             _charIdx = _state.Line.Length;
             return;
@@ -198,9 +228,9 @@ public partial class Validator : IMemberStorage
         _charIdx = DialogHelpers.GetNextNonWhitespace(line, _charIdx);
 
         if (exprContext == ExprContext.Block)
-            _chart?.AppendChart(_state, $"Expression: {line[_charIdx..exprEnd]}");
+            _chart?.AppendChart(_state, $"Expression: {line[_charIdx..exprInfo.End]}");
 
-        if (_charIdx == exprEnd)
+        if (_charIdx == exprInfo.End)
             return;
 
         bool isClosingTag = false;
@@ -218,9 +248,9 @@ public partial class Validator : IMemberStorage
         if (BBCode.IsSupportedTag(firstToken))
         {
             if (exprContext != ExprContext.Line)
-                _state.Errors?.AddError(_state.LineIdx, _charIdx, exprEnd, "BBCode tags can only be used in a dialog line.");
+                _errors?.AddError(_state.LineIdx, _charIdx, exprInfo.End, "BBCode tags can only be used in a dialog line.");
 
-            _charIdx = exprEnd;
+            _charIdx = exprInfo.End;
             return;
         }
 
@@ -228,19 +258,20 @@ public partial class Validator : IMemberStorage
         {
             if (exprContext == ExprContext.Choice)
             {
-                _state.Errors?.AddError(_state.LineIdx, _charIdx, exprEnd, "Built in tags cannot be used in a choice.");
+                _errors?.AddError(_state.LineIdx, _charIdx, exprInfo.End, "Built in tags cannot be used in a choice.");
                 return;
             }
 
-            start = DialogHelpers.GetNextNonWhitespace(line[..exprEnd], end);
-            ReadOnlySpan<char> restOfExpr = line[start..exprEnd];
+            start = DialogHelpers.GetNextNonWhitespace(line[..exprInfo.End], end);
+            ReadOnlySpan<char> restOfExpr = line[start..exprInfo.End];
             _charIdx = start;
             ValidateBuiltInTag(firstToken, restOfExpr, isClosingTag, exprContext);
-            _charIdx = exprEnd;
+            _charIdx = exprInfo.End;
             return;
         }
 
-        _exprParser.Parse(_charIdx, exprEnd);
+        exprInfo = exprInfo with { Start = _charIdx };
+        ExprParser.Parse(exprInfo, this, _errors);
     }
 
     private void ValidateBuiltInTag(ReadOnlySpan<char> tagName, ReadOnlySpan<char> restOfExpr, bool isClosingTag, ExprContext exprContext)
@@ -265,52 +296,55 @@ public partial class Validator : IMemberStorage
         {
             if (isAssignment)
             {
-                TextVariant result = _exprParser.Parse(start, end);
+                ExprInfo exprInfo = new(_state.Line, _state.LineIdx, start, end);
+                TextVariant result = ExprParser.Parse(exprInfo, this, _errors);
 
                 if (isClosingTag)
-                    _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' can only be assigned to or be part of a closing tag.");
+                    _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' can only be assigned to or be part of a closing tag.");
                 else if (result.VariantType != VarType.Float)
-                    _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' must have a float value assigned.");
+                    _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' must have a float value assigned.");
                 else if (result.Float < 0)
-                    _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be less than 0.");
+                    _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be less than 0.");
             }
             else if (!isSingleToken)
             {
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot have additional parameters.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot have additional parameters.");
             }
         }
         else if (tagName.SequenceEqual(BuiltIn.END))
         {
             if (exprContext == ExprContext.Line)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be used in a dialog line.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be used in a dialog line.");
             else if (isClosingTag)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be a closing tag.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be a closing tag.");
             else if (!isSingleToken)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot have additional parameters.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot have additional parameters.");
         }
         else if (tagName.SequenceEqual(BuiltIn.GOTO))
         {
             if (exprContext == ExprContext.Line)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be used in a dialog line.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be used in a dialog line.");
             else if (isClosingTag)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be a closing tag.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be a closing tag.");
             else if (isSingleToken)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' requires a section id.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' requires a section id.");
             else if (isAssignment)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' does not support assignment.");
-            else if (!_sectionTitles.GetAlternateLookup<ReadOnlySpan<char>>().Contains(restOfExpr.Trim()))
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Section '{restOfExpr.Trim()}' does not exist.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' does not support assignment.");
+            else if (!_sectionTitles.ContainsSequence(restOfExpr.Trim()))
+                _errors?.AddError(_state.LineIdx, start, end, $"Section '{restOfExpr.Trim()}' does not exist.");
         }
         else if (tagName.SequenceEqual(BuiltIn.PAUSE))
         {
+            ExprInfo exprInfo = new(_state.Line, _state.LineIdx, start, end);
+
             if (exprContext != ExprContext.Line)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' can only be used in a dialog line.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' can only be used in a dialog line.");
             else if (!isAssignment)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' must have a float value assigned.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' must have a float value assigned.");
             else if (isClosingTag)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be a closing tag.");
-            else if (_exprParser.Parse(start, end).VariantType != VarType.Float)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' must have a float value assigned.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be a closing tag.");
+            else if (ExprParser.Parse(exprInfo, this, _errors).VariantType != VarType.Float)
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' must have a float value assigned.");
         }
         else if (tagName.SequenceEqual(BuiltIn.SPEED))
         {
@@ -318,26 +352,27 @@ public partial class Validator : IMemberStorage
             if (isAssignment)
             {
                 if (isClosingTag)
-                    _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' can only be assigned to or be part of a closing tag.");
+                    _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' can only be assigned to or be part of a closing tag.");
 
-                TextVariant result = _exprParser.Parse(start, end);
+                ExprInfo exprInfo = new(_state.Line, _state.LineIdx, start, end);
+                TextVariant result = ExprParser.Parse(exprInfo, this, _errors);
 
                 if (result.VariantType != VarType.Float || result.Float < 0)
-                    _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' must have a positive float value assigned.");
+                    _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' must have a positive float value assigned.");
             }
             else if (!isClosingTag || !isSingleToken)
             {
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' can only be assigned to or be part of a closing tag.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' can only be assigned to or be part of a closing tag.");
             }
         }
         else if (tagName.SequenceEqual(BuiltIn.SCROLL) || tagName.SequenceEqual(BuiltIn.PROMPT))
         {
             if (exprContext != ExprContext.Line)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' can only be used in a dialog line.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' can only be used in a dialog line.");
             else if (isClosingTag)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be a closing tag.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot be a closing tag.");
             else if (!isSingleToken)
-                _state.Errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot have additional parameters.");
+                _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagName}' cannot have additional parameters.");
         }
     }
 
@@ -346,7 +381,7 @@ public partial class Validator : IMemberStorage
         ReadOnlySpan<char> line = _state.Line;
         int end = _charIdx + 1;
 
-        if (!_exprParser.TryGetExprEndIdx(_charIdx + 1, out int exprEnd))
+        if (!ExprParser.TryGetExprInfo(_state.Line, _state.LineIdx, _charIdx + 1, _errors, out ExprInfo exprInfo))
         {
             _charIdx = _state.Line.Length;
             return;
@@ -354,32 +389,32 @@ public partial class Validator : IMemberStorage
 
         if (exprContext == ExprContext.Choice)
         {
-            _state.Errors?.AddError(_state.LineIdx, _charIdx, exprEnd, "Hash expressions cannot be used in choices.");
+            _errors?.AddError(_state.LineIdx, _charIdx, exprInfo.End, "Hash expressions cannot be used in choices.");
             return;
         }
 
         if (exprContext != ExprContext.Line)
-            _chart?.AppendChart(_state, $"Hash Expression: {line[_charIdx..exprEnd]}");
+            _chart?.AppendChart(_state, $"Hash Expression: {line[_charIdx..exprInfo.End]}");
 
-        while (end < exprEnd)
+        while (end < exprInfo.End)
         {
             int start = end;
             end = DialogHelpers.GetNextNonIdentifier(line, end);
 
             if (end == start)
             {
-                _state.Errors?.AddError(_state.LineIdx, start - 1, end, "Invalid Hash Tag.");
-                _charIdx = exprEnd;
+                _errors?.AddError(_state.LineIdx, start - 1, end, "Invalid Hash Tag.");
+                _charIdx = exprInfo.End;
                 return;
             }
 
             int wsStart = end;
-            end = DialogHelpers.GetNextNonWhitespace(line[..exprEnd], end);
+            end = DialogHelpers.GetNextNonWhitespace(line[..exprInfo.End], end);
 
-            if (end < exprEnd && line[end] != '=' && (line[end] != '#' || end - wsStart == 0))
+            if (end < exprInfo.End && line[end] != '=' && (line[end] != '#' || end - wsStart == 0))
             {
-                _state.Errors?.AddError(_state.LineIdx, start - 1, end, "Invalid Hash Tag.");
-                _charIdx = exprEnd;
+                _errors?.AddError(_state.LineIdx, start - 1, end, "Invalid Hash Tag.");
+                _charIdx = exprInfo.End;
                 return;
             }
 
@@ -393,7 +428,7 @@ public partial class Validator : IMemberStorage
             int rightStart = end;
             bool inQuote = false;
 
-            while (end < exprEnd)
+            while (end < exprInfo.End)
             {
                 if (inQuote)
                 {
@@ -412,10 +447,12 @@ public partial class Validator : IMemberStorage
                 end++;
             }
 
-            if (_exprParser.Parse(rightStart, end).VariantType == VarType.Undefined)
+            exprInfo = new(_state.Line, _state.LineIdx, rightStart, end);
+
+            if (ExprParser.Parse(exprInfo, this, _errors).VariantType == VarType.Undefined)
             {
-                _state.Errors?.AddError(_state.LineIdx, rightStart, end, "Invalid Hash Tag assignment.");
-                _charIdx = exprEnd;
+                _errors?.AddError(_state.LineIdx, rightStart, end, "Invalid Hash Tag assignment.");
+                _charIdx = exprInfo.End;
                 return;
             }
 
@@ -427,16 +464,13 @@ public partial class Validator : IMemberStorage
     {
         _lineVisited = true;
         _charIdx += "if".Length;
-
-        if (!IsValidConditionExpr())
-            return;
-
+        IsValidConditionExpr();
         _chart?.AppendChart(_state, "If");
         MoveNextLine();
 
         if (_state.IndentChange <= 0)
         {
-            _state.Errors?.AddError(_state.LineIdx, 0, _state.Line.Length - 1, "Condition block must be indented.");
+            _errors?.AddError(_state.LineIdx, 0, _state.Line.Length - 1, "Condition block must be indented.");
             return;
         }
 
@@ -450,16 +484,13 @@ public partial class Validator : IMemberStorage
             _lineVisited = true;
             _charIdx = DialogHelpers.GetNextNonWhitespace(_state.Line, _charIdx);
             _charIdx += "else if".Length;
-
-            if (!IsValidConditionExpr())
-                return;
-
+            IsValidConditionExpr();
             _chart?.AppendChart(_state, "Else If");
             MoveNextLine();
 
             if (_state.IndentChange <= 0)
             {
-                _state.Errors?.AddError(_state.LineIdx, 0, _state.Line.Length - 1, "Condition block must be indented.");
+                _errors?.AddError(_state.LineIdx, 0, _state.Line.Length - 1, "Condition block must be indented.");
                 return;
             }
 
@@ -478,7 +509,7 @@ public partial class Validator : IMemberStorage
 
             if (!_state.Line[_charIdx..].IsWhiteSpace())
             {
-                _state.Errors?.AddError(_state.LineIdx, 0, _charIdx, "Condition is invalid.");
+                _errors?.AddError(_state.LineIdx, 0, _charIdx, "Condition is invalid.");
                 return;
             }
 
@@ -487,7 +518,7 @@ public partial class Validator : IMemberStorage
 
             if (_state.IndentChange <= 0)
             {
-                _state.Errors?.AddError(_state.LineIdx, 0, _state.Line.Length - 1, "Condition block must be indented.");
+                _errors?.AddError(_state.LineIdx, 0, _state.Line.Length - 1, "Condition block must be indented.");
                 return;
             }
 
@@ -502,23 +533,23 @@ public partial class Validator : IMemberStorage
 
         if (_charIdx >= line.Length || line[_charIdx] != '[')
         {
-            _state.Errors?.AddError(_state.LineIdx, 0, line.Length - 1, "Condition is invalid.");
+            _errors?.AddError(_state.LineIdx, 0, line.Length - 1, "Condition is invalid.");
             return false;
         }
 
         _charIdx++;
 
-        if (!_exprParser.TryGetExprEndIdx(_charIdx + 1, out int exprEnd))
+        if (!ExprParser.TryGetExprInfo(_state.Line, _state.LineIdx, _charIdx, _errors, out ExprInfo exprInfo))
         {
             _charIdx = _state.Line.Length;
             return false;
         }
 
-        TextVariant condResult = _exprParser.Parse(_charIdx, exprEnd);
+        TextVariant condResult = ExprParser.Parse(exprInfo, this, _errors);
 
         if (condResult.VariantType != VarType.Bool)
         {
-            _state.Errors?.AddError(_state.LineIdx, 0, _charIdx, "Condition is invalid.");
+            _errors?.AddError(_state.LineIdx, 0, _charIdx, "Condition is invalid.");
             return false;
         }
 
@@ -538,9 +569,7 @@ public partial class Validator : IMemberStorage
             if (IfRegex().IsMatch(line[_charIdx..]))
             {
                 _charIdx += "if".Length;
-
-                if (!IsValidConditionExpr())
-                    return;
+                IsValidConditionExpr();
             }
 
             _chart?.AppendChart(_state, $"Choice: {line.GetSnippet(_charIdx)}");
@@ -610,11 +639,11 @@ public partial class Validator : IMemberStorage
 
         if (_state.IndentChange <= 0)
         {
-            _state.Errors?.AddError(_state.LineIdx, 0, _state.Line.Length - 1, "Multiline dialog must be indented.");
+            _errors?.AddError(_state.LineIdx, 0, _state.Line.Length - 1, "Multiline dialog must be indented.");
             return;
         }
 
-        while (_state.LineIdx < _state.Script.Length)
+        while (_state.LineIdx < _state.Script.Count)
         {
             _lineVisited = true;
 
@@ -646,9 +675,9 @@ public partial class Validator : IMemberStorage
         return TitleRegex().IsMatch(line);
     }
 
-    public static bool TryGetTitle(ReadOnlySpan<char> span, [NotNullWhen(true)] out string? title)
+    public static bool TryGetTitleRange(ReadOnlySpan<char> span, [NotNullWhen(true)] out (int start, int length) result)
     {
-        title = null;
+        result = (-1, -1);
 
         if (!TitleRegex().IsMatch(span))
             return false;
@@ -656,18 +685,9 @@ public partial class Validator : IMemberStorage
         int i = DialogHelpers.GetNextNonWhitespace(span, 0) + 2;
         int start = i;
         i = DialogHelpers.GetNextNonIdentifier(span, i);
-        title = span[start..i].ToString();
+        result = (start, i - start);
         return true;
     }
-
-    [GeneratedRegex(@"^\s*--\w+--\s*$")]
-    private static partial Regex TitleRegex();
-    [GeneratedRegex(@"^\s*\w+(?:,\s*\w+)*:\s")]
-    private static partial Regex SpeakerRegex();
-    [GeneratedRegex(@"^\s*if\s*\[")]
-    private static partial Regex IfRegex();
-    [GeneratedRegex(@"^\s*else if\s*\[")]
-    private static partial Regex ElseIfRegex();
 
     public bool TryGetVariable(ReadOnlySpan<char> key, out TextVariant value)
     {

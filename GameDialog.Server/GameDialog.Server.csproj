@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.9" />
-    <PackageReference Include="Roslynator.Analyzers" Version="4.15.0" />
   </ItemGroup>
 
   <ItemGroup>
