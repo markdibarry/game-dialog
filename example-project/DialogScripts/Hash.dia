@@ -6,16 +6,17 @@ Devs: ^^You can assign a corresponding value as well, and add many to one block 
 Devs: All hash tags in a block are fed to the virtual method in a [color=Gold]Dictionary<string, string>[/color].
 Devs: In the example [color=Gold]Dialog.cs[/color], we handle an "OptionColumns" tag.
 Devs: Since our example option box is a GridContainer, we use it to set the Columns property.
-[#OptionColumns=3]
-Devs: We just used [color=Gold]\[#OptionColumns=3\][/color] to set the number of columns to three.
+[#OptionColumns=2]
+Devs: We just used [color=Gold]\[#OptionColumns=2\][/color] to set the number of columns to two.
 ? Nice
 ? Cool
 ? Radical
 ? Tubular
+[#OptionColumns=3]
+Devs: Just now we set them to three!
 ? Jawsome
-[#OptionColumns=2]
-Devs: Just now we set them to two!
 ? Neat
+? Rockin'
 ? Wild
 ? Fancy
 Devs: Feel free to try your own!

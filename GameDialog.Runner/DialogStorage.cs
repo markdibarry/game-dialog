@@ -10,12 +10,22 @@ public class DialogStorage : IMemberStorage
     {
         _dialogBridge = dialogBridge;
         _storage = [];
-        _alternateLookup = _storage.GetAlternateLookup<ReadOnlySpan<char>>();
     }
 
     private readonly DialogBridgeBase _dialogBridge;
     private readonly Dictionary<string, TextVariant> _storage;
-    private readonly Dictionary<string, TextVariant>.AlternateLookup<ReadOnlySpan<char>> _alternateLookup;
+    private Dictionary<string, TextVariant>.AlternateLookup<ReadOnlySpan<char>> AltStorageLookup
+    {
+        get => _storage.GetAlternateLookup<ReadOnlySpan<char>>();
+    }
+    private static Dictionary<string, FuncDef>.AlternateLookup<ReadOnlySpan<char>> AltFuncDefLookup
+    {
+        get => DialogBridgeBase.InternalFuncDefs.GetAlternateLookup<ReadOnlySpan<char>>();
+    }
+    private static Dictionary<string, VarDef>.AlternateLookup<ReadOnlySpan<char>> AltVarDefLookup
+    {
+        get => DialogBridgeBase.InternalVarDefs.GetAlternateLookup<ReadOnlySpan<char>>();
+    }
 
     public void ClearLocalStorage() => _storage.Clear();
 
@@ -23,31 +33,29 @@ public class DialogStorage : IMemberStorage
 
     public VarType GetVariableType(ReadOnlySpan<char> varName)
     {
-        VarType varType = _dialogBridge.InternalGetPropertyType(varName);
-
-        if (varType != VarType.Undefined)
-            return varType;
-        else if (TryGetVariable(varName, out TextVariant value))
+        if (AltVarDefLookup.TryGetValue(varName, out VarDef varDef))
+            return varDef.Type;
+        else if (TryGetValue(varName, out TextVariant value))
             return value.VariantType;
 
         return VarType.Undefined;
     }
 
-    public bool TryGetVariable(ReadOnlySpan<char> key, [NotNullWhen(true)] out TextVariant value)
+    public bool TryGetValue(ReadOnlySpan<char> key, [NotNullWhen(true)] out TextVariant value)
     {
-        if (_dialogBridge.InternalGetPropertyType(key) != VarType.Undefined)
+        if (AltVarDefLookup.ContainsKey(key))
             value = _dialogBridge.InternalGetProperty(key);
-        else if (!_alternateLookup.TryGetValue(key, out value))
+        else if (!AltStorageLookup.TryGetValue(key, out value))
             return false;
 
         return true;
     }
 
-    public bool TryGetVariable<T>(string key, [NotNullWhen(true)] out T? value)
+    public bool TryGetValue<T>(string key, [NotNullWhen(true)] out T? value)
     {
         value = default;
 
-        if (!TryGetVariable(key, out TextVariant variant))
+        if (!TryGetValue(key, out TextVariant variant))
             return false;
 
         if (!variant.TryGetValue(out value))
@@ -56,23 +64,40 @@ public class DialogStorage : IMemberStorage
         return true;
     }
 
-    public void SetVariable(ReadOnlySpan<char> key, TextVariant value)
+    public void SetValue(ReadOnlySpan<char> key, TextVariant value)
     {
-        if (_dialogBridge.InternalGetPropertyType(key) != VarType.Undefined)
-            _dialogBridge.InternalSetProperty(key, value);
+        if (AltVarDefLookup.TryGetValue(key, out VarDef varDef))
+        {
+            if (varDef.Type == value.VariantType)
+                _dialogBridge.InternalSetProperty(key, value);
+        }
         else
-            _alternateLookup[key] = value;
+        {
+            var lookup = AltStorageLookup;
+            lookup[key] = value;
+        }
     }
 
-    public void SetVariable(ReadOnlySpan<char> key, string value) => SetVariable(key, new TextVariant(value));
+    public void SetValue(ReadOnlySpan<char> key, string value) => SetValue(key, new TextVariant(value));
 
-    public void SetVariable(ReadOnlySpan<char> key, float value) => SetVariable(key, new TextVariant(value));
+    public void SetValue(ReadOnlySpan<char> key, float value) => SetValue(key, new TextVariant(value));
 
-    public void SetVariable(ReadOnlySpan<char> key, bool value) => SetVariable(key, new TextVariant(value));
+    public void SetValue(ReadOnlySpan<char> key, bool value) => SetValue(key, new TextVariant(value));
 
     public VarType GetMethodReturnType(ReadOnlySpan<char> methodName)
     {
-        return _dialogBridge.InternalGetMethodReturnType(methodName);
+        if (!AltFuncDefLookup.TryGetValue(methodName, out FuncDef? funcDef))
+            return VarType.Undefined;
+
+        return funcDef.ReturnType;
+    }
+
+    public FuncDef? GetMethodFuncDef(ReadOnlySpan<char> methodName)
+    {
+        if (AltFuncDefLookup.TryGetValue(methodName, out FuncDef? funcDef))
+            return funcDef;
+
+        return null;
     }
 
     public TextVariant CallMethod(ReadOnlySpan<char> methodName, ReadOnlySpan<TextVariant> args)

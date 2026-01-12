@@ -97,7 +97,14 @@ public static class DialogHelpers
 
     public static void AddError(this List<Error> errors, ExprInfo exprInfo, string message)
     {
-        errors.Add(new(exprInfo.LineIdx, exprInfo.Start, exprInfo.End, message));
+        errors.AddError(exprInfo, 0, message);
+    }
+
+    public static void AddError(this List<Error> errors, ExprInfo exprInfo, int pos, string message)
+    {
+        int start = exprInfo.OffsetStart + pos;
+        int end = exprInfo.OffsetStart + exprInfo.Span.Length;
+        errors.Add(new(exprInfo.LineIdx, start, end, message));
     }
 
     public static void AddError(this List<Error> errors, int lineIdx, int charStart, int charEnd, string message)

@@ -22,7 +22,7 @@ Devs: What tag would you like to see an example of?
     Devs: [speed=2]And this will be read at double speed due to a tag of [color=Gold]\[speed=2\][/color]!
 ? pause
     Devs: You can can pause the script for a set amount of time using the "pause" tag.
-    Devs: We've added [color=Gold]\[pause=2\][/color] here[pause=2] so it stops then continues on!
+    Devs: We've added [color=Gold]\[pause=2\][/color] here[pause=2] so it stops for two seconds before continuing!
 ? auto
     Devs: ^^If you add an [color=Gold]\[auto\][/color] tag to the end of a line, it will automatically 
         proceed after a pause based on the length of the text being written.^^
@@ -31,10 +31,11 @@ Devs: What tag would you like to see an example of?
     Devs: ^^You can also set an auto tag on its own line. This will make all lines auto-proceed 
         until you turn it off.^^
     [auto]
-    Devs: We added an auto tag right before this line so this will automatically proceed.
-    Devs: This will also auto-proceed.
+    Devs: Adding an auto tag on its own line will set it globally. We just did so this will auto-proceed.
+    Devs: It'll keep auto-proceeding until you turn it off by using a closing tag [color=Gold]\[/auto\][/color].
+    Devs: We'll do that after this line.
     [/auto]
-    Devs: An [color=Gold]\[/auto\][/color] tag just turned it off, so you'll need to proceed manually from here!
+    Devs: It just turned off, so you'll need to proceed manually from here!
 ? end
     Devs: [color=Gold]\[end\][/color] ends the script. Goodbye!
     [end]

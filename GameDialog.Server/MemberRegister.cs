@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using GameDialog.Pooling;
 using GameDialog.Runner;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -13,14 +11,8 @@ namespace GameDialog.Server;
 
 public class MemberRegister
 {
-    public MemberRegister()
-    {
-        PredefinedVarDefs = ListPool.Get<VarDef>();
-        PredefinedFuncDefs = ListPool.Get<FuncDef>();
-    }
-
-    public List<VarDef> PredefinedVarDefs { get; }
-    public List<FuncDef> PredefinedFuncDefs { get; }
+    public Dictionary<string, VarDef> PredefinedVarDefs { get; } = [];
+    public Dictionary<string, FuncDef> PredefinedFuncDefs { get; } = [];
 
     private readonly static StringBuilder _tempSB = new();
 
@@ -34,8 +26,8 @@ public class MemberRegister
         if (files.Length != 1)
             return;
 
-        ListPool.ReturnItems(PredefinedFuncDefs);
-        ListPool.ReturnItems(PredefinedVarDefs);
+        PredefinedFuncDefs.Clear();
+        PredefinedVarDefs.Clear();
         string filePath = files[0];
         var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(filePath), path: filePath);
         CompilationUnitSyntax? root = tree.GetCompilationUnitRoot();
@@ -61,17 +53,20 @@ public class MemberRegister
                 if (varType == VarType.Undefined)
                     continue;
 
-                VarDef varDef = Pool.Get<VarDef>();
-                varDef.Name = propDeclaration.Identifier.Text;
-                varDef.Type = varType;
-                PredefinedVarDefs.Add(varDef);
+                string varName = propDeclaration.Identifier.Text;
+                VarDef varDef = new()
+                {
+                    Name = varName,
+                    Type = varType
+                };
+                PredefinedVarDefs.Add(varName, varDef);
             }
             else if (member is MethodDeclarationSyntax methodDeclaration)
             {
                 FuncDef? funcDef = GetFuncDef(methodDeclaration);
 
                 if (funcDef != null)
-                    PredefinedFuncDefs.Add(funcDef);
+                    PredefinedFuncDefs.Add(funcDef.Name, funcDef);
             }
         }
 
@@ -79,10 +74,11 @@ public class MemberRegister
             GenerateMemberFile(filePath, fileNamespace, fileClassName, PredefinedVarDefs, PredefinedFuncDefs);
     }
 
-    private static string GetAllFuncCases(List<FuncDef> funcDefs)
+    private static string GetAllFuncCases(Dictionary<string, FuncDef> funcDefs)
     {
-        foreach (var func in funcDefs)
+        foreach (var kvp in funcDefs)
         {
+            var func = kvp.Value;
             _tempSB.AppendLine();
 
             if (func.ReturnType == VarType.Void)
@@ -114,11 +110,11 @@ public class MemberRegister
         }
     }
 
-    private static string GetAllAsyncFuncCases(List<FuncDef> funcDefs)
+    private static string GetAllAsyncFuncCases(Dictionary<string, FuncDef> funcDefs)
     {
-        for (int i = 0; i < funcDefs.Count; i++)
+        foreach (var kvp in funcDefs)
         {
-            FuncDef? func = funcDefs[i];
+            var func = kvp.Value;
 
             if (!func.Awaitable)
                 continue;
@@ -141,11 +137,11 @@ public class MemberRegister
         }
     }
 
-    private static string GetAllAsyncLocalFunctions(List<FuncDef> funcDefs)
+    private static string GetAllAsyncLocalFunctions(Dictionary<string, FuncDef> funcDefs)
     {
-        for (int i = 0; i < funcDefs.Count; i++)
+        foreach (var kvp in funcDefs)
         {
-            FuncDef? func = funcDefs[i];
+            var func = kvp.Value;
 
             if (!func.Awaitable)
                 continue;
@@ -178,10 +174,11 @@ public class MemberRegister
         }
     }
 
-    private static string GetAllSetProperties(List<VarDef> varDefs)
+    private static string GetAllSetProperties(Dictionary<string, VarDef> varDefs)
     {
-        foreach (VarDef varDef in varDefs)
+        foreach (var kvp in varDefs)
         {
+            VarDef varDef = kvp.Value;
             _tempSB.AppendLine();
             _tempSB.Append($$"""
                         case nameof({{varDef.Name}}):
@@ -195,17 +192,72 @@ public class MemberRegister
         return result;
     }
 
+    private static string GetAllFuncDefs(Dictionary<string, FuncDef> funcDefs)
+    {
+        if (funcDefs.Count == 0)
+            return string.Empty;
+
+        _tempSB.AppendLine($"{nameof(DialogBridgeBase.InternalFuncDefs)} = new()");
+        _tempSB.AppendLine("        {");
+
+        foreach (var kvp in funcDefs)
+        {
+            var funcDef = kvp.Value;
+            _tempSB.AppendLine($$"""
+                        ["{{funcDef.Name}}"] = new()
+                        {
+                            {{nameof(FuncDef.Name)}} = "{{funcDef.Name}}",
+                            {{nameof(FuncDef.ReturnType)}} = VarType.{{funcDef.ReturnType}},
+                            {{nameof(FuncDef.Awaitable)}} = {{(funcDef.Awaitable ? "true" : "false")}},
+                            {{nameof(FuncDef.ArgTypes)}} = [{{string.Join(", ", funcDef.ArgTypes.Select(x => $"VarType.{x}"))}}]
+                        },
+            """);
+        }
+
+        _tempSB.Append("        };");
+        string result = _tempSB.ToString();
+        _tempSB.Clear();
+        return result;
+    }
+
+    private static string GetAllVarDefs(Dictionary<string, VarDef> varDefs)
+    {
+        if (varDefs.Count == 0)
+            return string.Empty;
+
+        _tempSB.AppendLine($"{nameof(DialogBridgeBase.InternalVarDefs)} = new()");
+        _tempSB.AppendLine("        {");
+
+        foreach (var kvp in varDefs)
+        {
+            var varDef = kvp.Value;
+            _tempSB.AppendLine($$"""
+                        ["{{varDef.Name}}"] = new()
+                        {
+                            {{nameof(VarDef.Name)}} = "{{varDef.Name}}",
+                            {{nameof(VarDef.Type)}} = VarType.{{varDef.Type}},
+                        },
+            """);
+        }
+
+        _tempSB.Append("        };");
+        string result = _tempSB.ToString();
+        _tempSB.Clear();
+        return result;
+    }
+
     private static void GenerateMemberFile(
         string filePath,
         string fileNamespace,
         string fileClassName,
-        List<VarDef> varDefs,
-        List<FuncDef> funcDefs)
+        Dictionary<string, VarDef> varDefs,
+        Dictionary<string, FuncDef> funcDefs)
     {
         StringBuilder sb = new();
         string newFilePath = Path.ChangeExtension(filePath, "g.cs");
         sb.AppendLine("""
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using GameDialog.Runner;
@@ -232,22 +284,8 @@ using GameDialog.Runner;
             public static void InternalSetCreateType()
             {
                 InternalCreate = (dialog) => new {{fileClassName}}(dialog);
-            }
-
-            public override VarType InternalGetMethodReturnType(ReadOnlySpan<char> funcName)
-            {
-                return funcName switch
-                {{{string.Concat(funcDefs.Select(x => $"\n            nameof({x.Name}) => VarType.{x.ReturnType},"))}}
-                    _ => VarType.Undefined
-                };
-            }
-
-            public override VarType InternalGetPropertyType(ReadOnlySpan<char> propertyName)
-            {
-                return propertyName switch
-                {{{string.Concat(varDefs.Select(x => $"\n            nameof({x.Name}) => VarType.{x.Type},"))}}
-                    _ => VarType.Undefined
-                };
+                {{GetAllFuncDefs(funcDefs)}}
+                {{GetAllVarDefs(varDefs)}}
             }
 
             public override TextVariant InternalCallMethod(ReadOnlySpan<char> funcName, ReadOnlySpan<TextVariant> args)
@@ -271,7 +309,7 @@ using GameDialog.Runner;
             public override TextVariant InternalGetProperty(ReadOnlySpan<char> propertyName)
             {
                 return propertyName switch
-                {{{string.Concat(varDefs.Select(x => $"\n            nameof({x.Name}) => new({x.Name}),"))}}
+                {{{string.Concat(varDefs.Select(kvp => $"\n            nameof({kvp.Value.Name}) => new({kvp.Value.Name}),"))}}
                     _ => new()
                 };
             }
@@ -341,11 +379,12 @@ using GameDialog.Runner;
             return null;
 
         string funcName = node.Identifier.Text;
-        List<VarType> args = [];
-        bool argsValid = true;
+        VarType[] args = new VarType[node.ParameterList.Parameters.Count];
 
-        foreach (var arg in node.ParameterList.Parameters)
+        for (int i = 0; i < node.ParameterList.Parameters.Count; i++)
         {
+            ParameterSyntax? arg = node.ParameterList.Parameters[i];
+
             if (arg.Type == null)
                 return null;
 
@@ -354,17 +393,16 @@ using GameDialog.Runner;
             if (argType == VarType.Undefined)
                 return null;
 
-            args.Add(argType);
+            args[i] = argType;
         }
 
-        if (!argsValid)
-            return null;
-
-        FuncDef funcDef = Pool.Get<FuncDef>();
-        funcDef.Name = funcName;
-        funcDef.ReturnType = GetVarType(returnType);
-        funcDef.Awaitable = returnType == MethodType.Task;
-        funcDef.ArgTypes = args;
+        FuncDef funcDef = new()
+        {
+            Name = funcName,
+            ReturnType = GetVarType(returnType),
+            Awaitable = returnType == MethodType.Task,
+            ArgTypes = args
+        };
         return funcDef;
     }
 

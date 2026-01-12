@@ -10,7 +10,10 @@ public partial class Dialog : DialogBase
     public DialogBox? DialogBox { get; set; }
     public int OptionColumns { get; private set; } = 1;
 
-    protected override void OnDialogLineStarted(string text, ReadOnlySpan<string> speakerIds, ReadOnlySpan<TextEvent> textEvents)
+    protected override void OnDialogLineStarted(
+        string text,
+        IReadOnlyList<string> speakerIds,
+        IReadOnlyList<TextEvent> textEvents)
     {
         DialogBox ??= CreateDialogBox();
         // Gives access to script when parsing
@@ -23,7 +26,7 @@ public partial class Dialog : DialogBase
         DialogBox?.TextWriter.Resume();
     }
 
-    protected override void OnChoice(List<Choice> choices)
+    protected override void OnChoice(IReadOnlyList<Choice> choices)
     {
         ProcessMode = ProcessModeEnum.Disabled;
         PackedScene packedScene = GD.Load<PackedScene>("./Scenes/GUI/OptionBox.tscn");
@@ -33,7 +36,7 @@ public partial class Dialog : DialogBase
         optionBox.Init(choices);
     }
 
-    protected override void OnHash(Dictionary<string, string> hashData)
+    protected override void OnHash(IReadOnlyDictionary<string, string> hashData)
     {
         if (hashData.TryGetValue("OptionColumns", out string? columnString)
             && int.TryParse(columnString, out int columns))
@@ -46,7 +49,7 @@ public partial class Dialog : DialogBase
     {
         PackedScene packedScene = GD.Load<PackedScene>("./Scenes/GUI/DialogBox.tscn");
         DialogBox newBox = packedScene.Instantiate<DialogBox>();
-        newBox.LineEnded += OnDialogLineEnded;
+        newBox.LineEnded += EndDialogLine;
         AddChild(newBox);
         return newBox;
     }

@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
@@ -11,22 +12,28 @@ public readonly record struct TextVariant
         VariantType = VarType.Void;
     }
 
-    public TextVariant(bool myBool)
+    public TextVariant(bool boolValue)
     {
         VariantType = VarType.Bool;
-        Bool = myBool;
+        Bool = boolValue;
     }
 
-    public TextVariant(float myFloat)
+    public TextVariant(float floatValue)
     {
         VariantType = VarType.Float;
-        Float = myFloat;
+        Float = floatValue;
     }
 
-    public TextVariant(string myString)
+    public TextVariant(string stringValue)
     {
         VariantType = VarType.String;
-        String = myString;
+        Chars = stringValue.AsMemory();
+    }
+
+    public TextVariant(ReadOnlyMemory<char> memValue)
+    {
+        VariantType = VarType.String;
+        Chars = memValue;
     }
 
     private TextVariant(VarType varType)
@@ -43,7 +50,8 @@ public readonly record struct TextVariant
     [FieldOffset(8)]
     public readonly float Float;
     [FieldOffset(16)]
-    public readonly string String = default!;
+    public readonly ReadOnlyMemory<char> Chars = default;
+    public readonly string String => Chars.ToString();
 
     public T? Get<T>()
     {
@@ -54,7 +62,7 @@ public readonly record struct TextVariant
         }
         else if (VariantType == VarType.String)
         {
-            if (String is T tString)
+            if (Chars is T tString)
                 return tString;
         }
         else if (VariantType == VarType.Float)
@@ -78,7 +86,7 @@ public readonly record struct TextVariant
         }
         else if (VariantType == VarType.String)
         {
-            if (String is T tString)
+            if (Chars.ToString() is T tString)
             {
                 value = tString;
                 return true;
@@ -101,7 +109,7 @@ public readonly record struct TextVariant
     {
         VarType.Bool => Bool.ToString(),
         VarType.Float => Float.ToString(),
-        VarType.String => String,
+        VarType.String => Chars.ToString(),
         _ => string.Empty
     };
 }

@@ -48,7 +48,10 @@ public partial class DialogBox : MarginContainer
         inputEvent.Dispose();
     }
 
-    public void WriteDialogLine(string text, ReadOnlySpan<string> speakerIds, ReadOnlySpan<TextEvent> textEvents)
+    public void WriteDialogLine(
+        string text,
+        IReadOnlyList<string> speakerIds,
+        IReadOnlyList<TextEvent> textEvents)
     {
         SpeakerIds.Clear();
         SpeakerIds.AddRange(speakerIds);

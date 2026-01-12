@@ -1,12 +1,11 @@
 using System;
 using System.Collections.Generic;
-using GameDialog.Pooling;
 using Godot;
 
 namespace GameDialog.Runner;
 
 [Tool, GlobalClass]
-public partial class TextWriter : RichTextLabel, IPoolable
+public partial class TextWriter : RichTextLabel
 {
     public TextWriter()
     {
@@ -151,14 +150,14 @@ public partial class TextWriter : RichTextLabel, IPoolable
 
     public void Resume() => Suspended = false;
 
-    public void SetParsedText(string text, ReadOnlySpan<TextEvent> textEvents)
+    public void SetParsedText(string text, IReadOnlyList<TextEvent> textEvents)
     {
         _textEvents.Clear();
         _textEvents.AddRange(textEvents);
         _textEventIndex = 0;
         VisibleCharacters = 0;
         base.Text = text;
-        base.Text = Dialog?.GetEventParsedText(text, GetParsedText(), _textEvents);
+        DialogBase.AdjustIndices(text, GetParsedText(), _textEvents);
         _totalCharacters = GetTotalCharacterCount();
         _scrollBar.Value = 0;
         _targetScrollValue = 0;
@@ -171,11 +170,6 @@ public partial class TextWriter : RichTextLabel, IPoolable
     }
 
     public bool IsOnLastPage() => _scrollBar.Value >= _scrollBar.MaxValue - Size.Y;
-
-    public void ClearObject()
-    {
-        Reset(true);
-    }
 
     /// <summary>
     /// Sets up writing the next line or page.
@@ -361,7 +355,7 @@ public partial class TextWriter : RichTextLabel, IPoolable
 
     private bool HandleTextEvent(int textIndex)
     {
-        if (_textEventIndex >= _textEvents.Count)
+        if (Dialog == null || _textEventIndex >= _textEvents.Count)
             return false;
 
         TextEvent textEvent = _textEvents[_textEventIndex];
@@ -369,22 +363,32 @@ public partial class TextWriter : RichTextLabel, IPoolable
         if (textIndex < textEvent.TextIndex)
             return false;
 
-        if (textEvent.EventType == EventType.Await)
+        if (textEvent.IsAwait)
             Suspended = true;
 
         _textEventIndex++;
+        (EventType EventType, float Param1) result;
 
-        switch (textEvent.EventType)
+        try
+        {
+            result = Dialog.HandleTextEvent(textEvent);
+        }
+        catch (Exception)
+        {
+            return true;
+        }
+
+        switch (result.EventType)
         {
             case EventType.Pause:
-                float timeValue = (float)textEvent.Param1;
+                float timeValue = result.Param1;
                 PauseTimer += timeValue;
                 break;
             case EventType.Speed:
-                SpeedMultiplier = (float)textEvent.Param1;
+                SpeedMultiplier = result.Param1;
                 break;
             case EventType.Auto:
-                float autoValue = (float)textEvent.Param1;
+                float autoValue = result.Param1;
                 AutoProceedEnabled = autoValue != -2;
                 AutoProceedTimeout = autoValue;
                 int currentChar = VisibleCharacters;
@@ -399,12 +403,9 @@ public partial class TextWriter : RichTextLabel, IPoolable
                 int endChar = VisibleCharacters == -1 ? _totalCharacters : VisibleCharacters;
                 _targetWriteRange.Y = endChar + 1;
 
-                if (textEvent.EventType == EventType.Scroll)
+                if (result.EventType == EventType.Scroll)
                     _scrollPageOverride = true;
 
-                break;
-            default:
-                Dialog?.HandleTextEvent(textEvent);
                 break;
         }
 
@@ -424,7 +425,7 @@ public partial class TextWriter : RichTextLabel, IPoolable
         AutoProceedEnabled = false;
         AutoProceedTimeout = 0;
         PauseTimer = 0;
-        VisibleCharactersBehavior = TextServer.VisibleCharactersBehavior.CharsAfterShaping;
+        //VisibleCharactersBehavior = TextServer.VisibleCharactersBehavior.CharsAfterShaping;
         _scrollBar.AllowGreater = true;
         _scrollBar.Scale = Vector2.Zero;
         _scrollBar.Value = 0;

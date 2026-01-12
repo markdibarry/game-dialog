@@ -1,7 +1,6 @@
 # Creating a Script
 
-New dialog scripts are made using the `.dia` extension. The name of the file should be unique to 
-the project.
+New dialog scripts are made using the `.dia` extension.
 
 ## Section Title
 
@@ -43,22 +42,6 @@ You can add comments using two forward slashes `//`:
 --Greeting--
 // This is a comment.
 Stalone: Good morning! // So is this.
-```
-
-## `goto`
-
-By default, the reader starts at the first section in the file. If you have more than one section, 
-it's important to connect them otherwise the dialog script will exit at the end of the current 
-section. To connect them, type an open square bracket, the keyword `goto`, the name of the section 
-you want to "go to", and a closing square bracket:
-
-```gamedialog
---Greeting--
-Stalone: Hello World!
-[goto Goodbye]
-
---Goodbye--
-Stalone: See you later!
 ```
 
 ## Choices
@@ -126,10 +109,10 @@ else
 > For more info on using methods see [Properties and Methods](#properties-and-methods)
 
 We can use Choices and Variables together to conditionally display options to choose from. When the 
-script reaches a choice branch the abstract method `OnChoice(List<Choice> choices)` is called. All 
-of the options are provided to the method. If you have a choice wrapped around a conditional branch 
-and if fails the check, it will have the `Disabled` property set to `true`. Let's see that previous 
-example with a conditional choice!
+script reaches a choice branch the abstract method `OnChoice(IReadOnlyList<Choice> choices)` is 
+called. All of the options are provided to the method. If you have a choice wrapped around a 
+conditional branch and if fails the check, it will have the `Disabled` property set to `true`. 
+Let's see that previous example with a conditional choice!
 
 ```gamedialog
 --Drinks--
@@ -197,9 +180,12 @@ Stalone: Great! What's your favorite breakfast food?
 
 ### `goto`
 
-The `goto` tag will make the dialog script "go to" a specified section.
+By default, the reader starts at the first section in the file. If you have more than one section, 
+it's important to connect them otherwise the dialog script will exit at the end of the current 
+section. To connect them, type an open square bracket, the keyword `goto`, the name of the section 
+you want to "go to", and a closing square bracket:
 
-```
+```gamedialog
 --Greeting--
 Stalone: What's your favorite breakfast food?
 ? Waffles.
@@ -290,6 +276,6 @@ by prepending it with the `await` keyword.
 
 ```
 Stalone: Hey, what's that over there?
-[await WalkTowards("SuspiciousDresser")]
+[await WalkTowards("SuspiciousCabinet")]
 Stalone: It's a clue!
 ```

@@ -15,15 +15,19 @@ jobs:
         - name: Grab Files
           run: |
             rm -rf GameDialog
-            mkdir -p GameDialog/{Models,ObjectPool}
+            mkdir -p GameDialog/{Models}
 
             cp GameDialog.Runner/Models/BBCode.cs GameDialog/Models/
             cp GameDialog.Runner/Models/BuiltIn.cs GameDialog/Models/
             cp GameDialog.Runner/Models/Choice.cs GameDialog/Models/
-            cp GameDialog.Runner/Models/Defs.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/EventType.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/ExprInfo.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/ExprType.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/FuncDef.cs GameDialog/Models/
             cp GameDialog.Runner/Models/IMemberStorage.cs GameDialog/Models/
             cp GameDialog.Runner/Models/TextEvent.cs GameDialog/Models/
             cp GameDialog.Runner/Models/TextVariant.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/VarDef.cs GameDialog/Models/
             cp GameDialog.Runner/Models/VarType.cs GameDialog/Models/
 
             cp GameDialog.Runner/DialogBase.cs GameDialog/
@@ -32,15 +36,10 @@ jobs:
             cp GameDialog.Runner/DialogBridgeBase.cs GameDialog/
             cp GameDialog.Runner/DialogHelpers.cs GameDialog/
             cp GameDialog.Runner/DialogStorage.cs GameDialog/
+            cp GameDialog.Runner/DialogValidator.cs GameDialog/
             cp GameDialog.Runner/ExprParser.cs GameDialog/
             cp GameDialog.Runner/ParserState.cs GameDialog/
             cp GameDialog.Runner/TextWriter.cs GameDialog/
-            cp GameDialog.Runner/Validator.cs GameDialog/
-
-            cp GameDialog.Runner/ObjectPool/IPoolable.cs GameDialog/ObjectPool/
-            cp GameDialog.Runner/ObjectPool/LimitedQueue.cs GameDialog/ObjectPool/
-            cp GameDialog.Runner/ObjectPool/ListPool.cs GameDialog/ObjectPool/
-            cp GameDialog.Runner/ObjectPool/Pool.cs GameDialog/ObjectPool/
 
         - name: Zip Files
           run: |

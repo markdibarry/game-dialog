@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using GameDialog.Runner;
@@ -18,25 +19,37 @@ public partial class DialogBridge
     public static void InternalSetCreateType()
     {
         InternalCreate = (dialog) => new DialogBridge(dialog);
-    }
-
-    public override VarType InternalGetMethodReturnType(ReadOnlySpan<char> funcName)
-    {
-        return funcName switch
+        InternalFuncDefs = new()
         {
-            nameof(Shake) => VarType.Void,
-            nameof(Flash) => VarType.Void,
-            nameof(GetTimesTalked) => VarType.Float,
-            _ => VarType.Undefined
+            ["Shake"] = new()
+            {
+                Name = "Shake",
+                ReturnType = VarType.Void,
+                Awaitable = true,
+                ArgTypes = []
+            },
+            ["Flash"] = new()
+            {
+                Name = "Flash",
+                ReturnType = VarType.Void,
+                Awaitable = false,
+                ArgTypes = []
+            },
+            ["GetTimesTalked"] = new()
+            {
+                Name = "GetTimesTalked",
+                ReturnType = VarType.Float,
+                Awaitable = false,
+                ArgTypes = [VarType.String]
+            },
         };
-    }
-
-    public override VarType InternalGetPropertyType(ReadOnlySpan<char> propertyName)
-    {
-        return propertyName switch
+        InternalVarDefs = new()
         {
-            nameof(MyString) => VarType.String,
-            _ => VarType.Undefined
+            ["MyString"] = new()
+            {
+                Name = "MyString",
+                Type = VarType.String,
+            },
         };
     }
 

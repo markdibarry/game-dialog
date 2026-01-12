@@ -54,10 +54,10 @@ public partial class DialogArea : Area2D
         Game.Root.TestScene.ProcessMode = ProcessModeEnum.Disabled;
         Dialog dialog = new();
         dialog.ScriptEnded += RemoveDialog;
-        dialog.LoadScript(DialogPath);
+        dialog.Load(DialogPath);
         Game.Root.GUI.AddChild(dialog);
         TimesTalked++;
-        dialog.StartScript();
+        dialog.Start();
     }
 
     public void RemoveDialog(DialogBase dialog)

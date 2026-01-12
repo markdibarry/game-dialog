@@ -15,10 +15,12 @@ public partial class OptionBox : MarginContainer
         _gridContainer.Columns = Dialog.OptionColumns;
     }
 
-    public void Init(List<Choice> choices)
+    public void Init(IReadOnlyList<Choice> choices)
     {
-        foreach (var choice in choices)
+        for (int i = 0; i < choices.Count; i++)
         {
+            Choice choice = choices[i];
+
             if (choice.Disabled)
                 continue;
 
@@ -35,9 +37,8 @@ public partial class OptionBox : MarginContainer
     public void OnButtonPressed(int next)
     {
         Dialog dialog = Dialog;
-        dialog.Next = next;
         QueueFree();
         dialog.ProcessMode = ProcessModeEnum.Inherit;
-        dialog.Resume();
+        dialog.Resume(next);
     }
 }

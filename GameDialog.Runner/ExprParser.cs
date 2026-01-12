@@ -1,11 +1,17 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 
 namespace GameDialog.Runner;
 
 public static class ExprParser
 {
+    public static TextVariant Parse(ReadOnlyMemory<char> line, int offsetStart, IMemberStorage storage)
+    {
+        ExprInfo.TryGetExprInfo(line, 0, offsetStart, null, out ExprInfo exprInfo);
+        return Parse(exprInfo, storage);
+    }
+
     public static TextVariant Parse(ExprInfo exprInfo, IMemberStorage memberStorage, List<Error>? errors = null)
     {
         return Parse(exprInfo, false, memberStorage, errors);
@@ -18,83 +24,54 @@ public static class ExprParser
 
     private static TextVariant Parse(ExprInfo exprInfo, bool typeOnly, IMemberStorage storage, List<Error>? errors)
     {
-        ReadOnlySpan<char> line = exprInfo.Line;
-        int start = exprInfo.Start;
-        int end = exprInfo.End;
-        start = DialogHelpers.GetNextNonWhitespace(line, start);
+        ReadOnlySpan<char> expr = exprInfo.Span;
+        int pos = 0;
 
         if (CheckInitializers(exprInfo, storage, errors))
             return new();
 
         bool isAwait = false;
-        int i = start;
-
-        while (i < end && (char.IsLetterOrDigit(line[i]) || line[i] == '_'))
-            i++;
-
-        ReadOnlySpan<char> firstToken = line[start..i];
         AssignKind assignKind = AssignKind.Undefined;
 
-        if (firstToken.SequenceEqual("await") && i < end && char.IsWhiteSpace(line[i]))
+        if (expr.StartsWith("await "))
         {
-            start += "await ".Length;
+            pos += "await ".Length;
             isAwait = true;
         }
         else
         {
-            i = DialogHelpers.GetNextNonWhitespace(line, i);
-            assignKind = GetAssignKind(line, i, end);
+            int assignStart = pos;
+            assignStart = DialogHelpers.GetNextNonIdentifier(expr, assignStart);
+            assignStart = DialogHelpers.GetNextNonWhitespace(expr, assignStart);
+            assignKind = GetAssignKind(expr, assignStart);
 
             if (assignKind == AssignKind.Assign)
-                start = DialogHelpers.GetNextNonWhitespace(line, i + 1);
+                pos = DialogHelpers.GetNextNonWhitespace(expr, assignStart + 1);
             else if (assignKind != AssignKind.Undefined)
-                start = DialogHelpers.GetNextNonWhitespace(line, i + 2);
+                pos = DialogHelpers.GetNextNonWhitespace(expr, assignStart + 2);
         }
 
-        TextVariant result = ParseExpression(ref start, exprInfo, isAwait, typeOnly, storage, errors);
+        int parenCount = 0;
+
+        TextVariant result = ParseExpression(exprInfo, ref pos, ref parenCount, isAwait, typeOnly, storage, errors);
 
         if (!typeOnly && result.VariantType is not VarType.Void and not VarType.Undefined)
-            TryAssign(firstToken, assignKind, result, exprInfo, storage, errors);
+            TryAssign(exprInfo, assignKind, result, storage, errors);
 
         return result;
     }
 
-    public static bool TryGetExprInfo(
-        ReadOnlySpan<char> line,
-        int lineIdx,
-        int start,
-        List<Error>? errors,
-        [NotNullWhen(true)] out ExprInfo exprInfo)
-    {
-        int end = start;
-
-        while (end < line.Length && line[end] != ']' && line[end - 1] != '\\')
-            end++;
-
-        if (end >= line.Length)
-        {
-            errors?.AddError(lineIdx, start, line.Length, "Unterminated expression block. Missing closing ']'");
-            exprInfo = new(line, lineIdx, start, line.Length);
-            return false;
-        }
-
-        exprInfo = new(line, lineIdx, start, end);
-        return true;
-    }
-
     private static bool CheckInitializers(ExprInfo exprInfo, IMemberStorage memberStorage, List<Error>? errors)
     {
-        ReadOnlySpan<char> line = exprInfo.Line;
+        ReadOnlySpan<char> expr = exprInfo.Span;
 
-        if (line[exprInfo.Start] != '@')
+        if (expr.Length == 0 || expr[0] != '@')
             return false;
 
         // Only handle if validating
         if (errors == null)
             return true;
 
-        ReadOnlySpan<char> expr = line[exprInfo.Start..exprInfo.End];
-        int lastChar = exprInfo.Start + expr.TrimEnd().Length;
         VarType varType = VarType.Undefined;
 
         if (expr.StartsWith("@bool "))
@@ -106,54 +83,54 @@ public static class ExprParser
 
         if (varType == VarType.Undefined)
         {
-            errors?.AddError(exprInfo, "Unknown initialization type.");
+            errors?.AddError(exprInfo, 0, "Unknown initialization type.");
             return true;
         }
 
-        int i = DialogHelpers.GetNextNonIdentifier(line, exprInfo.Start + 1);
+        int i = DialogHelpers.GetNextNonIdentifier(expr, 1);
 
-        if (i == lastChar)
+        if (i >= expr.Length)
         {
-            errors?.AddError(exprInfo, "No valid variable provided.");
+            errors?.AddError(exprInfo, 0, "No valid variable provided.");
             return true;
         }
 
-        while (i < lastChar)
+        while (i < expr.Length)
         {
-            int ws = DialogHelpers.GetNextNonWhitespace(line, i) - i;
+            int ws = DialogHelpers.GetNextNonWhitespace(expr, i) - i;
 
             if (ws <= 0)
             {
-                errors?.AddError(exprInfo, "No valid variable provided.");
+                errors?.AddError(exprInfo, 0, "No valid variable provided.");
                 return true;
             }
 
             i += ws;
             int start = i;
-            i = DialogHelpers.GetNextNonIdentifier(line, i);
-            ReadOnlySpan<char> varName = line[start..i];
+            i = DialogHelpers.GetNextNonIdentifier(expr, i);
+            ReadOnlySpan<char> varName = expr[start..i];
 
             if (varName.Length == 0
                 || (!char.IsLetter(varName[0]) && varName[0] != '_')
-                || (i != lastChar && !char.IsWhiteSpace(line[i])))
+                || (i != expr.Length && !char.IsWhiteSpace(expr[i])))
             {
-                errors?.AddError(exprInfo.LineIdx, start, exprInfo.End, "Invalid variable name.");
+                errors?.AddError(exprInfo, start, "Invalid variable name.");
                 return true;
             }
 
             if (memberStorage.GetVariableType(varName) != VarType.Undefined)
             {
-                errors?.AddError(exprInfo.LineIdx, start, i, $"Cannot initialize existing variable '{varName}'.");
+                errors?.AddError(exprInfo, start, $"Cannot initialize existing variable '{varName}'.");
                 return true;
             }
             else
             {
                 if (varType == VarType.Bool)
-                    memberStorage.SetVariable(varName, new(false));
+                    memberStorage.SetValue(varName, new(false));
                 else if (varType == VarType.Float)
-                    memberStorage.SetVariable(varName, new(0));
+                    memberStorage.SetValue(varName, new(0));
                 else if (varType == VarType.String)
-                    memberStorage.SetVariable(varName, new(string.Empty));
+                    memberStorage.SetValue(varName, new(string.Empty));
             }
         }
 
@@ -161,19 +138,21 @@ public static class ExprParser
     }
 
     private static void TryAssign(
-        ReadOnlySpan<char> varName,
+        ExprInfo exprInfo,
         AssignKind assignKind,
         TextVariant result,
-        ExprInfo exprInfo,
         IMemberStorage memberStorage,
         List<Error>? errors)
     {
         if (assignKind == AssignKind.Undefined)
             return;
 
+        int i = DialogHelpers.GetNextNonIdentifier(exprInfo.Span, 0);
+        ReadOnlySpan<char> varName = exprInfo.Span[..i];
+
         if (!char.IsLetter(varName[0]) && varName[0] != '_')
         {
-            errors?.AddError(exprInfo, "Variables must start with a letter or underscore.");
+            errors?.AddError(exprInfo, 0, "Variables must start with a letter or underscore.");
             return;
         }
 
@@ -182,16 +161,16 @@ public static class ExprParser
         if (assignKind == AssignKind.Assign)
         {
             if (varType == VarType.Undefined || varType == result.VariantType)
-                memberStorage.SetVariable(varName, result);
+                memberStorage.SetValue(varName, result);
             else
-                errors?.AddError(exprInfo, $"Cannot assign {result.VariantType} to {varType} '{varName}'.");
+                errors?.AddError(exprInfo, 0, $"Cannot assign {result.VariantType} to {varType} '{varName}'.");
 
             return;
         }
 
         if (varType == VarType.Undefined)
         {
-            errors?.AddError(exprInfo, "Cannot modify uninitialized variable.");
+            errors?.AddError(exprInfo, 0, "Cannot modify uninitialized variable.");
             return;
         }
 
@@ -201,17 +180,17 @@ public static class ExprParser
             {
                 if (result.VariantType == VarType.String)
                 {
-                    memberStorage.TryGetVariable(varName, out TextVariant value);
-                    memberStorage.SetVariable(varName, new(value.String + result.String));
+                    memberStorage.TryGetValue(varName, out TextVariant value);
+                    memberStorage.SetValue(varName, new(value.Chars.ToString() + result.Chars.ToString()));
                 }
                 else if (result.VariantType == VarType.Float)
                 {
-                    memberStorage.TryGetVariable(varName, out TextVariant value);
-                    memberStorage.SetVariable(varName, new(value.String + result.Float));
+                    memberStorage.TryGetValue(varName, out TextVariant value);
+                    memberStorage.SetValue(varName, new(value.Chars.ToString() + result.Float));
                 }
                 else
                 {
-                    errors?.AddError(exprInfo, $"Cannot add {result.VariantType} to {varType} '{varName}'.");
+                    errors?.AddError(exprInfo, 0, $"Cannot add {result.VariantType} to {varType} '{varName}'.");
                     return;
                 }
             }
@@ -219,18 +198,18 @@ public static class ExprParser
             {
                 if (result.VariantType == VarType.Float)
                 {
-                    memberStorage.TryGetVariable(varName, out TextVariant value);
-                    memberStorage.SetVariable(varName, new(value.Float + result.Float));
+                    memberStorage.TryGetValue(varName, out TextVariant value);
+                    memberStorage.SetValue(varName, new(value.Float + result.Float));
                 }
                 else
                 {
-                    errors?.AddError(exprInfo, $"Cannot add {result.VariantType} to {varType} '{varName}'.");
+                    errors?.AddError(exprInfo, 0, $"Cannot add {result.VariantType} to {varType} '{varName}'.");
                     return;
                 }
             }
             else
             {
-                errors?.AddError(exprInfo, $"Cannot add {result.VariantType} to {varType} '{varName}'.");
+                errors?.AddError(exprInfo, 0, $"Cannot add {result.VariantType} to {varType} '{varName}'.");
                 return;
             }
         }
@@ -238,47 +217,47 @@ public static class ExprParser
         {
             if (result.VariantType != VarType.Float || varType != VarType.Float)
             {
-                errors?.AddError(exprInfo, $"Cannot subtract {result.VariantType} from {varType} '{varName}'.");
+                errors?.AddError(exprInfo, 0, $"Cannot subtract {result.VariantType} from {varType} '{varName}'.");
                 return;
             }
 
-            memberStorage.TryGetVariable(varName, out TextVariant value);
-            memberStorage.SetVariable(varName, new(value.Float - result.Float));
+            memberStorage.TryGetValue(varName, out TextVariant value);
+            memberStorage.SetValue(varName, new(value.Float - result.Float));
         }
         else if (assignKind == AssignKind.Mult)
         {
             if (result.VariantType != VarType.Float || varType != VarType.Float)
             {
-                errors?.AddError(exprInfo, $"Cannot multiply {result.VariantType} with {varType} '{varName}'.");
+                errors?.AddError(exprInfo, 0, $"Cannot multiply {result.VariantType} with {varType} '{varName}'.");
                 return;
             }
 
-            memberStorage.TryGetVariable(varName, out TextVariant value);
-            memberStorage.SetVariable(varName, new(value.Float * result.Float));
+            memberStorage.TryGetValue(varName, out TextVariant value);
+            memberStorage.SetValue(varName, new(value.Float * result.Float));
         }
         else if (assignKind == AssignKind.Div)
         {
             if (result.VariantType != VarType.Float || varType != VarType.Float)
             {
-                errors?.AddError(exprInfo, $"Cannot divide {result.VariantType} by {varType} '{varName}'.");
+                errors?.AddError(exprInfo, 0, $"Cannot divide {result.VariantType} by {varType} '{varName}'.");
                 return;
             }
 
             if (result.Float == 0)
                 return;
 
-            memberStorage.TryGetVariable(varName, out TextVariant value);
-            memberStorage.SetVariable(varName, new(value.Float / result.Float));
+            memberStorage.TryGetValue(varName, out TextVariant value);
+            memberStorage.SetValue(varName, new(value.Float / result.Float));
         }
     }
 
-    private static AssignKind GetAssignKind(ReadOnlySpan<char> line, int start, int end)
+    private static AssignKind GetAssignKind(ReadOnlySpan<char> expr, int start)
     {
-        if (start >= end - 1)
+        if (start + 1 >= expr.Length)
             return AssignKind.Undefined;
 
-        char c1 = line[start];
-        char c2 = line[start + 1];
+        char c1 = expr[start];
+        char c2 = expr[start + 1];
 
         if (c1 == '=' && c2 != '=')
             return AssignKind.Assign;
@@ -297,29 +276,49 @@ public static class ExprParser
     }
 
     private static TextVariant ParseExpression(
-        ref int pos,
         ExprInfo exprInfo,
+        ref int pos,
+        ref int parenCount,
         bool isAwait,
         bool typeOnly,
         IMemberStorage storage,
         List<Error>? errors,
         int minLbp = 0)
     {
-        ReadOnlySpan<char> line = exprInfo.Line;
-        pos = DialogHelpers.GetNextNonWhitespace(line[..exprInfo.End], pos);
-        TextVariant left = ParsePrefix(ref pos, exprInfo, isAwait, typeOnly, storage, errors);
+        ReadOnlySpan<char> expr = exprInfo.Span;
+        pos = DialogHelpers.GetNextNonWhitespace(expr, pos);
+        TextVariant left = ParsePrefix(exprInfo, ref pos, ref parenCount, isAwait, typeOnly, storage, errors);
 
         while (true)
         {
-            pos = DialogHelpers.GetNextNonWhitespace(line[..exprInfo.End], pos);
+            pos = DialogHelpers.GetNextNonWhitespace(expr, pos);
 
-            if (pos >= exprInfo.End)
+            if (pos >= expr.Length)
                 break;
 
-            ReadOnlySpan<char> op = PeekOperator(ref pos, exprInfo);
+            if (expr[pos] == ',')
+                break;
+
+            if (expr[pos] == ')')
+            {
+                if (parenCount <= 0)
+                {
+                    pos++;
+                    errors?.AddError(exprInfo, "Unexpected char ')'.");
+                }
+
+                break;
+            }
+
+            ReadOnlySpan<char> op = PeekOperator(pos, exprInfo);
 
             if (op.IsEmpty)
+            {
+                if (!expr[pos..].IsWhiteSpace())
+                    errors?.AddError(exprInfo, "Expression invalid.");
+
                 break;
+            }
 
             (int lbp, int rbp) = InfixBindingPower(op);
 
@@ -327,65 +326,65 @@ public static class ExprParser
                 break;
 
             pos += op.Length; // Consume operator
-            TextVariant right = ParseExpression(ref pos, exprInfo, isAwait, typeOnly, storage, errors, rbp);
-            left = EvaluateBinary(op, left, right, exprInfo, errors);
+            TextVariant right = ParseExpression(exprInfo, ref pos, ref parenCount, isAwait, typeOnly, storage, errors, rbp);
+            left = EvaluateBinary(exprInfo, op, left, right, errors);
         }
 
         return left;
     }
 
     private static TextVariant ParsePrefix(
-        ref int pos,
         ExprInfo exprInfo,
+        ref int pos,
+        ref int parenCount,
         bool isAwait,
         bool typeOnly,
         IMemberStorage storage,
         List<Error>? errors)
     {
-        ReadOnlySpan<char> line = exprInfo.Line;
-        pos = DialogHelpers.GetNextNonWhitespace(line[..exprInfo.End], pos);
+        ReadOnlySpan<char> expr = exprInfo.Span;
+        pos = DialogHelpers.GetNextNonWhitespace(expr, pos);
 
-        if (pos >= exprInfo.End)
+        if (pos >= expr.Length)
         {
             errors?.AddError(exprInfo, "Unexpected end of expression.");
             return new();
         }
 
-        char c = line[pos];
+        char c = expr[pos];
 
         // Parenthesized expression
         if (c == '(')
         {
             pos++;
-            TextVariant inner = ParseExpression(ref pos, exprInfo, isAwait, typeOnly, storage, errors);
-            pos = DialogHelpers.GetNextNonWhitespace(line[..exprInfo.End], pos);
+            parenCount++;
+            TextVariant inner = ParseExpression(exprInfo, ref pos, ref parenCount, isAwait, typeOnly, storage, errors);
+            pos = DialogHelpers.GetNextNonWhitespace(expr, pos);
 
-            if (pos >= exprInfo.End || line[pos] != ')')
+            if (pos >= expr.Length || expr[pos] != ')')
             {
                 errors?.AddError(exprInfo, "Mismatched parentheses");
                 return new();
             }
 
+            parenCount--;
             pos++;
             return inner;
         }
 
         if (c == '"')
-            return HandleStringLiteral(ref pos, exprInfo, errors);
+            return HandleStringLiteral(exprInfo, ref pos, errors);
 
-        if (char.IsDigit(c) || (c == '.' && pos + 1 < exprInfo.End && char.IsDigit(line[pos + 1])))
-            return HandleNumberLiteral(ref pos, exprInfo, errors);
+        if (char.IsDigit(c) || (c == '.' && pos + 1 < expr.Length && char.IsDigit(expr[pos + 1])))
+            return HandleNumberLiteral(exprInfo, ref pos, errors);
 
         // Identifier or keyword or function call
         if (char.IsLetter(c) || c == '_')
         {
             int start = pos;
             pos++;
-
-            while (pos < exprInfo.End && (char.IsLetterOrDigit(line[pos]) || line[pos] == '_'))
-                pos++;
-
-            ReadOnlySpan<char> ident = line[start..pos];
+            pos = DialogHelpers.GetNextNonIdentifier(expr, pos);
+            ReadOnlySpan<char> ident = expr[start..pos];
 
             if (ident.SequenceEqual("true"))
                 return new(true);
@@ -393,64 +392,65 @@ public static class ExprParser
             if (ident.SequenceEqual("false"))
                 return new(false);
 
-            int j = DialogHelpers.GetNextNonWhitespace(line[..exprInfo.End], pos);
-            bool isCall = j < exprInfo.End && line[j] == '(';
+            int nextNonWS = DialogHelpers.GetNextNonWhitespace(expr, pos);
+            bool isCall = nextNonWS < expr.Length && expr[nextNonWS] == '(';
 
             if (!isCall)
-                return HandleVariable(typeOnly, ident, exprInfo, storage, errors);
+                return HandleVariable(exprInfo, typeOnly, ident, storage, errors);
 
-            return HandleFuncCall(ref pos, exprInfo, isAwait, typeOnly, start, ident, j, storage, errors);
+            pos = nextNonWS + 1; // Enter '('
+            return HandleFuncCall(exprInfo, ref pos, ref parenCount, isAwait, typeOnly, ident, storage, errors);
         }
 
         // Unary operators
         if (c == '+' || c == '-' || c == '!')
         {
             pos++;
-            TextVariant operand = ParseExpression(ref pos, exprInfo, isAwait, typeOnly, storage, errors, 9);
-            return EvaluateUnary(c, operand, exprInfo, errors);
+            TextVariant operand = ParseExpression(exprInfo, ref pos, ref parenCount, isAwait, typeOnly, storage, errors, 9);
+            return EvaluateUnary(exprInfo, pos, c, operand, errors);
         }
 
-        errors?.AddError(exprInfo, $"Unexpected character '{c}' at position {pos}");
+        errors?.AddError(exprInfo, $"Unexpected character '{c}'");
         return new();
 
-        static TextVariant HandleStringLiteral(ref int pos, ExprInfo exprInfo, List<Error>? errors)
+        static TextVariant HandleStringLiteral(ExprInfo exprInfo, ref int pos, List<Error>? errors)
         {
-            ReadOnlySpan<char> line = exprInfo.Line;
+            ReadOnlySpan<char> expr = exprInfo.Span;
             int start = pos + 1;
             pos++;
 
-            while (pos < exprInfo.End)
+            while (pos < expr.Length)
             {
-                if (line[pos] == '\\')
+                if (expr[pos] == '\\')
                 {
                     pos += 2;
                     continue;
                 }
 
-                if (line[pos] == '"')
+                if (expr[pos] == '"')
                     break;
 
                 pos++;
             }
 
-            if (pos >= exprInfo.End || line[pos] != '"')
+            if (pos >= expr.Length || expr[pos] != '"')
                 errors?.AddError(exprInfo, "Unterminated string literal");
 
             int end = pos;
             pos++; // skip closing
 
-            return new(line[start..end].ToString());
+            return new(exprInfo.Memory[start..end]);
         }
 
-        static TextVariant HandleNumberLiteral(ref int pos, ExprInfo exprInfo, List<Error>? errors)
+        static TextVariant HandleNumberLiteral(ExprInfo exprInfo, ref int pos, List<Error>? errors)
         {
-            ReadOnlySpan<char> line = exprInfo.Line;
+            ReadOnlySpan<char> expr = exprInfo.Span;
             int start = pos;
             pos++;
 
-            while (pos < exprInfo.End)
+            while (pos < expr.Length)
             {
-                char c2 = line[pos];
+                char c2 = expr[pos];
 
                 if (char.IsDigit(c2) || c2 == '.')
                 {
@@ -462,29 +462,29 @@ public static class ExprParser
                 {
                     pos++;
 
-                    if (pos < exprInfo.End && (line[pos] == '+' || line[pos] == '-'))
+                    if (pos < expr.Length && (expr[pos] == '+' || expr[pos] == '-'))
                         pos++;
 
-                    while (pos < exprInfo.End && char.IsDigit(line[pos]))
+                    while (pos < expr.Length && char.IsDigit(expr[pos]))
                         pos++;
                 }
 
                 break;
             }
 
-            ReadOnlySpan<char> span = line[start..pos];
+            ReadOnlySpan<char> span = expr[start..pos];
 
-            if (float.TryParse(span, out float f))
-                return new(f);
+            if (float.TryParse(span, out float floatValue))
+                return new(floatValue);
 
             errors?.AddError(exprInfo, $"Invalid number literal '{span}'.");
             return new();
         }
 
         static TextVariant HandleVariable(
+            ExprInfo exprInfo,
             bool typeOnly,
             ReadOnlySpan<char> ident,
-            ExprInfo exprInfo,
             IMemberStorage storage,
             List<Error>? errors)
         {
@@ -500,7 +500,7 @@ public static class ExprParser
                 };
             }
 
-            if (!storage.TryGetVariable(ident, out TextVariant varValue))
+            if (!storage.TryGetValue(ident, out TextVariant varValue))
             {
                 errors?.AddError(exprInfo, $"Undefined variable '{ident}'.");
                 return new();
@@ -510,88 +510,98 @@ public static class ExprParser
         }
 
         static TextVariant HandleFuncCall(
-            ref int pos,
             ExprInfo exprInfo,
+            ref int pos,
+            ref int parenCount,
             bool isAwait,
             bool typeOnly,
-            int start,
-            ReadOnlySpan<char> ident,
-            int j,
+            ReadOnlySpan<char> methodName,
             IMemberStorage storage,
             List<Error>? errors)
         {
-            ReadOnlySpan<char> line = exprInfo.Line;
-            pos = j + 1; // move inside '('
+            ReadOnlySpan<char> expr = exprInfo.Span;
+            FuncDef? funcDef = storage.GetMethodFuncDef(methodName);
 
-            List<TextVariant> args = [];
-            pos = DialogHelpers.GetNextNonWhitespace(line[..exprInfo.End], pos);
-
-            if (pos < exprInfo.End && line[pos] != ')')
+            if (funcDef == null)
             {
-                while (true)
+                errors?.AddError(exprInfo, $"Undefined method '{methodName}'.");
+                return new();
+            }
+            else if (isAwait && !funcDef.Awaitable)
+            {
+                errors?.AddError(exprInfo, $"Method '{methodName}' is not awaitable.");
+                return new();
+            }
+
+            parenCount++;
+            TextVariant funcValue;
+            TextVariant[] args = ArrayPool<TextVariant>.Shared.Rent(funcDef.ArgTypes.Length);
+
+            try
+            {
+                pos = DialogHelpers.GetNextNonWhitespace(expr, pos);
+                int currArg = 0;
+
+                while (pos < expr.Length && expr[pos] != ')')
                 {
-                    TextVariant arg = ParseExpression(ref pos, exprInfo, isAwait, typeOnly, storage, errors);
-                    args.Add(arg);
+                    TextVariant arg = ParseExpression(exprInfo, ref pos, ref parenCount, isAwait, typeOnly, storage, errors);
+                    args[currArg] = arg;
+                    currArg++;
+                    pos = DialogHelpers.GetNextNonWhitespace(expr, pos);
 
-                    pos = DialogHelpers.GetNextNonWhitespace(line[..exprInfo.End], pos);
-
-                    if (pos >= exprInfo.End)
+                    if (pos >= expr.Length)
                     {
                         errors?.AddError(exprInfo, "Unterminated function call");
                         return new();
                     }
 
-                    if (line[pos] == ')')
-                        break;
+                    if (expr[pos] == ',')
+                    {
+                        pos++;
+                        pos = DialogHelpers.GetNextNonWhitespace(expr, pos);
+                        continue;
+                    }
 
-                    if (line[pos] != ',')
+                    if (expr[pos] != ')')
                     {
                         errors?.AddError(exprInfo, "Expected ',' in argument list");
                         return new();
                     }
-
-                    pos++; // consume comma
-                    pos = DialogHelpers.GetNextNonWhitespace(line[..exprInfo.End], pos);
                 }
-            }
 
-            if (pos >= exprInfo.End || line[pos] != ')')
-            {
-                errors?.AddError(exprInfo, "Mismatched parentheses in call");
-                return new();
-            }
-
-            pos++; // consume ')'
-            ReadOnlySpan<char> name = line[start..(start + ident.Length)];
-            VarType funcType = storage.GetMethodReturnType(name);
-
-            if (funcType == VarType.Undefined)
-            {
-                errors?.AddError(exprInfo, $"Undefined method '{name}'.");
-                return new();
-            }
-
-            if (typeOnly)
-            {
-                return funcType switch
+                if (pos >= expr.Length || expr[pos] != ')')
                 {
-                    VarType.Float => new(0),
-                    VarType.String => new(string.Empty),
-                    VarType.Bool => new(false),
-                    _ => new()
-                };
+                    errors?.AddError(exprInfo, "Mismatched parentheses in call");
+                    return new();
+                }
+
+                parenCount--;
+                pos++; // consume ')'
+
+                if (typeOnly)
+                {
+                    return funcDef.ReturnType switch
+                    {
+                        VarType.Float => new(0),
+                        VarType.String => new(string.Empty),
+                        VarType.Bool => new(false),
+                        _ => new()
+                    };
+                }
+
+                if (isAwait)
+                    funcValue = storage.CallAsyncMethod(methodName, args.AsSpan()[..funcDef.ArgTypes.Length]);
+                else
+                    funcValue = storage.CallMethod(methodName, args.AsSpan()[..funcDef.ArgTypes.Length]);
             }
-
-            TextVariant funcValue;
-
-            if (isAwait)
-                funcValue = storage.CallAsyncMethod(name, args.ToArray());
-            else
-                funcValue = storage.CallMethod(name, args.ToArray());
+            finally
+            {
+                ArrayPool<TextVariant>.Shared.Return(args);
+            }
 
             if (funcValue.VariantType == VarType.Undefined)
             {
-                errors?.AddError(exprInfo, $"Undefined method or incorrect arguments for '{name}'.");
+                errors?.AddError(exprInfo, $"Undefined method or incorrect arguments for '{methodName}'.");
                 return new();
             }
 
@@ -599,18 +609,18 @@ public static class ExprParser
         }
     }
 
-    private static ReadOnlySpan<char> PeekOperator(ref int pos, ExprInfo exprInfo)
+    private static ReadOnlySpan<char> PeekOperator(int pos, ExprInfo exprInfo)
     {
-        ReadOnlySpan<char> line = exprInfo.Line;
+        ReadOnlySpan<char> expr = exprInfo.Span;
 
-        if (pos >= exprInfo.End)
-            return [];
+        if (pos >= expr.Length)
+            return default;
 
-        int remaining = exprInfo.End - pos;
+        int remaining = expr.Length - pos;
 
         if (remaining >= 2)
         {
-            switch (line[pos..(pos + 2)])
+            switch (expr[pos..(pos + 2)])
             {
                 case "==":
                 case "!=":
@@ -618,20 +628,22 @@ public static class ExprParser
                 case "<=":
                 case "&&":
                 case "||":
-                    return line.Slice(pos, 2);
+                    return expr.Slice(pos, 2);
             }
         }
 
-        return line[pos] switch
+        ReadOnlySpan<char> result = expr[pos] switch
         {
             '+' or
             '-' or
             '*' or
             '/' or
             '>' or
-            '<' => line.Slice(pos, 1),
-            _ => [],
+            '<' => expr.Slice(pos, 1),
+            _ => default,
         };
+
+        return result;
     }
 
     private static (int lbp, int rbp) InfixBindingPower(ReadOnlySpan<char> op)
@@ -654,7 +666,12 @@ public static class ExprParser
         };
     }
 
-    private static TextVariant EvaluateUnary(char op, TextVariant operand, ExprInfo exprInfo, List<Error>? errors)
+    private static TextVariant EvaluateUnary(
+        ExprInfo exprInfo,
+        int pos,
+        char op,
+        TextVariant operand,
+        List<Error>? errors)
     {
         switch (op)
         {
@@ -688,10 +705,10 @@ public static class ExprParser
     }
 
     private static TextVariant EvaluateBinary(
+        ExprInfo exprInfo,
         ReadOnlySpan<char> op,
         TextVariant left,
         TextVariant right,
-        ExprInfo exprInfo,
         List<Error>? errors)
     {
         switch (op)
@@ -703,12 +720,12 @@ public static class ExprParser
                     string sRight = string.Empty;
 
                     if (left.VariantType == VarType.String)
-                        sLeft = left.String;
+                        sLeft = left.Chars.ToString();
                     else if (left.VariantType == VarType.Float)
                         sLeft = left.Float.ToString();
                     
                     if (right.VariantType == VarType.String)
-                        sRight = right.String;
+                        sRight = right.Chars.ToString();
                     else if (right.VariantType == VarType.Float)
                         sRight = right.Float.ToString();
 
@@ -754,7 +771,7 @@ public static class ExprParser
                     return new(left.Bool == right.Bool);
 
                 if (left.VariantType == VarType.String && right.VariantType == VarType.String)
-                    return new(left.String == right.String);
+                    return new(left.Chars.Span.SequenceEqual(right.Chars.Span));
 
                 return new(false);
             case "!=":
@@ -765,7 +782,7 @@ public static class ExprParser
                     return new(left.Bool != right.Bool);
 
                 if (left.VariantType == VarType.String && right.VariantType == VarType.String)
-                    return new(left.String != right.String);
+                    return new(!left.Chars.Span.SequenceEqual(right.Chars.Span));
 
                 return new(true);
             case ">":
