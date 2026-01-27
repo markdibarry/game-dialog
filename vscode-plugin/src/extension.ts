@@ -18,14 +18,15 @@ import { ChildProcess, spawn } from 'child_process';
 const serverPath = "out/server/GameDialog.Server.dll";
 const extensionId = "gamedialog";
 
-interface NotificationRequest { }
+interface NotificationRequest { isCSV: boolean }
 interface NotificationResponse { data: Array<string>; }
 
 let client: LanguageClient;
 let server: ChildProcess;
 
 export function activate(context: ExtensionContext) {
-    commands.registerCommand('extension.generateCSV', generateCSV);
+    commands.registerCommand('extension.generateCSV', () => generateTranslation(true));
+    commands.registerCommand('extension.generatePOT', () => generateTranslation(false));
 
     let configuration = workspace.getConfiguration(extensionId);
     let enable = configuration.get("enabled");
@@ -106,8 +107,9 @@ async function stopServer(): Promise<void> {
     server.kill();
 }
 
-async function generateCSV(): Promise<void> {
-    const message = `This will generate a CSV translation file for all of your .dia files.`;
+async function generateTranslation(isCSV: boolean): Promise<void> {
+    let type = isCSV ? 'CSV' : 'POT';
+    const message = `This will generate a ${type} translation file for all of your .dia files.`;
     const confirm = 'Proceed';
     const choice = await window.showWarningMessage(message, { modal: true }, confirm );
 
@@ -116,17 +118,14 @@ async function generateCSV(): Promise<void> {
     }
 
     try {
-        const params: NotificationRequest = {};
-        const result = await client.sendRequest<NotificationResponse>('dialog/generateCSV', params);
+        const params: NotificationRequest = { isCSV };
+        const result = await client.sendRequest<NotificationResponse>(`dialog/generateTranslation`, params);
 
-        if (result.data.length > 0)
-        {
+        if (result.data.length > 0) {
             let errorText = result.data.join(os.EOL);
             window.showErrorMessage(`The following files had errors and need resolved:${os.EOL}${errorText}`);
-        }
-        else
-        {
-            window.showInformationMessage(`CSV file generated successfully.`);
+        } else {
+            window.showInformationMessage(`${type} file generated successfully.`);
         }
     } catch (err) {
         console.error(err);

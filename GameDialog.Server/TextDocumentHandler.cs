@@ -110,7 +110,7 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
         _membersInitialized = true;
     }
 
-    public IList<string> CreateTranslationCSV()
+    public IList<string> CreateTranslation(bool isCSV)
     {
         string rootPath = _server.ClientSettings.RootPath!;
         string[] filePaths = Directory.GetFiles(rootPath, "*.dia", SearchOption.AllDirectories);
@@ -121,26 +121,36 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
             return [];
         }
 
-        string csvDirectory = _configuration[Constants.ConfigCSVTranslationLocation];
+        string translationDirectory = _configuration[Constants.ConfigTranslationLocation];
 
-        if (string.IsNullOrEmpty(csvDirectory))
-            csvDirectory = rootPath;
+        if (string.IsNullOrEmpty(translationDirectory))
+            translationDirectory = rootPath;
 
-        if (!Directory.Exists(csvDirectory))
+        if (!Directory.Exists(translationDirectory))
         {
-            _server.Window.ShowError("CSV Translation location is invalid. Please check your settings.");
+            _server.Window.ShowError("Translation location is invalid. Please check your settings.");
             return [];
         }
 
-        string csvPath = $"{csvDirectory}{Path.DirectorySeparatorChar}DialogTranslation.csv";
+        string transPath = $"{translationDirectory}{Path.DirectorySeparatorChar}DialogTranslation";
+        transPath += isCSV ? ".csv" : ".pot";
         // TODO: Add default language
-        string header = "keys,en";
         List<string> filesWithErrors = [];
         List<Error> errors = [];
-
         TrySetMembers();
-        using StreamWriter sw = new(csvPath);
-        sw.Write(header);
+        using StreamWriter sw = new(transPath);
+
+        if (isCSV)
+        {
+            _validator.TranslationMode = TranslationFileType.CSV;
+            sw.Write("keys,en");
+        }
+        else
+        {
+            _validator.TranslationMode = TranslationFileType.POT;
+            sw.WriteLine("msgid \"\"");
+            sw.WriteLine("msgstr \"\"");
+        }
 
         foreach (string filePath in filePaths)
         {

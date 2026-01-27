@@ -34,6 +34,7 @@ With a custom class in place you can run a script with the following code:
 
 ```csharp
 Dialog dialog = new Dialog();
+AddChild(dialog);
 dialog.Load("HelloWorld.dia");
 dialog.Start();
 ```
@@ -44,6 +45,7 @@ You can also run a single-line dialog via the following:
 
 ```csharp
 Dialog dialog = new Dialog();
+AddChild(dialog);
 dialog.LoadSingleLine("Hello world! I'm writing dialog.");
 dialog.Start();
 ```

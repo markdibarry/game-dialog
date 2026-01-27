@@ -10,15 +10,12 @@ public partial class Dialog : DialogBase
     public DialogBox? DialogBox { get; set; }
     public int OptionColumns { get; private set; } = 1;
 
-    protected override void OnDialogLineStarted(
-        string text,
-        IReadOnlyList<string> speakerIds,
-        IReadOnlyList<TextEvent> textEvents)
+    protected override void OnDialogLineStarted(string text, IReadOnlyList<string> speakerIds)
     {
         DialogBox ??= CreateDialogBox();
         // Gives access to script when parsing
         DialogBox.TextWriter.Dialog = this;
-        DialogBox.WriteDialogLine(text, speakerIds, textEvents);
+        DialogBox.WriteDialogLine(text, speakerIds);
     }
 
     protected override void OnDialogLineResumed()

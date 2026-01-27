@@ -35,13 +35,13 @@ public class DialogStorage : IMemberStorage
     {
         if (AltVarDefLookup.TryGetValue(varName, out VarDef varDef))
             return varDef.Type;
-        else if (TryGetValue(varName, out TextVariant value))
+        else if (TryGetVariant(varName, out TextVariant value))
             return value.VariantType;
 
         return VarType.Undefined;
     }
 
-    public bool TryGetValue(ReadOnlySpan<char> key, [NotNullWhen(true)] out TextVariant value)
+    public bool TryGetVariant(ReadOnlySpan<char> key, [NotNullWhen(true)] out TextVariant value)
     {
         if (AltVarDefLookup.ContainsKey(key))
             value = _dialogBridge.InternalGetProperty(key);
@@ -51,11 +51,11 @@ public class DialogStorage : IMemberStorage
         return true;
     }
 
-    public bool TryGetValue<T>(string key, [NotNullWhen(true)] out T? value)
+    public bool TryGetValue<T>(ReadOnlySpan<char> key, [NotNullWhen(true)] out T? value)
     {
         value = default;
 
-        if (!TryGetValue(key, out TextVariant variant))
+        if (!TryGetVariant(key, out TextVariant variant))
             return false;
 
         if (!variant.TryGetValue(out value))

@@ -4,7 +4,7 @@ namespace GameDialog.Runner;
 
 public interface IMemberStorage
 {
-    bool TryGetValue(ReadOnlySpan<char> varName, out TextVariant value);
+    bool TryGetVariant(ReadOnlySpan<char> varName, out TextVariant value);
     VarType GetVariableType(ReadOnlySpan<char> varName);
     void SetValue(ReadOnlySpan<char> varName, TextVariant value);
     VarType GetMethodReturnType(ReadOnlySpan<char> methodName);

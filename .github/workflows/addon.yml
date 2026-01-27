@@ -27,6 +27,7 @@ jobs:
             cp GameDialog.Runner/Models/IMemberStorage.cs GameDialog/Models/
             cp GameDialog.Runner/Models/TextEvent.cs GameDialog/Models/
             cp GameDialog.Runner/Models/TextVariant.cs GameDialog/Models/
+            cp GameDialog.Runner/Models/TranslationMode.cs GameDialog/Models/
             cp GameDialog.Runner/Models/VarDef.cs GameDialog/Models/
             cp GameDialog.Runner/Models/VarType.cs GameDialog/Models/
 
@@ -62,7 +63,6 @@ jobs:
           uses: actions/setup-dotnet@v4
           with:
             dotnet-version: '10.0.x'
-            dotnet-quality: 'preview'
 
         - name: Install Extension Dependencies
           run: |

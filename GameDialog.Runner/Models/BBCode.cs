@@ -15,6 +15,16 @@ public static class BBCode
         return SupportedTags.GetAlternateLookup<ReadOnlySpan<char>>().Contains(tag);
     }
 
+    /// <summary>
+    /// Is tag that is replaced with a char.
+    /// </summary>
+    /// <param name="tag"></param>
+    /// <returns></returns>
+    public static bool IsReplaceTag(ReadOnlySpan<char> tag)
+    {
+        return ReplaceTags.GetAlternateLookup<ReadOnlySpan<char>>().Contains(tag);
+    }
+
     private static readonly HashSet<string> SupportedTags =
     [
         "b",
@@ -27,8 +37,8 @@ public static class BBCode
         "br",
         "hr",
         "center",
-        "right",
         "left",
+        "right",
         "fill",
         "indent",
         "url",
@@ -39,21 +49,68 @@ public static class BBCode
         "dropcap",
         "opentype_features",
         "lang",
+        "color",
+        "bgcolor",
+        "fgcolor",
+        "outline_size",
+        "outline_color",
         "table",
         "cell",
         "ul",
         "ol",
         "lb",
         "rb",
-        "color",
-        "bgcolor",
-        "fgcolor",
-        "outline_size",
-        "outline_color",
+        "lrm",
+        "rlm",
+        "lre",
+        "rle",
+        "lro",
+        "rlo",
+        "pdf",
+        "alm",
+        "lri",
+        "rli",
+        "fsi",
+        "pdi",
+        "zwj",
+        "zwnj",
+        "wj",
+        "shy",
         "wave",
         "tornado",
         "fade",
         "rainbow",
         "shake"
+    ];
+
+    /// <summary>
+    /// Contains tags that replaces the tag with a char.
+    /// </summary>
+    private static readonly HashSet<string> ReplaceTags =
+    [
+        "hr",
+        "br",
+        "ul",
+        "ol",
+        "indent",
+        "char",
+        "lb",
+        "rb",
+        "lrm",
+        "rlm",
+        "lre",
+        "rle",
+        "lro",
+        "rlo",
+        "pdf",
+        "alm",
+        "lri",
+        "rli",
+        "fsi",
+        "pdi",
+        "zwj",
+        "zwnj",
+        "wj",
+        "shy",
     ];
 }

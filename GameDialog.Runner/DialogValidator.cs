@@ -19,6 +19,7 @@ public partial class DialogValidator : IMemberStorage
         _predefinedFuncDefs = predefinedFuncDefs;
     }
 
+    public TranslationFileType TranslationMode { get; set; }
     private readonly List<ReadOnlyMemory<char>> _sectionTitles = [];
     private readonly ParserState _state;
     private readonly Dictionary<string, VarDef> _predefinedVarDefs;
@@ -358,7 +359,7 @@ public partial class DialogValidator : IMemberStorage
                 _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagKey}' can only be assigned to or be part of a closing tag.");
             }
         }
-        else if (tagKey.SequenceEqual(BuiltIn.SCROLL) || tagKey.SequenceEqual(BuiltIn.PROMPT))
+        else if (tagKey.SequenceEqual(BuiltIn.SCROLL) || tagKey.SequenceEqual(BuiltIn.PROMPT) || tagKey.SequenceEqual(BuiltIn.PAGE))
         {
             if (exprContext != ExprContext.Line)
                 _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagKey}' can only be used in a dialog line.");
@@ -570,7 +571,7 @@ public partial class DialogValidator : IMemberStorage
 
             while (_charIdx < line.Length)
             {
-                if (line[_charIdx] == '[' && line[_charIdx - 1] != '\\')
+                if (line[_charIdx] == '[')
                     ValidateExpressionBlock(ExprContext.Choice);
 
                 _charIdx++;
@@ -582,12 +583,28 @@ public partial class DialogValidator : IMemberStorage
 
                 if (!choiceText.IsWhiteSpace())
                 {
-                    _sw.WriteLine();
-                    _sw.Write(_state.RowPrefix);
-                    _sw.Write("_Line");
-                    _sw.Write(_state.LineIdx);
-                    _sw.Write(',');
-                    WriteEscapedCsvField(_sw, choiceText);
+                    if (TranslationMode == TranslationFileType.CSV)
+                    {
+                        _sw.WriteLine();
+                        _sw.Write(_state.RowPrefix);
+                        _sw.Write("_Line");
+                        _sw.Write(_state.LineIdx);
+                        _sw.Write(',');
+                        WriteEscapedCsvField(_sw, choiceText);
+                    }
+                    else
+                    {
+                        _sw.WriteLine();
+                        _sw.Write("msgctxt \"");
+                        _sw.Write(_state.RowPrefix);
+                        _sw.Write("_Line");
+                        _sw.Write(_state.LineIdx);
+                        _sw.WriteLine("\"");
+                        _sw.Write("msgid \"");
+                        _sw.Write(choiceText);
+                        _sw.WriteLine("\"");
+                        _sw.WriteLine("msgstr \"\"");
+                    }
                 }
             }
 
@@ -619,73 +636,55 @@ public partial class DialogValidator : IMemberStorage
 
         //ReadOnlySpan<char> speakerId = line[start..(_charIdx - 1)];
         _charIdx++;
-        _charIdx = DialogHelpers.GetNextNonWhitespace(line, _charIdx);
-        int originalIndent = _state.CurrentIndentLevel;
-        bool isLastLine = true;
-        bool isFirstLine = true;
-        StringBuilder? sb = null;
 
-        if (line[_charIdx..].StartsWith("^^"))
+        if (line[_charIdx] == ' ')
+            _charIdx++; // Skip the first space after the colon
+
+        int originalIndent = _state.CurrentIndentLevel;
+        int appendStart = _charIdx;
+        bool isLastLine = !line[_charIdx..].TrimStart().StartsWith("^^");
+
+        if (!isLastLine)
         {
-            _charIdx += 2;
+            _charIdx = DialogHelpers.GetNextNonWhitespace(line, _charIdx) + 2;
+            appendStart = _charIdx;
 
             if (line[_charIdx..].TrimEnd().EndsWith("^^"))
+            {
                 line = line.TrimEnd()[..^2];
-            else
-                isLastLine = false;
+                isLastLine = true;
+            }
         }
 
-        int appendStart = _charIdx;
         _chart?.AppendChart(_state, $"Line: {line.GetSnippet(_charIdx)}");
+
+        while (_charIdx < line.Length)
+        {
+            if (line[_charIdx] == '[')
+                ValidateExpressionBlock(ExprContext.Line);
+
+            _charIdx++;
+        }
 
         if (_sw != null)
         {
-            sb = _sb;
-            _sw.WriteLine();
-            _sw.Write(_state.RowPrefix);
-            _sw.Write("_Line");
-            _sw.Write(_state.LineIdx);
-            _sw.Write(',');
+            if (isLastLine)
+                WriteTranslation(_sw, line[appendStart..]);
+            else
+                _sb.Append(line[appendStart..]);
         }
 
-        while (_state.LineIdx < _state.Script.Count)
+        if (isLastLine)
+            return;
+
+        while (_state.LineIdx < _state.Script.Count && !isLastLine)
         {
-            while (_charIdx < line.Length)
-            {
-                if (line[_charIdx] == '[' && (_charIdx == 0 || line[_charIdx - 1] != '\\'))
-                    ValidateExpressionBlock(ExprContext.Line);
-
-                _charIdx++;
-            }
-
-            sb?.Append(line[appendStart..]);
-
-            if (isLastLine)
-            {
-                if (sb != null && _sw != null)
-                {
-                    WriteEscapedCsvField(_sw, sb.ToString());
-                    sb.Clear();
-                }
-
-                if (isFirstLine)
-                    return;
-
-                MoveNextLine();
-
-                if (_state.CurrentIndentLevel <= originalIndent)
-                    _state.Dedent();
-
-                return;
-            }
-
             MoveNextLine();
             _lineVisited = true;
             int prevLineLength = line.Length;
             line = _state.SpanLine;
             _charIdx = DialogHelpers.GetNextNonWhitespace(line, _charIdx);
             appendStart = _charIdx;
-            isFirstLine = false;
 
             if (_state.CurrentIndentLevel <= originalIndent)
             {
@@ -694,10 +693,57 @@ public partial class DialogValidator : IMemberStorage
                 return;
             }
 
-            if (line.Trim().EndsWith("^^"))
+            if (line.TrimEnd().EndsWith("^^"))
             {
                 line = line.TrimEnd()[..^2];
                 isLastLine = true;
+            }
+
+            while (_charIdx < line.Length)
+            {
+                if (line[_charIdx] == '[')
+                    ValidateExpressionBlock(ExprContext.Line);
+
+                _charIdx++;
+            }
+
+            _sb.Append(line[appendStart..]);
+        }
+
+        if (_sw != null)
+        {
+            WriteTranslation(_sw, _sb.ToString());
+            _sb.Clear();
+        }
+
+        MoveNextLine();
+
+        if (_state.CurrentIndentLevel <= originalIndent)
+            _state.Dedent();
+
+        void WriteTranslation(StreamWriter sw, ReadOnlySpan<char> text)
+        {
+            if (TranslationMode == TranslationFileType.CSV)
+            {
+                sw.WriteLine();
+                sw.Write(_state.RowPrefix);
+                sw.Write("_Line");
+                sw.Write(_state.LineIdx);
+                sw.Write(',');
+                WriteEscapedCsvField(sw, text);
+            }
+            else
+            {
+                sw.WriteLine();
+                sw.Write("msgctxt \"");
+                sw.Write(_state.RowPrefix);
+                sw.Write("_Line");
+                sw.Write(_state.LineIdx);
+                sw.WriteLine("\"");
+                sw.Write("msgid \"");
+                sw.Write(text);
+                sw.WriteLine("\"");
+                sw.WriteLine("msgstr \"\"");
             }
         }
     }
@@ -716,7 +762,7 @@ public partial class DialogValidator : IMemberStorage
         return true;
     }
 
-    public bool TryGetValue(ReadOnlySpan<char> key, out TextVariant value)
+    public bool TryGetVariant(ReadOnlySpan<char> key, out TextVariant value)
     {
         VarType varType = GetVariableType(key);
 

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cbhx8r6pbetx5"]
 
-[ext_resource type="Script" uid="uid://dpdawry0l7rh4" path="res://Addons/GameDialog/TextWriter.cs" id="1_7q3q8"]
+[ext_resource type="Script" uid="uid://c6bai207kxpce" path="res://Addons/GameDialog/TextWriter.cs" id="1_7q3q8"]
 [ext_resource type="Script" uid="uid://dneb2dly73bal" path="res://Scenes/GUI/DialogBox.cs" id="1_fqg7g"]
 [ext_resource type="Texture2D" uid="uid://ccdtrsxw8fnb0" path="res://icon.svg" id="2_3f5xn"]
 [ext_resource type="FontFile" uid="uid://shb02uonew8n" path="res://Assets/m6x11.ttf" id="2_4qjh8"]

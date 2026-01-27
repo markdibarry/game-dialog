@@ -13,7 +13,8 @@ public static class BuiltIn
         PAUSE,
         SPEED,
         PROMPT,
-        SCROLL
+        SCROLL,
+        PAGE
     ];
 
     public const string AUTO = "auto";
@@ -23,6 +24,7 @@ public static class BuiltIn
     public const string SPEED = "speed";
     public const string PROMPT = "prompt";
     public const string SCROLL = "scroll";
+    public const string PAGE = "page";
 
     public static bool IsSupportedTag(string text)
     {

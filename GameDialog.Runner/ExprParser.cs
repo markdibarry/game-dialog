@@ -180,12 +180,12 @@ public static class ExprParser
             {
                 if (result.VariantType == VarType.String)
                 {
-                    memberStorage.TryGetValue(varName, out TextVariant value);
+                    memberStorage.TryGetVariant(varName, out TextVariant value);
                     memberStorage.SetValue(varName, new(value.Chars.ToString() + result.Chars.ToString()));
                 }
                 else if (result.VariantType == VarType.Float)
                 {
-                    memberStorage.TryGetValue(varName, out TextVariant value);
+                    memberStorage.TryGetVariant(varName, out TextVariant value);
                     memberStorage.SetValue(varName, new(value.Chars.ToString() + result.Float));
                 }
                 else
@@ -198,7 +198,7 @@ public static class ExprParser
             {
                 if (result.VariantType == VarType.Float)
                 {
-                    memberStorage.TryGetValue(varName, out TextVariant value);
+                    memberStorage.TryGetVariant(varName, out TextVariant value);
                     memberStorage.SetValue(varName, new(value.Float + result.Float));
                 }
                 else
@@ -221,7 +221,7 @@ public static class ExprParser
                 return;
             }
 
-            memberStorage.TryGetValue(varName, out TextVariant value);
+            memberStorage.TryGetVariant(varName, out TextVariant value);
             memberStorage.SetValue(varName, new(value.Float - result.Float));
         }
         else if (assignKind == AssignKind.Mult)
@@ -232,7 +232,7 @@ public static class ExprParser
                 return;
             }
 
-            memberStorage.TryGetValue(varName, out TextVariant value);
+            memberStorage.TryGetVariant(varName, out TextVariant value);
             memberStorage.SetValue(varName, new(value.Float * result.Float));
         }
         else if (assignKind == AssignKind.Div)
@@ -246,7 +246,7 @@ public static class ExprParser
             if (result.Float == 0)
                 return;
 
-            memberStorage.TryGetValue(varName, out TextVariant value);
+            memberStorage.TryGetVariant(varName, out TextVariant value);
             memberStorage.SetValue(varName, new(value.Float / result.Float));
         }
     }
@@ -500,7 +500,7 @@ public static class ExprParser
                 };
             }
 
-            if (!storage.TryGetValue(ident, out TextVariant varValue))
+            if (!storage.TryGetVariant(ident, out TextVariant varValue))
             {
                 errors?.AddError(exprInfo, $"Undefined variable '{ident}'.");
                 return new();
@@ -545,6 +545,15 @@ public static class ExprParser
                 while (pos < expr.Length && expr[pos] != ')')
                 {
                     TextVariant arg = ParseExpression(exprInfo, ref pos, ref parenCount, isAwait, typeOnly, storage, errors);
+
+                    VarType argType = funcDef.ArgTypes[currArg];
+
+                    if (arg.VariantType != argType)
+                    {
+                        errors?.AddError(exprInfo, $"Method '{funcDef.Name}' expected type {argType}, but received {arg.VariantType}.");
+                        return new();
+                    }
+
                     args[currArg] = arg;
                     currArg++;
                     pos = DialogHelpers.GetNextNonWhitespace(expr, pos);
@@ -557,6 +566,12 @@ public static class ExprParser
 
                     if (expr[pos] == ',')
                     {
+                        if (currArg >= funcDef.ArgTypes.Length)
+                        {
+                            errors?.AddError(exprInfo, $"Method '{funcDef.Name}' takes {funcDef.ArgTypes.Length} arguments.");
+                            return new();
+                        }
+
                         pos++;
                         pos = DialogHelpers.GetNextNonWhitespace(expr, pos);
                         continue;

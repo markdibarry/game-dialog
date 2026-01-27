@@ -48,10 +48,7 @@ public partial class DialogBox : MarginContainer
         inputEvent.Dispose();
     }
 
-    public void WriteDialogLine(
-        string text,
-        IReadOnlyList<string> speakerIds,
-        IReadOnlyList<TextEvent> textEvents)
+    public void WriteDialogLine(string text, IReadOnlyList<string> speakerIds)
     {
         SpeakerIds.Clear();
         SpeakerIds.AddRange(speakerIds);
@@ -66,7 +63,7 @@ public partial class DialogBox : MarginContainer
             NameLabel.Text = string.Join(", ", SpeakerIds);
         }
 
-        TextWriter.SetParsedText(text, textEvents);
+        TextWriter.SetDialogText(text);
         // In Godot, when a new Control is created, it is incorrect size until the next frame.
         TextWriter.CallDeferred(TextWriter.MethodName.WriteNextPage);
     }

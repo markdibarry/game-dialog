@@ -12,76 +12,160 @@ public partial class DialogBase
     /// <param name="parsedText"></param>
     /// <param name="events"></param>
     /// <returns></returns>
-    public static void AdjustIndices(ReadOnlySpan<char> oldText, ReadOnlySpan<char> parsedText, List<TextEvent> events)
+    public static void AdjustEventIndices(ReadOnlySpan<char> oldText, ReadOnlySpan<char> parsedText, List<TextEvent> events)
     {
         if (events == null || events.Count == 0)
             return;
 
-        int oldLen = oldText.Length;
+        int oLen = oldText.Length;
         int pLen = parsedText.Length;
-        int oldPos = 0;
+        int oPos = 0;
         int pPos = 0;
         int eventIdx = 0;
         int offset = 0;
 
-        while (oldPos < oldLen)
+        while (oPos < oLen)
         {
-            if (oldText[oldPos] == '[' && (oldPos == 0 || oldText[oldPos - 1] != '\\'))
+            if (!TryAdjustEvent(events, ref eventIdx, oPos, offset))
+                return;
+
+            if (oldText[oPos] != '[')
             {
-                int start = oldPos;
-                int end = start;
-                bool inQuote = false;
-
-                while (end < oldLen)
-                {
-                    if (oldText[end] == ']' && !inQuote)
-                        break;
-
-                    if (oldText[end] == '"')
-                    {
-                        if (!inQuote)
-                            inQuote = true;
-                        else if (oldText[end - 1] != '\\')
-                            inQuote = false;
-                    }
-
-                    end++;
-                }
-
-                if (end < oldLen)
-                {
-                    int tagLength = end + 1 - start;
-                    ReadOnlySpan<char> oldTag = oldText[start..(end + 1)];
-
-                    if (pPos + tagLength >= pLen
-                        || !oldTag.SequenceEqual(parsedText[pPos..(pPos + tagLength)]))
-                    {
-                        offset += tagLength;
-                        oldPos += tagLength;
-                    }
-                }
+                oPos++;
+                pPos++;
+                continue;
             }
 
-            while (events[eventIdx].TextIndex == oldPos)
+            int tagStart = oPos;
+            int tagEnd = GetBracketEnd(oldText, oLen, tagStart);
+
+            // Doesn't close
+            if (tagEnd >= oLen)
             {
-                events[eventIdx] = events[eventIdx] with { TextIndex = oldPos - offset };
+                oPos++;
+                pPos++;
+                continue;
+            }
+
+            int tagLength = tagEnd + 1 - tagStart;
+            ReadOnlySpan<char> oldTag = oldText[tagStart..(tagEnd + 1)];
+
+            // Same text, skip
+            if (pPos + tagLength < pLen && oldTag.SequenceEqual(parsedText[pPos..(pPos + tagLength)]))
+            {
+                oPos += tagLength;
+                pPos += tagLength;
+                continue;
+            }
+
+            int tagNameStart = tagStart + 1;
+
+            if (oldText[tagNameStart] == '/')
+            {
+                offset += tagLength;
+                oPos += tagLength;
+                pPos++;
+                continue;
+            }
+
+            int tagNameEnd = DialogHelpers.GetNextNonIdentifier(oldText, tagNameStart);
+            ReadOnlySpan<char> tagName = oldText[tagNameStart..tagNameEnd];
+
+            if (tagName.SequenceEqual("img"))
+            {
+                int closeTagStart = tagEnd + 1;
+
+                while (closeTagStart < oLen)
+                {
+                    if (oldText[closeTagStart] != '[')
+                    {
+                        closeTagStart++;
+                        continue;
+                    }
+
+                    if (oldText[closeTagStart..].StartsWith("[/img]"))
+                    {
+                        int tagsLength = closeTagStart + "[/img]".Length - tagStart;
+                        oPos += tagsLength;
+                        int imgOffset = IsImgTagValid(oldText[oPos..], parsedText[pPos..]) ? 1 : 0;
+                        offset += tagsLength - imgOffset;
+                        pPos += 1 + imgOffset;
+                        break;
+                    }
+                }
+
+                continue;
+            }
+
+            offset += tagLength;
+            oPos += tagLength;
+
+            if (BBCode.IsReplaceTag(tagName))
+            {
+                offset--;
+                pPos++;
+            }
+        }
+
+        TryAdjustEvent(events, ref eventIdx, oPos, offset);
+
+        static bool TryAdjustEvent(List<TextEvent> events, ref int eventIdx, int oPos, int offset)
+        {
+            TextEvent textEvent = events[eventIdx];
+
+            while (textEvent.TextIndex == oPos)
+            {
+                ReadOnlySpan<char> span = textEvent.Tag.Span;
+                int pOffset = span.StartsWith(BuiltIn.PROMPT) ? 1 : 0;
+                events[eventIdx] = textEvent with { TextIndex = oPos - offset - pOffset };
                 eventIdx++;
 
                 if (eventIdx >= events.Count)
-                    return;
+                    return false;
+
+                textEvent = events[eventIdx];
             }
 
-            oldPos++;
-            pPos++;
+            return true;
         }
 
-        while (events[eventIdx].TextIndex == oldPos)
+        static int GetBracketEnd(ReadOnlySpan<char> oldText, int oLen, int start)
         {
-            events[eventIdx] = events[eventIdx] with { TextIndex = oldPos - offset };
-            eventIdx++;
+            int end = start;
+            bool inQuote = false;
 
-            if (eventIdx >= events.Count)
-                return;
+            while (end < oLen)
+            {
+                if (oldText[end] == ']' && !inQuote)
+                    break;
+
+                if (oldText[end] == '"')
+                {
+                    if (!inQuote)
+                        inQuote = true;
+                    else if (oldText[end - 1] != '\\')
+                        inQuote = false;
+                }
+
+                end++;
+            }
+
+            return end;
+        }
+
+        // img tag only replaced with a space when valid
+        static bool IsImgTagValid(ReadOnlySpan<char> oldText, ReadOnlySpan<char> parsedText)
+        {
+            int oldLastSpace = 0;
+            int pLastSpace = 0;
+
+            while (oldLastSpace < oldText.Length && oldText[oldLastSpace] == ' ')
+                oldLastSpace++;
+
+            while (pLastSpace < parsedText.Length && parsedText[pLastSpace] == ' ')
+                pLastSpace++;
+
+            return pLastSpace > oldLastSpace;
         }
     }
 

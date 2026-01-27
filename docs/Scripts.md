@@ -207,9 +207,14 @@ The `prompt` tag will stop the text at this position and wait for the user's inp
 
 ### `scroll`
 
-The `scroll` tag works the same as the `prompt` tag, but will also scroll the current line to the top 
-of the `TextWriter` display upon user input. This is useful for long, multi-line text that needs 
-broken up into distinct pages for effect.
+The `scroll` tag will scroll the current line to the top of the `TextWriter` display.
+
+### `page`
+
+The `page` tag is a combination of the `prompt` tag, a linebreak, and `scroll` tag all in one!
+It stops the text at the tag's position, then will move to a new line and scroll the current line 
+to the top of the `TextWriter` display upon user input. This is useful for long, multi-line text 
+that needs broken up into distinct pages for effect.
 
 ## Properties and Methods
 

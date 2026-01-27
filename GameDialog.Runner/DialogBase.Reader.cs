@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -9,13 +10,18 @@ namespace GameDialog.Runner;
 
 public partial class DialogBase
 {
+    protected List<Choice>? CacheChoiceList;
+    protected List<string>? CacheSpeakerList;
+    protected Dictionary<string, string>? CacheHashDict;
+
     private const int EndScript = -2;
     private const int SuspendScript = -1;
-    private readonly Dictionary<string, string> _cacheDict = [];
     private readonly StringBuilder _sb = new();
-    private readonly List<Choice> _choices = [];
-    private readonly List<string> _speakerIds = [];
-    private readonly List<TextEvent> _textEvents = [];
+    private DialogValidator? _validator;
+    private readonly ParserState _state = new();
+    private bool _inDialogLine;
+    private List<ReadOnlyMemory<char>> Script => _state.Script;
+    private int LineIdx => _state.LineIdx;
 
     [GeneratedRegex(@"^\s*--\w+--\s*$")]
     private static partial Regex TitleRegex();
@@ -26,6 +32,12 @@ public partial class DialogBase
     [GeneratedRegex(@"^\s*\w+(?:,\s*\w+)*:\s")]
     private static partial Regex SpeakerRegex();
     private static readonly string SingleLineTitle = "--SingleLine--";
+
+    public void Clear()
+    {
+        _state.Reset();
+        _state.Script.Clear();
+    }
 
     /// <summary>
     /// Loads a script from a path.
@@ -51,13 +63,13 @@ public partial class DialogBase
     /// <param name="text"></param>
     public void LoadFromText(string text)
     {
+        Clear();
         _state.ReadStringToScript(text, string.Empty);
     }
 
     public void LoadSingleLine(string text)
     {
-        _state.Reset();
-        _state.Script.Clear();
+        Clear();
         _state.Script.Add(SingleLineTitle.AsMemory());
         _state.Script.Add(text.AsMemory());
     }
@@ -80,6 +92,36 @@ public partial class DialogBase
     {
         int next = sectionId.Length > 0 ? GetSectionIndex(sectionId) : GetFirstSection();
         Resume(next);
+    }
+
+    public void Resume() => Resume(LineIdx + 1);
+
+    public void Resume(int nextIndex)
+    {
+        // Next has not been set, so a line must be in progress.
+        if (_inDialogLine)
+        {
+            OnDialogLineResumed();
+            return;
+        }
+
+        try
+        {
+            while (nextIndex >= 0 && nextIndex < Script.Count)
+                nextIndex = ReadStatement(nextIndex);
+
+            if (nextIndex == SuspendScript)
+                return;
+        }
+        catch (Exception) { }
+
+        ScriptEnded?.Invoke(this);
+    }
+
+    protected void EndDialogLine()
+    {
+        _inDialogLine = false;
+        Resume();
     }
 
     private int GetFirstSection()
@@ -120,36 +162,6 @@ public partial class DialogBase
         return EndScript;
     }
 
-    public void Resume() => Resume(LineIdx + 1);
-
-    public void Resume(int nextIndex)
-    {
-        // Next has not been set, so a line must be in progress.
-        if (_inDialogLine)
-        {
-            OnDialogLineResumed();
-            return;
-        }
-
-        try
-        {
-            while (nextIndex >= 0 && nextIndex < Script.Count)
-                nextIndex = ReadStatement(nextIndex);
-
-            if (nextIndex == SuspendScript)
-                return;
-        }
-        catch (Exception) { }
-
-        ScriptEnded?.Invoke(this);
-    }
-
-    protected void EndDialogLine()
-    {
-        _inDialogLine = false;
-        Resume();
-    }
-
     private int ReadStatement(int lineIdx)
     {
         _state.MoveLine(lineIdx);
@@ -188,9 +200,10 @@ public partial class DialogBase
     {
         if (exprInfo.ExprType == ExprType.Hash)
         {
-            ReadHashExpression(exprInfo);
-            OnHash(_cacheDict);
-            _cacheDict.Clear();
+            CacheHashDict?.Clear();
+            Dictionary<string, string> dict = CacheHashDict ?? [];
+            ReadHashExpression(exprInfo, dict);
+            OnHash(dict);
             return new();
         }
 
@@ -210,9 +223,10 @@ public partial class DialogBase
 
         if (exprType == ExprType.Hash)
         {
-            ReadHashExpression(exprInfo);
-            OnHash(_cacheDict);
-            _cacheDict.Clear();
+            CacheHashDict?.Clear();
+            Dictionary<string, string> dict = CacheHashDict ?? [];
+            ReadHashExpression(exprInfo, dict);
+            OnHash(dict);
             return LineIdx + 1;
         }
 
@@ -226,11 +240,11 @@ public partial class DialogBase
         return exprType == ExprType.Await ? SuspendScript : LineIdx + 1;
     }
 
-    private void ReadHashExpression(ExprInfo exprInfo)
+    private void ReadHashExpression(ExprInfo exprInfo, Dictionary<string, string> dict)
     {
         ReadOnlyMemory<char> mem = exprInfo.Memory;
         ReadOnlySpan<char> expr = exprInfo.Span;
-        var altLookup = _cacheDict.GetAlternateLookup<ReadOnlySpan<char>>();
+        var altLookup = dict.GetAlternateLookup<ReadOnlySpan<char>>();
         int i = 1;
 
         while (i < expr.Length)
@@ -322,7 +336,7 @@ public partial class DialogBase
                 if (isClosingTag || !isAssignment)
                     return LineIdx + 1;
 
-                TextVariant result = ExprParser.Parse(restOfExpr, 0, DialogStorage);
+                TextVariant result = ExprParser.Parse(new(restOfExpr, 0, 0), DialogStorage);
 
                 if (result.VariantType != VarType.Float)
                     return LineIdx + 1;
@@ -350,7 +364,7 @@ public partial class DialogBase
             if (isClosingTag || !isAssignment)
                 return LineIdx + 1;
 
-            TextVariant result = ExprParser.Parse(restOfExpr, 0, DialogStorage);
+            TextVariant result = ExprParser.Parse(new(restOfExpr, 0, 0), DialogStorage);
 
             if (result.VariantType != VarType.Float || result.Float < 0)
                 return LineIdx + 1;
@@ -362,7 +376,7 @@ public partial class DialogBase
             if (isClosingTag || !isAssignment)
                 return LineIdx + 1;
 
-            TextVariant result = ExprParser.Parse(restOfExpr, 0, DialogStorage);
+            TextVariant result = ExprParser.Parse(new(restOfExpr, 0, 0), DialogStorage);
 
             if (result.VariantType != VarType.Float || result.Float <= 0)
                 return LineIdx + 1;
@@ -448,9 +462,10 @@ public partial class DialogBase
         if (IsPartOfEarlierChoiceSet())
             return GetLineSkipping(x => x.StartsWith("? "));
 
-        FillChoices();
-        OnChoice(_choices);
-        _choices.Clear();
+        CacheChoiceList?.Clear();
+        List<Choice> choices = CacheChoiceList ?? [];
+        FillChoices(choices);
+        OnChoice(choices);
         return SuspendScript;
 
         bool IsPartOfEarlierChoiceSet()
@@ -481,7 +496,7 @@ public partial class DialogBase
             return false;
         }
 
-        void FillChoices()
+        void FillChoices(List<Choice> choices)
         {
             int currentIndent = DialogHelpers.GetNextNonWhitespace(Script[LineIdx].Span, 0);
             int lineIdx = LineIdx;
@@ -519,21 +534,29 @@ public partial class DialogBase
                     i = DialogHelpers.GetNextNonWhitespace(line, exprInfo.OffsetEnd + 1);
                 }
 
-                string key = $"{_state.RowPrefix}_Line{lineIdx}";
-                string text = Tr(key);
-
-                if (key != text)
+                if (TranslationFileType != TranslationFileType.None && _state.RowPrefix.Length > 0)
                 {
-                    mem = text.AsMemory();
-                    line = mem.Span;
-                    i = 0;
+                    string key = $"{_state.RowPrefix}_Line{lineIdx}";
+                    string text;
+
+                    if (TranslationFileType == TranslationFileType.CSV)
+                        text = Tr(key);
+                    else
+                        text = Tr(mem[i..line.Length].ToString(), key);
+
+                    if (key != text)
+                    {
+                        mem = text.AsMemory();
+                        line = mem.Span;
+                        i = 0;
+                    }
                 }
 
                 int appendStart = i;
 
                 while (i < line.Length)
                 {
-                    if (line[i] != '[' || (i > 0 && line[i - 1] == '\\'))
+                    if (line[i] != '[')
                     {
                         i++;
                         continue;
@@ -552,7 +575,7 @@ public partial class DialogBase
 
                 lineIdx++;
 
-                _choices.Add(new Choice
+                choices.Add(new Choice
                 {
                     Text = _sb.Length > 0 ? _sb.ToString() : line[appendStart..i].ToString(),
                     Next = GetChoiceBranchLineIdx(lineIdx, currentIndent),
@@ -562,12 +585,12 @@ public partial class DialogBase
             }
 
             // Resolve choices with no branch
-            for (int i = 0; i < _choices.Count; i++)
+            for (int i = 0; i < choices.Count; i++)
             {
-                Choice choice = _choices[i];
+                Choice choice = choices[i];
 
                 if (choice.Next == -1)
-                    _choices[i] = choice with { Next = lineIdx };
+                    choices[i] = choice with { Next = lineIdx };
             }
         }
 
@@ -598,14 +621,15 @@ public partial class DialogBase
     {
         int charIdx = 0;
         int speakerStart = 0;
-        ReadOnlyMemory<char> mem = _state.MemLine;
-        ReadOnlySpan<char> line = mem.Span;
+        ReadOnlySpan<char> line = _state.SpanLine;
+        CacheSpeakerList?.Clear();
+        List<string> speakerIds = CacheSpeakerList ?? [];
 
         while (charIdx < line.Length)
         {
             if (line[charIdx] == ',' || line[charIdx] == ':')
             {
-                _speakerIds.Add(line[speakerStart..charIdx].Trim().ToString());
+                speakerIds.Add(line[speakerStart..charIdx].Trim().ToString());
                 charIdx++;
                 speakerStart = charIdx;
 
@@ -618,78 +642,101 @@ public partial class DialogBase
             charIdx++;
         }
 
-        charIdx++; // Skip the first space after the colon
-        bool isLastLine = true;
-        string key = $"{_state.RowPrefix}_Line{_state.LineIdx}";
-        string text = Tr(key);
+        if (line[charIdx] == ' ')
+            charIdx++; // Skip the first space after the colon
 
-        if (key != text)
+        string text = GetLineText(line, charIdx);
+        _inDialogLine = true;
+        OnDialogLineStarted(text, speakerIds);
+        return SuspendScript;
+    }
+
+    private string GetLineText(ReadOnlySpan<char> line, int charIdx)
+    {
+        if (TranslationFileType == TranslationFileType.CSV && _state.RowPrefix.Length > 0)
         {
-            mem = text.AsMemory();
-            line = mem.Span;
-            charIdx = 0;
+            string key = $"{_state.RowPrefix}_Line{_state.LineIdx}";
+            string translatedText = Tr(key);
+
+            if (key != translatedText)
+                return translatedText;
         }
-        else if (line[charIdx..].StartsWith("^^"))
+
+        // Check if is a multiline
+        if (!line[charIdx..].TrimStart().StartsWith("^^"))
+            return GetTextOrPotTranslation(line[charIdx..].ToString());
+
+        charIdx = DialogHelpers.GetNextNonWhitespace(line, charIdx) + 2;
+        line = line[charIdx..];
+
+        if (line.TrimEnd().EndsWith("^^"))
+            return GetTextOrPotTranslation(line.TrimEnd()[..^2].ToString());
+
+        _sb.Append(line);
+        bool isLastLine = false;
+
+        while (LineIdx < Script.Count && !isLastLine)
         {
-            charIdx += 2;
-
-            if (line.TrimEnd().EndsWith("^^"))
-                line = line.TrimEnd()[..^2];
-            else
-                isLastLine = false;
-        }
-
-        int appendStart = charIdx;
-
-        while (charIdx < line.Length)
-        {
-            CheckForTag(_textEvents, ref charIdx, line, mem, ref appendStart);
-            charIdx++;
-
-            if (charIdx < line.Length)
-                continue;
-
-            _sb.Append(line[appendStart..charIdx]);
-
-            if (isLastLine)
-                break;
-
             _state.MoveNextLine();
-            mem = _state.MemLine;
-            line = mem.Span;
-            charIdx = DialogHelpers.GetNextNonWhitespace(line, 0);
-            appendStart = charIdx;
+            line = _state.SpanLine;
+            int lineStart = DialogHelpers.GetNextNonWhitespace(line, 0);
 
             if (line.TrimEnd().EndsWith("^^"))
             {
                 line = line.TrimEnd()[..^2];
                 isLastLine = true;
             }
+
+            _sb.Append(line[lineStart..]);
         }
 
-        text = _sb.ToString();
+        string text = GetTextOrPotTranslation(_sb.ToString());
         _sb.Clear();
+        return text;
 
-        _inDialogLine = true;
-        OnDialogLineStarted(text, _speakerIds, _textEvents);
-        _speakerIds.Clear();
-        _textEvents.Clear();
-        return SuspendScript;
+        string GetTextOrPotTranslation(string text)
+        {
+            if (TranslationFileType != TranslationFileType.POT || _state.RowPrefix.Length == 0)
+                return text;
+
+            string key = $"{_state.RowPrefix}_Line{_state.LineIdx}";
+            string translatedText = Tr(text, key);
+
+            if (!translatedText.SequenceEqual(text))
+                return translatedText;
+
+            return text;
+        }
+    }
+
+    public string ParseEventsFromText(string text, List<TextEvent> textEvents)
+    {
+        ReadOnlyMemory<char> mem = text.AsMemory();
+        ReadOnlySpan<char> line = text.AsSpan();
+        int charIdx = 0;
+        int appendStart = charIdx;
+
+        while (charIdx < line.Length)
+        {
+            CheckForTag(textEvents, mem, line, ref charIdx, ref appendStart);
+            charIdx++;
+        }
+
+        if (_sb.Length == 0)
+            return text;
+
+        _sb.Append(line[appendStart..]);
+        string result = _sb.ToString();
+        _sb.Clear();
+        return result;
 
         void CheckForTag(
             List<TextEvent> textEvents,
-            ref int charIdx,
-            ReadOnlySpan<char> line,
             ReadOnlyMemory<char> mem,
+            ReadOnlySpan<char> line,
+            ref int charIdx,
             ref int appendStart)
         {
-            if ((line[charIdx] == '[' || line[charIdx] == ']') && line[charIdx - 1] == '\\')
-            {
-                _sb.Append(line[appendStart..(charIdx - 1)]);
-                appendStart = charIdx;
-                return;
-            }
-
             if (line[charIdx] != '[')
                 return;
 
@@ -719,11 +766,32 @@ public partial class DialogBase
                 }
             }
 
+            if (exprType == ExprType.BuiltIn)
+            {
+                int tagNameEnd = DialogHelpers.GetNextNonIdentifier(line, exprInfo.OffsetStart);
+                ReadOnlySpan<char> tagName = line[exprInfo.OffsetStart..tagNameEnd];
+
+                if (tagName.SequenceEqual(BuiltIn.PAGE))
+                {
+                    textEvents.Add(new()
+                    {
+                        Tag = BuiltIn.PROMPT.AsMemory(),
+                        TextIndex = _sb.Length
+                    });
+                    _sb.Append("[br]");
+                    textEvents.Add(new()
+                    {
+                        Tag = BuiltIn.SCROLL.AsMemory(),
+                        TextIndex = _sb.Length
+                    });
+                    return;
+                }
+            }
+
             textEvents.Add(new()
             {
                 Tag = mem[exprInfo.OffsetStart..exprInfo.OffsetEnd],
-                TextIndex = _sb.Length,
-                IsAwait = exprType == ExprType.Await
+                TextIndex = _sb.Length
             });
         }
     }

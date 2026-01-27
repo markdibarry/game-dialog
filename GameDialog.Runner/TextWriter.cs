@@ -41,7 +41,6 @@ public partial class TextWriter : RichTextLabel
     private double _movingScrollValue;
     private readonly List<TextEvent> _textEvents = [];
     private int _textEventIndex;
-    private bool _scrollPageOverride;
 
     [Export]
     public int CharsPerSecond { get; set; }
@@ -86,7 +85,7 @@ public partial class TextWriter : RichTextLabel
     public new string Text
     {
         get => base.Text;
-        set => SetParsedText(value, []);
+        set => SetDialogText(value);
     }
 
     private double PauseTimer
@@ -115,7 +114,7 @@ public partial class TextWriter : RichTextLabel
         if (property == RichTextLabel.PropertyName.Text)
         {
             if (value.Obj is string text)
-                SetParsedText(text, []);
+                SetDialogText(text);
 
             return true;
         }
@@ -129,17 +128,11 @@ public partial class TextWriter : RichTextLabel
             return;
 
         if (PauseTimer > 0)
-        {
             PauseTimer = Math.Max(0, PauseTimer - delta);
-        }
         else if (_isScrolling)
-        {
             ScrollProcess(delta);
-        }
         else if (Writing)
-        {
             Write(delta);
-        }
     }
 
     public void WriteNextPage() => WriteNext(false);
@@ -150,19 +143,19 @@ public partial class TextWriter : RichTextLabel
 
     public void Resume() => Suspended = false;
 
-    public void SetParsedText(string text, IReadOnlyList<TextEvent> textEvents)
+    public void SetDialogText(string text)
     {
-        _textEvents.Clear();
-        _textEvents.AddRange(textEvents);
         _textEventIndex = 0;
         VisibleCharacters = 0;
-        base.Text = text;
-        DialogBase.AdjustIndices(text, GetParsedText(), _textEvents);
+        _textEvents.Clear();
+        string textWithoutEvents = Dialog?.ParseEventsFromText(text, _textEvents) ?? text;
+        base.Text = textWithoutEvents;
+        DialogBase.AdjustEventIndices(textWithoutEvents, GetParsedText(), _textEvents);
         _totalCharacters = GetTotalCharacterCount();
         _scrollBar.Value = 0;
         _targetScrollValue = 0;
         _movingScrollValue = 0;
-        _targetWriteRange = new(0, GetLastVisibleCharacter(0));
+        _targetWriteRange = new(0, GetLastFittingCharacter(0));
 
         AutoProceedEnabled = Dialog?.AutoProceedGlobalEnabled ?? false;
         AutoProceedTimeout = Dialog?.AutoProceedGlobalTimeout ?? 0;
@@ -188,22 +181,16 @@ public partial class TextWriter : RichTextLabel
             return;
         }
 
-        if (_scrollPageOverride)
-        {
-            _scrollPageOverride = false;
-            int currentLine = GetCharacterLine(currentChar);
-            BeginScrollToLine(currentLine);
-        }
-
+        _writeCounter = 1;
         // Is this screen fully written?
-        int lastLine = GetLastVisibleLine(_targetScrollValue);
-        int lastChar = GetLineRange(lastLine).Y;
+        int lastFittingLine = GetLastFittingLine(_targetScrollValue);
+        int lastFittingChar = GetLineRange(lastFittingLine).Y;
 
-        if (currentChar != lastChar)
+        if (currentChar < lastFittingChar)
         {
-            int firstLine = GetFirstVisibleLine(_targetScrollValue);
-            int firstChar = GetLineRange(firstLine).X;
-            _targetWriteRange = new(firstChar, lastChar);
+            int firstFittingLine = GetFirstFittingLine(_targetScrollValue);
+            int firstChar = GetLineRange(firstFittingLine).X;
+            _targetWriteRange = new(firstChar, lastFittingChar);
             _isWriting = true;
             return;
         }
@@ -211,35 +198,35 @@ public partial class TextWriter : RichTextLabel
         int nextLine;
 
         if (isLine)
-            nextLine = GetFirstLineWithNextVisible(_targetScrollValue);
+            nextLine = GetNextFittingLine(lastFittingLine);
         else
-            nextLine = lastLine + 1;
+            nextLine = lastFittingLine + 1;
 
-        BeginScrollToLine(nextLine);
+        SetTargetScrollLine(nextLine);
         int charStart = GetLineRange(nextLine).X;
-        int charEnd = GetLastVisibleCharacter(_targetScrollValue);
+        int charEnd = GetLastFittingCharacter(_targetScrollValue);
         _targetWriteRange = new(charStart, charEnd);
         _isWriting = true;
-
-        void BeginScrollToLine(int line)
-        {
-            if (ScrollSpeed == 0)
-            {
-                _targetScrollValue = GetLineOffset(line);
-                _scrollBar.Value = _targetScrollValue;
-                _isScrolling = false;
-                return;
-            }
-
-            _movingScrollValue = _scrollBar.Value;
-            _targetScrollValue = GetLineOffset(line);
-
-            if (_targetScrollValue != _movingScrollValue)
-                _isScrolling = true;
-        }
     }
 
-    private int GetFirstVisibleLine(double startingOffset)
+    private void SetTargetScrollLine(int line)
+    {
+        if (ScrollSpeed == 0)
+        {
+            _targetScrollValue = GetLineOffset(line);
+            _scrollBar.Value = _targetScrollValue;
+            _isScrolling = false;
+            return;
+        }
+
+        _movingScrollValue = _scrollBar.Value;
+        _targetScrollValue = GetLineOffset(line);
+
+        if (_targetScrollValue != _movingScrollValue)
+            _isScrolling = true;
+    }
+
+    private int GetFirstFittingLine(double startingOffset)
     {
         int totalLines = GetLineCount();
 
@@ -254,38 +241,39 @@ public partial class TextWriter : RichTextLabel
         return 0;
     }
 
-    private int GetLastVisibleCharacter(double startingOffset)
+    private int GetLastFittingCharacter(double startingOffset)
     {
-        int line = GetLastVisibleLine(startingOffset);
+        int line = GetLastFittingLine(startingOffset);
         Vector2I range = GetLineRange(line);
         return range.Y;
     }
 
     /// <summary>
-    /// Finds the last fully visible line on screen.
+    /// Finds the last line that can fit on the screen.
     /// </summary>
     /// <param name="startingOffset">
     /// The vertical scroll offset from which to begin searching.
     /// </param>
     /// <returns></returns>
-    private int GetLastVisibleLine(double startingOffset)
+    private int GetLastFittingLine(double startingOffset)
     {
         int totalLines = GetLineCount();
         float controlHeight = Size.Y;
         float contentHeight = GetContentHeight();
         int lastLine = 0;
-        float lineTop = 0;
+        float lineTop;
+        float lineBottom = 0;
 
         for (int i = 0; i < totalLines; i++)
         {
-            float lineBottom = (i + 1 < totalLines) ? GetLineOffset(i + 1) : contentHeight;
-
-            if (lineTop >= startingOffset && lineBottom <= startingOffset + controlHeight)
-                lastLine = i;
-            else if (lineTop > startingOffset + controlHeight)
-                break;
-
             lineTop = lineBottom;
+            lineBottom = (i + 1 < totalLines) ? GetLineOffset(i + 1) : contentHeight;
+
+            if (lineTop <= startingOffset || lineBottom <= startingOffset + controlHeight)
+                lastLine = i;
+
+            if (lineTop > startingOffset + controlHeight)
+                break;
         }
 
         return lastLine;
@@ -302,29 +290,52 @@ public partial class TextWriter : RichTextLabel
     /// The index of the line that can be aligned to the top
     /// while keeping its next line fully in view.
     /// </returns>
-    private int GetFirstLineWithNextVisible(double startingOffset)
+    private int GetNextFittingLine(double startingOffset)
+    {
+        int lastVisibleLine = GetLastFittingLine(startingOffset);
+        return GetNextFittingLine(lastVisibleLine);
+    }
+
+    /// <summary>
+    /// Finds the first line index that, when scrolled to the top of the RichTextLabel,
+    /// still leaves the following line fully visible in the viewport.
+    /// </summary>
+    /// <param name="lastFittingLine">
+    /// The last visible line to start from.
+    /// </param>
+    /// <returns>
+    /// The index of the line that can be aligned to the top
+    /// while keeping its next line fully in view.
+    /// </returns>
+    private int GetNextFittingLine(int lastFittingLine)
     {
         int totalLines = GetLineCount();
-        int lastVisibleLine = GetLastVisibleLine(startingOffset);
         float controlHeight = Size.Y;
 
-        if (lastVisibleLine >= totalLines - 1)
-            return lastVisibleLine;
+        if (lastFittingLine >= totalLines - 1)
+            return totalLines - 1;
 
-        int firstLine = lastVisibleLine + 1;
-        int totalOffset = GetLineHeight(firstLine);
+        int line = lastFittingLine + 1;
+        int totalSize = GetLineHeight(line);
 
-        while (firstLine > 0)
+        if (totalSize >= controlHeight)
+            return line;
+
+        while (line > 0)
         {
-            totalOffset += GetLineHeight(firstLine - 1);
+            int prevLineHeight = GetLineHeight(line - 1);
 
-            if (totalOffset > controlHeight)
+            if (totalSize + prevLineHeight > controlHeight)
                 break;
 
-            firstLine--;
+            totalSize += prevLineHeight;
+            line--;
+
+            if (totalSize == controlHeight)
+                break;
         }
 
-        return firstLine;
+        return line;
     }
 
     private void ScrollProcess(double delta)
@@ -363,11 +374,12 @@ public partial class TextWriter : RichTextLabel
         if (textIndex < textEvent.TextIndex)
             return false;
 
-        if (textEvent.IsAwait)
+        if (textEvent.Tag.Span.StartsWith("await "))
             Suspended = true;
 
         _textEventIndex++;
         (EventType EventType, float Param1) result;
+        int currentChar = VisibleCharacters == -1 ? _totalCharacters : VisibleCharacters;
 
         try
         {
@@ -391,20 +403,30 @@ public partial class TextWriter : RichTextLabel
                 float autoValue = result.Param1;
                 AutoProceedEnabled = autoValue != -2;
                 AutoProceedTimeout = autoValue;
-                int currentChar = VisibleCharacters;
-                bool isComplete = currentChar == -1 || currentChar == _totalCharacters;
+                bool isComplete = currentChar == _totalCharacters;
 
                 if (isComplete)
                     PauseTimer += AutoProceedTimeout;
 
                 break;
             case EventType.Prompt:
+                _targetWriteRange.Y = currentChar + 1;
+                break;
             case EventType.Scroll:
-                int endChar = VisibleCharacters == -1 ? _totalCharacters : VisibleCharacters;
-                _targetWriteRange.Y = endChar + 1;
+                int currentLine = GetCharacterLine(currentChar);
+                SetTargetScrollLine(currentLine);
 
-                if (result.EventType == EventType.Scroll)
-                    _scrollPageOverride = true;
+                // Is this screen fully written?
+                int lastFittingLine = GetLastFittingLine(_targetScrollValue);
+                int lastFittingChar = GetLineRange(lastFittingLine).Y;
+
+                if (currentChar != lastFittingChar)
+                {
+                    int firstFittingLine = GetFirstFittingLine(_targetScrollValue);
+                    int firstChar = GetLineRange(firstFittingLine).X;
+                    _targetWriteRange = new(firstChar, lastFittingChar);
+                    _isWriting = true;
+                }
 
                 break;
         }
@@ -431,8 +453,7 @@ public partial class TextWriter : RichTextLabel
         _scrollBar.Value = 0;
         _targetScrollValue = 0;
         _movingScrollValue = 0;
-        _scrollPageOverride = false;
-        _targetWriteRange = new(0, GetLastVisibleCharacter(0));
+        _targetWriteRange = new(0, GetLastFittingCharacter(0));
     }
 
     private void Write(double delta)
@@ -481,6 +502,9 @@ public partial class TextWriter : RichTextLabel
             currentChar++;
             VisibleCharacters = currentChar;
         }
+
+        if (_isScrolling)
+            ScrollProcess(delta);
 
         if (currentChar < _targetWriteRange.Y)
             return;

@@ -44,20 +44,8 @@ public static class DialogHelpers
 
     public static ReadOnlyMemory<char> StripLineComment(this ReadOnlyMemory<char> line)
     {
-        ReadOnlySpan<char> span = line.Span;
-
-        for (int i = 0; i < line.Length - 1; i++)
-        {
-            // matches "//" not preceded by a backslash
-            if (span[i] == '/'
-                && i + 1 < span.Length && span[i + 1] == '/'
-                && (i == 0 || span[i - 1] != '\\'))
-            {
-                return line[..i];
-            }
-        }
-
-        return line;
+        ReadOnlySpan<char> span = StripLineComment(line.Span);
+        return line[..span.Length];
     }
 
     public static bool ContainsSequence(this List<ReadOnlyMemory<char>> col, ReadOnlySpan<char> seq)

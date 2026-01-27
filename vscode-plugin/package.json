@@ -24,17 +24,37 @@
             {
                 "command": "extension.generateCSV",
                 "title": "Generate CSV file"
+            },
+            {
+                "command": "extension.generatePOT",
+                "title": "Generate POT file"
             }
         ],
         "menus": {
             "explorer/context": [
                 {
                     "when": "resourceExtname == .dia",
+                    "submenu": "gamedialog.generateTranslation",
+                    "group": "navigation"
+                }
+            ],
+            "gamedialog.generateTranslation": [
+                {
                     "command": "extension.generateCSV",
+                    "group": "navigation"
+                },
+                {
+                    "command": "extension.generatePOT",
                     "group": "navigation"
                 }
             ]
         },
+        "submenus": [
+            {
+                "id": "gamedialog.generateTranslation",
+                "label": "Generate Translation"
+            }
+        ],
         "languages": [
             {
                 "id": "gamedialog",
@@ -59,10 +79,10 @@
                     "default": true,
                     "description": "Controls if the Game Dialog language server is enabled."
                 },
-                "gamedialog.csvTranslation.location": {
+                "gamedialog.translation.location": {
                     "type": "string",
                     "default": "",
-                    "description": "Location to save dialog translation .csv file. If blank, it will be created in the root folder."
+                    "description": "Location to save dialog translation .csv/.pot file. If blank, it will be created in the root folder."
                 }
             }
         }
