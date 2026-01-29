@@ -1,7 +1,6 @@
 # Creating a Script
 
-New dialog scripts are made using the `.dia` extension. The name of the file should be unique to 
-the project.
+New dialog scripts are made using the `.dia` extension.
 
 ## Section Title
 
@@ -37,35 +36,12 @@ Stalone: ^^It all started on a Fall night a couple
 
 ## Comments
 
-You can add comments using two forward slashes `//`. For multiline comments, use `/*` to open and 
-`*/` to close:
+You can add comments using two forward slashes `//`:
 
 ```gamedialog
 --Greeting--
 // This is a comment.
 Stalone: Good morning! // So is this.
-
-/*
-This is a
-multi-line
-comment
-*/
-```
-
-## `goto`
-
-By default, the reader starts at the first section in the file. If you have more than one section, 
-it's important to connect them otherwise the dialog script will exit at the end of the current 
-section. To connect them, type an open square bracket, the keyword `goto`, the name of the section 
-you want to "go to", and a closing square bracket:
-
-```gamedialog
---Greeting--
-Stalone: Hello World!
-[goto Goodbye]
-
---Goodbye--
-Stalone: See you later!
 ```
 
 ## Choices
@@ -96,21 +72,21 @@ a variable inside square brackets anywhere in your dialog.
 --Color--
 Stalone: What's your favorite color?
 ? Blue
-    [color="blue"]
+    [myColor="blue"]
 ? Green
-    [color="green"]
+    [myColor="green"]
 ? Red
-    [color="red"]
-Twosen: My favorite color is [color]!;
+    [myColor="red"]
+Twosen: My favorite color is [myColor]!;
 Stalone: That's a nice pick!
 ```
 
 Keep in mind, once you set a variable’s type, it cannot change.
 
 ```
-[color="blue"]
-[color="plaid"] // This works
-[color=25] // This will display an error
+[myColor="blue"]
+[myColor="plaid"] // This works
+[myColor=25] // This will display an error
 ```
 
 ## Conditional Branching
@@ -133,10 +109,10 @@ else
 > For more info on using methods see [Properties and Methods](#properties-and-methods)
 
 We can use Choices and Variables together to conditionally display options to choose from. When the 
-script reaches a choice branch the abstract method `OnChoice(List<Choice> choices)` is called. All 
-of the options are provided to the method. If you have a choice wrapped around a conditional branch 
-and if fails the check, it will have the `Disabled` property set to `true`. Let's see that previous 
-example with a conditional choice!
+script reaches a choice branch the abstract method `OnChoice(IReadOnlyList<Choice> choices)` is 
+called. All of the options are provided to the method. If you have a choice wrapped around a 
+conditional branch and if fails the check, it will have the `Disabled` property set to `true`. 
+Let's see that previous example with a conditional choice!
 
 ```gamedialog
 --Drinks--
@@ -149,9 +125,8 @@ Twosen: What'll you have?
     Twosen: This is called a Capri-Sun!
 ? Milk, please!
     Twosen: Is 2% okay?
-if [age >= 21]
-    ? Shirley Temple!
-        Twosen: Can I see some ID?
+? if [age >= 21] Shirley Temple!
+    Twosen: Can I see some ID?
 Stalone: Ah, that hits the spot!
 ```
 
@@ -205,9 +180,12 @@ Stalone: Great! What's your favorite breakfast food?
 
 ### `goto`
 
-The `goto` tag will make the dialog script "go to" a specified section.
+By default, the reader starts at the first section in the file. If you have more than one section, 
+it's important to connect them otherwise the dialog script will exit at the end of the current 
+section. To connect them, type an open square bracket, the keyword `goto`, the name of the section 
+you want to "go to", and a closing square bracket:
 
-```
+```gamedialog
 --Greeting--
 Stalone: What's your favorite breakfast food?
 ? Waffles.
@@ -227,25 +205,32 @@ Stalone: Pancakes are good, but have you tried waffles?
 
 The `prompt` tag will stop the text at this position and wait for the user's input.
 
+### `scroll`
+
+The `scroll` tag will scroll the current line to the top of the `TextWriter` display.
+
 ### `page`
 
-The `page` tag works the same as the `prompt` tag, but will also scroll the current line to the top 
-of the `TextWriter` display upon user input. This is useful for long, multi-line text that needs 
-broken up into distinct pages for effect.
+The `page` tag is a combination of the `prompt` tag, a linebreak, and `scroll` tag all in one!
+It stops the text at the tag's position, then will move to a new line and scroll the current line 
+to the top of the `TextWriter` display upon user input. This is useful for long, multi-line text 
+that needs broken up into distinct pages for effect.
 
 ## Properties and Methods
 
 ### Adding members
 
-By default, if you try to type a method or property name in your script that you haven't 
+By default, if you try to use a method or property name in your script that you haven't 
 pre-defined, the extension will show an error. To define a method or property for use in your 
-scripts, you'll need to make a partial class of your custom class inheriting from `DialogBase`. 
-The extension will scan your workspace for a file ending in `.DialogBridge.cs`, and then grab all 
-compatible methods and properties inside and create a file ending in `.DialogBridge.g.cs`.
+scripts, you'll need to make a partial class named `DialogBridge` inheriting from `DialogBridgeBase`.
+The extension will scan your workspace for a file named `DialogBridge.cs`, and then grab all 
+compatible methods and properties inside and create a file ending in `DialogBridge.g.cs`.
 The runtime will use this file to handle your methods and properties.
 
 Compatible types for properties and method parameters include `string`, `bool`, and `float`. Method 
-return types include `string`, `bool`, `float`, and `void`.
+return types include `string`, `bool`, `float`, `void`, `Task`, and `ValueTask`.
+
+> For information on async methods, see [await](#await)
 
 ### Using members
 
@@ -291,11 +276,11 @@ script to use them!
 ### `await`
 
 Sometimes, a dialog script needs to wait for something to happen before continuing. If your method 
-is of a `void` return type, you can tell the dialog to suspend execution until a later time 
-by prepending it with the `await` keyword. To resume, call `Resume()` on your `DialogBase` object.
+is of a `Task` or `ValueTask` return type, you can tell the dialog to suspend execution until a later time 
+by prepending it with the `await` keyword.
 
 ```
 Stalone: Hey, what's that over there?
-[await WalkTowards("SuspiciousDresser")]
+[await WalkTowards("SuspiciousCabinet")]
 Stalone: It's a clue!
 ```

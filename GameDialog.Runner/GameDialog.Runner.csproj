@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <LangVersion>Preview</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="GodotSharp" Version="4.5.0-beta" />
-    <ProjectReference Include="../GameDialog.Common/GameDialog.Common.csproj" />
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="4.14.0" />
   </ItemGroup>
+
 </Project>

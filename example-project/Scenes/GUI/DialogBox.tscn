@@ -1,9 +1,14 @@
-[gd_scene load_steps=7 format=3 uid="uid://cbhx8r6pbetx5"]
+[gd_scene format=3 uid="uid://cbhx8r6pbetx5"]
 
-[ext_resource type="Script" uid="uid://b45ea4lo7nxml" path="res://Addons/GameDialog/Dialog/TextWriter.cs" id="1_7q3q8"]
+[ext_resource type="Script" uid="uid://c6bai207kxpce" path="res://Addons/GameDialog/TextWriter.cs" id="1_7q3q8"]
 [ext_resource type="Script" uid="uid://dneb2dly73bal" path="res://Scenes/GUI/DialogBox.cs" id="1_fqg7g"]
 [ext_resource type="Texture2D" uid="uid://ccdtrsxw8fnb0" path="res://icon.svg" id="2_3f5xn"]
 [ext_resource type="FontFile" uid="uid://shb02uonew8n" path="res://Assets/m6x11.ttf" id="2_4qjh8"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_4qjh8"]
+
+[sub_resource type="Theme" id="Theme_nixod"]
+VScrollBar/styles/scroll = SubResource("StyleBoxEmpty_4qjh8")
 
 [sub_resource type="FontVariation" id="FontVariation_1hct6"]
 base_font = ExtResource("2_4qjh8")
@@ -15,7 +20,7 @@ content_margin_top = 4.0
 content_margin_right = 0.0
 content_margin_bottom = 0.0
 
-[node name="DialogBox" type="MarginContainer"]
+[node name="DialogBox" type="MarginContainer" unique_id=121048903]
 custom_minimum_size = Vector2(0, 140)
 anchors_preset = 12
 anchor_top = 1.0
@@ -29,27 +34,28 @@ theme_override_constants/margin_right = 4
 theme_override_constants/margin_bottom = 4
 script = ExtResource("1_fqg7g")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=332983945]
 layout_mode = 2
 
-[node name="NameContainer" type="PanelContainer" parent="VBoxContainer"]
+[node name="NameContainer" type="PanelContainer" parent="VBoxContainer" unique_id=1800411192]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 0
 
-[node name="NameLabel" type="Label" parent="VBoxContainer/NameContainer"]
+[node name="NameLabel" type="Label" parent="VBoxContainer/NameContainer" unique_id=1862820958]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_4qjh8")
 theme_override_font_sizes/font_size = 16
 
-[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer"]
+[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer" unique_id=481852864]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="PagedText" type="RichTextLabel" parent="VBoxContainer/PanelContainer"]
+[node name="PagedText" type="RichTextLabel" parent="VBoxContainer/PanelContainer" unique_id=2000134659]
 unique_name_in_owner = true
 layout_mode = 2
+theme = SubResource("Theme_nixod")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/line_separation = 4
 theme_override_constants/outline_size = 4
@@ -61,15 +67,16 @@ visible_characters_behavior = 1
 visible_ratio = 0.0
 script = ExtResource("1_7q3q8")
 CharsPerSecond = 30
+ScrollSpeed = 50.0
 
-[node name="NextArrow" type="MarginContainer" parent="VBoxContainer/PanelContainer"]
+[node name="NextArrow" type="MarginContainer" parent="VBoxContainer/PanelContainer" unique_id=1433395177]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 8
 
-[node name="TextureRect" type="Sprite2D" parent="VBoxContainer/PanelContainer/NextArrow"]
+[node name="TextureRect" type="Sprite2D" parent="VBoxContainer/PanelContainer/NextArrow" unique_id=266156691]
 scale = Vector2(0.125, 0.125)
 texture = ExtResource("2_3f5xn")
 centered = false

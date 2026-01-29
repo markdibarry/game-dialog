@@ -31,11 +31,6 @@
                 {
                     "name": "comment.line.double-slash",
                     "match": "//.*"
-                },
-                {
-                    "name": "comment.block",
-                    "begin": "/\\*",
-                    "end": "\\*/"
                 }
             ]
         },
@@ -49,7 +44,7 @@
         },
         "choices": {
             "name": "keyword.control",
-            "match": "^\\s*\\?\\s"
+            "match": "^\\s*\\?\\s+(?:if\\s+)?"
         },
         "tags": {
             "name": "keyword.other",
@@ -136,160 +131,8 @@
             ]
         },
         "numerics": {
-            "match": "(?<!\\w)\\.?\\d(?:(?:[0-9a-zA-Z_\\.]|_)|(?<=[eE])[+-])*",
-            "captures": {
-                "0": {
-                    "patterns": [
-                        {
-                            "begin": "(?=.)",
-                            "end": "$",
-                            "patterns": [
-                                {
-                                    "match": "(\\G(?=[0-9.])(?!0[xXbB]))([0-9](?:[0-9]|((?<=[0-9a-fA-F])_(?=[0-9a-fA-F])))*)?((?:(?<=[0-9])|\\.(?=[0-9])))([0-9](?:[0-9]|((?<=[0-9a-fA-F])_(?=[0-9a-fA-F])))*)?((?<!_)([eE])(\\+?)(\\-?)((?:[0-9](?:[0-9]|(?:(?<=[0-9a-fA-F])_(?=[0-9a-fA-F])))*)))?([fFdDmM](?!\\w))?$",
-                                    "captures": {
-                                        "2": {
-                                            "name": "constant.numeric.decimal",
-                                            "patterns": [
-                                                {
-                                                    "match": "(?<=[0-9a-fA-F])_(?=[0-9a-fA-F])",
-                                                    "name": "constant.numeric.other.separator.thousands"
-                                                }
-                                            ]
-                                        },
-                                        "3": {
-                                            "name": "constant.numeric.other.separator.thousands"
-                                        },
-                                        "4": {
-                                            "name": "constant.numeric.other.separator.decimals"
-                                        },
-                                        "5": {
-                                            "name": "constant.numeric.decimal",
-                                            "patterns": [
-                                                {
-                                                    "match": "(?<=[0-9a-fA-F])_(?=[0-9a-fA-F])",
-                                                    "name": "constant.numeric.other.separator.thousands"
-                                                }
-                                            ]
-                                        },
-                                        "6": {
-                                            "name": "constant.numeric.other.separator.thousands"
-                                        },
-                                        "8": {
-                                            "name": "constant.numeric.other.exponent"
-                                        },
-                                        "9": {
-                                            "name": "keyword.operator.arithmetic"
-                                        },
-                                        "10": {
-                                            "name": "keyword.operator.arithmetic"
-                                        },
-                                        "11": {
-                                            "name": "constant.numeric.decimal",
-                                            "patterns": [
-                                                {
-                                                    "match": "(?<=[0-9a-fA-F])_(?=[0-9a-fA-F])",
-                                                    "name": "constant.numeric.other.separator.thousands"
-                                                }
-                                            ]
-                                        },
-                                        "12": {
-                                            "name": "constant.numeric.other.suffix"
-                                        }
-                                    }
-                                },
-                                {
-                                    "match": "(\\G0[bB])([01_](?:[01_]|((?<=[0-9a-fA-F])_(?=[0-9a-fA-F])))*)((?:(?:(?:(?:(?:[uU]|[uU]l)|[uU]L)|l[uU]?)|L[uU]?)|[fFdDmM])(?!\\w))?$",
-                                    "captures": {
-                                        "1": {
-                                            "name": "constant.numeric.other.preffix.binary"
-                                        },
-                                        "2": {
-                                            "name": "constant.numeric.binary",
-                                            "patterns": [
-                                                {
-                                                    "match": "(?<=[0-9a-fA-F])_(?=[0-9a-fA-F])",
-                                                    "name": "constant.numeric.other.separator.thousands"
-                                                }
-                                            ]
-                                        },
-                                        "3": {
-                                            "name": "constant.numeric.other.separator.thousands"
-                                        },
-                                        "4": {
-                                            "name": "constant.numeric.other.suffix"
-                                        }
-                                    }
-                                },
-                                {
-                                    "match": "(\\G0[xX])([0-9a-fA-F](?:[0-9a-fA-F]|((?<=[0-9a-fA-F])_(?=[0-9a-fA-F])))*)((?:(?:(?:(?:(?:[uU]|[uU]l)|[uU]L)|l[uU]?)|L[uU]?)|[fFdDmM])(?!\\w))?$",
-                                    "captures": {
-                                        "1": {
-                                            "name": "constant.numeric.other.preffix.hex"
-                                        },
-                                        "2": {
-                                            "name": "constant.numeric.hex",
-                                            "patterns": [
-                                                {
-                                                    "match": "(?<=[0-9a-fA-F])_(?=[0-9a-fA-F])",
-                                                    "name": "constant.numeric.other.separator.thousands"
-                                                }
-                                            ]
-                                        },
-                                        "3": {
-                                            "name": "constant.numeric.other.separator.thousands"
-                                        },
-                                        "4": {
-                                            "name": "constant.numeric.other.suffix"
-                                        }
-                                    }
-                                },
-                                {
-                                    "match": "(\\G(?=[0-9.])(?!0[xXbB]))([0-9](?:[0-9]|((?<=[0-9a-fA-F])_(?=[0-9a-fA-F])))*)((?<!_)([eE])(\\+?)(\\-?)((?:[0-9](?:[0-9]|(?:(?<=[0-9a-fA-F])_(?=[0-9a-fA-F])))*)))?((?:(?:(?:(?:(?:[uU]|[uU]l)|[uU]L)|l[uU]?)|L[uU]?)|[fFdDmM])(?!\\w))?$",
-                                    "captures": {
-                                        "2": {
-                                            "name": "constant.numeric.decimal",
-                                            "patterns": [
-                                                {
-                                                    "match": "(?<=[0-9a-fA-F])_(?=[0-9a-fA-F])",
-                                                    "name": "constant.numeric.other.separator.thousands"
-                                                }
-                                            ]
-                                        },
-                                        "3": {
-                                            "name": "constant.numeric.other.separator.thousands"
-                                        },
-                                        "5": {
-                                            "name": "constant.numeric.other.exponent"
-                                        },
-                                        "6": {
-                                            "name": "keyword.operator.arithmetic"
-                                        },
-                                        "7": {
-                                            "name": "keyword.operator.arithmetic"
-                                        },
-                                        "8": {
-                                            "name": "constant.numeric.decimal",
-                                            "patterns": [
-                                                {
-                                                    "match": "(?<=[0-9a-fA-F])_(?=[0-9a-fA-F])",
-                                                    "name": "constant.numeric.other.separator.thousands"
-                                                }
-                                            ]
-                                        },
-                                        "9": {
-                                            "name": "constant.numeric.other.suffix"
-                                        }
-                                    }
-                                },
-                                {
-                                    "match": "(?:(?:[0-9a-zA-Z_\\.]|_)|(?<=[eE])[+-])+",
-                                    "name": "invalid.illegal.constant.numeric"
-                                }
-                            ]
-                        }
-                    ]
-                }
-            }
+            "name": "constant.numeric",
+            "match": "\\b([+-]?([0-9]*[.])?[0-9]+)\\b"
         }
     }
 }

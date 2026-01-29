@@ -15,35 +15,46 @@
         "Programming Languages"
     ],
     "activationEvents": [
-        "workspaceContains:**/*.DialogBridge.cs",
+        "workspaceContains:**/DialogBridge.cs",
         "workspaceContains:*.dia"
     ],
     "main": "./out/src/extension.js",
     "contributes": {
         "commands": [
             {
-                "command": "extension.createConstants",
-                "title": "Create Constants File"
+                "command": "extension.generateCSV",
+                "title": "Generate CSV file"
             },
             {
-                "command": "extension.recompileAllFiles",
-                "title": "Recompile All Dialog Files"
+                "command": "extension.generatePOT",
+                "title": "Generate POT file"
             }
         ],
         "menus": {
             "explorer/context": [
                 {
-                    "when": "resourceExtname == .csv",
-                    "command": "extension.createConstants",
+                    "when": "resourceExtname == .dia",
+                    "submenu": "gamedialog.generateTranslation",
+                    "group": "navigation"
+                }
+            ],
+            "gamedialog.generateTranslation": [
+                {
+                    "command": "extension.generateCSV",
                     "group": "navigation"
                 },
                 {
-                    "when": "resourceExtname == .dia",
-                    "command": "extension.recompileAllFiles",
+                    "command": "extension.generatePOT",
                     "group": "navigation"
                 }
             ]
         },
+        "submenus": [
+            {
+                "id": "gamedialog.generateTranslation",
+                "label": "Generate Translation"
+            }
+        ],
         "languages": [
             {
                 "id": "gamedialog",
@@ -68,20 +79,10 @@
                     "default": true,
                     "description": "Controls if the Game Dialog language server is enabled."
                 },
-                "gamedialog.csvTranslation.enabled": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Controls whether saving files should also generate a translation file in .csv format."
-                },
-                "gamedialog.csvTranslation.location": {
+                "gamedialog.translation.location": {
                     "type": "string",
                     "default": "",
-                    "description": "Location to save dialog translation .csv file. If blank, it will be created in the same directory as the dialog file."
-                },
-                "gamedialog.csvTranslation.separateFiles": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Controls whether a central translation file should be created on save or separate files per dialog file."
+                    "description": "Location to save dialog translation .csv/.pot file. If blank, it will be created in the root folder."
                 }
             }
         }

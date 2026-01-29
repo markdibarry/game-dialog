@@ -1,12 +1,12 @@
-[gd_scene load_steps=3 format=3 uid="uid://da2nhtes724i0"]
+[gd_scene format=3 uid="uid://da2nhtes724i0"]
 
 [ext_resource type="Script" uid="uid://dyuiyaepcrlj" path="res://Scenes/Game.cs" id="1_xkndl"]
 [ext_resource type="PackedScene" uid="uid://bygdtl15to16k" path="res://Scenes/TestScene.tscn" id="2_u44n3"]
 
-[node name="Game" type="Node2D"]
+[node name="Game" type="Node2D" unique_id=911123699]
 script = ExtResource("1_xkndl")
 
-[node name="TestScene" parent="." instance=ExtResource("2_u44n3")]
+[node name="TestScene" parent="." unique_id=145514080 instance=ExtResource("2_u44n3")]
 modulate = Color(0.9098039, 0.9098039, 0.9098039, 1)
 
-[node name="GUI" type="CanvasLayer" parent="."]
+[node name="GUI" type="CanvasLayer" parent="." unique_id=941656241]

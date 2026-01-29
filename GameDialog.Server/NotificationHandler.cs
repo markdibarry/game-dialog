@@ -17,17 +17,19 @@ public class NotificationHandler : IJsonRpcRequestHandler<NotificationRequest, N
 
     public Task<NotificationResponse> Handle(NotificationRequest request, CancellationToken cancellationToken)
     {
-        List<string> filesWithErrors = _textDocHandler.CompileAndGenerateAllFiles();
+        IList<string> filesWithErrors = _textDocHandler.CreateTranslation(request.IsCSV);
         return Task.FromResult<NotificationResponse>(new() { Data = filesWithErrors });
     }
 }
 
-[Method("dialog/recompileAllFiles")]
+[Method("dialog/generateTranslation")]
 public class NotificationRequest : IRequest<NotificationResponse>
 {
+    public bool IsCSV { get; set; }
 }
+
 
 public class NotificationResponse
 {
-    public List<string> Data { get; set; } = [];
+    public IList<string> Data { get; set; } = [];
 }

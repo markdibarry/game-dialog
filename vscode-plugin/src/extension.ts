@@ -17,17 +17,17 @@ import * as fs from 'fs';
 import { ChildProcess, spawn } from 'child_process';
 const serverPath = "out/server/GameDialog.Server.dll";
 const extensionId = "gamedialog";
-const notificationMethod = 'dialog/recompileAllFiles';
 
-interface NotificationRequest { }
+interface NotificationRequest { isCSV: boolean }
 interface NotificationResponse { data: Array<string>; }
 
 let client: LanguageClient;
 let server: ChildProcess;
 
 export function activate(context: ExtensionContext) {
-    commands.registerCommand('extension.createConstants', createConstants);
-    commands.registerCommand('extension.recompileAllFiles', recompileAllDialogFiles);
+    commands.registerCommand('extension.generateCSV', () => generateTranslation(true));
+    commands.registerCommand('extension.generatePOT', () => generateTranslation(false));
+
     let configuration = workspace.getConfiguration(extensionId);
     let enable = configuration.get("enabled");
     const outputChannel = window.createOutputChannel("Game Dialog");
@@ -43,7 +43,7 @@ async function runServer(context: ExtensionContext, configuration: WorkspaceConf
         const dotnetAcquisition = await commands.executeCommand<IDotnetAcquireResult>(
             'dotnet.acquire',
             {
-                version: '9.0',
+                version: '10.0',
                 requestingExtensionId: extensionId
             }
         );
@@ -107,8 +107,9 @@ async function stopServer(): Promise<void> {
     server.kill();
 }
 
-async function recompileAllDialogFiles(): Promise<void> {
-    const message = `This will recompile all dialog files in your workspace.`;
+async function generateTranslation(isCSV: boolean): Promise<void> {
+    let type = isCSV ? 'CSV' : 'POT';
+    const message = `This will generate a ${type} translation file for all of your .dia files.`;
     const confirm = 'Proceed';
     const choice = await window.showWarningMessage(message, { modal: true }, confirm );
 
@@ -117,60 +118,17 @@ async function recompileAllDialogFiles(): Promise<void> {
     }
 
     try {
-        const params: NotificationRequest = {};
-        const result = await client.sendRequest<NotificationResponse>(notificationMethod, params);
+        const params: NotificationRequest = { isCSV };
+        const result = await client.sendRequest<NotificationResponse>(`dialog/generateTranslation`, params);
 
-        if (result.data.length > 0)
-        {
+        if (result.data.length > 0) {
             let errorText = result.data.join(os.EOL);
-            window.showErrorMessage(`The following files had errors and could not be compiled:${os.EOL}${errorText}`);
-        }
-        else
-        {
-            window.showInformationMessage(`All files compiled successfully.`);
+            window.showErrorMessage(`The following files had errors and need resolved:${os.EOL}${errorText}`);
+        } else {
+            window.showInformationMessage(`${type} file generated successfully.`);
         }
     } catch (err) {
         console.error(err);
-    }
-}
-
-/**
- * Reads a CSV file specified by the provided URI, extracts the translation keys,
- * and generates a C# static class containing constant string fields for each key. The generated
- * class is saved in the same directory as the CSV file.
- *
- * @param {Uri} uri - The URI of the CSV file from which to extract translation keys.
- * @throws {Error} Throws an error if the file cannot be read or written.
- * 
- * @returns {Promise<void>} A promise that resolves when the file has been successfully created.
- */
-async function createConstants(uri: Uri): Promise<void> {
-    try {
-        let filePath = path.parse(uri.fsPath);
-        let namespace = filePath.dir
-            .replace(workspace.workspaceFolders[0].uri.fsPath, '')
-            .replace(new RegExp(`\\${path.sep}`, 'g'), '.')
-            .slice(1);
-        const keys = (await fs.promises.readFile(uri.fsPath, { encoding: 'utf-8' }))
-            .split(os.EOL)
-            .slice(1, -1)
-            .filter(line => line.trim() !== '')
-            .map(x => x.substring(0, x.indexOf(',')));
-        let fields = keys
-            .map(key => `    public const string ${key} = "${key}";`)
-            .join(os.EOL);
-        let fileContent = [
-            `namespace ${namespace};`,
-            '',
-            `public static class ${filePath.name}`,
-            `{`,
-            fields,
-            `}`
-        ].join(os.EOL);
-        let newFileName = `${filePath.dir}${path.sep}${filePath.name}.cs`;
-        await fs.promises.writeFile(newFileName, fileContent);
-    } catch (err) {
-        console.log(err);
     }
 }
 
