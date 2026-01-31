@@ -4,15 +4,19 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace GameDialog.Runner;
 
-public class DialogStorage : IMemberStorage
+/// <summary>
+/// A class for storage and retrieval of dialog variables.
+/// </summary>
+public class DialogStorage
 {
-    public DialogStorage(DialogBridgeBase dialogBridge)
+    internal DialogStorage(DialogBridge dialogBridge)
     {
-        _dialogBridge = dialogBridge;
+        DialogBridge = dialogBridge;
         _storage = [];
     }
 
-    private readonly DialogBridgeBase _dialogBridge;
+    internal DialogBridge DialogBridge { get; }
+
     private readonly Dictionary<string, TextVariant> _storage;
     private Dictionary<string, TextVariant>.AlternateLookup<ReadOnlySpan<char>> AltStorageLookup
     {
@@ -20,37 +24,32 @@ public class DialogStorage : IMemberStorage
     }
     private static Dictionary<string, FuncDef>.AlternateLookup<ReadOnlySpan<char>> AltFuncDefLookup
     {
-        get => DialogBridgeBase.InternalFuncDefs.GetAlternateLookup<ReadOnlySpan<char>>();
+        get => DialogBridge.FuncDefs.GetAlternateLookup<ReadOnlySpan<char>>();
     }
     private static Dictionary<string, VarDef>.AlternateLookup<ReadOnlySpan<char>> AltVarDefLookup
     {
-        get => DialogBridgeBase.InternalVarDefs.GetAlternateLookup<ReadOnlySpan<char>>();
+        get => DialogBridge.VarDefs.GetAlternateLookup<ReadOnlySpan<char>>();
     }
 
+    /// <summary>
+    /// Clears all the local dialog variables.
+    /// </summary>
     public void ClearLocalStorage() => _storage.Clear();
 
-    public bool Contains(string key) => _storage.ContainsKey(key);
+    /// <summary>
+    /// Determines whether the storage contains an entry with the specified key.
+    /// </summary>
+    /// <param name="key">The variable key.</param>
+    /// <returns>If true, the storage contains an entry with the specified key.</returns>
+    public bool ContainsKey(string key) => _storage.ContainsKey(key);
 
-    public VarType GetVariableType(ReadOnlySpan<char> varName)
-    {
-        if (AltVarDefLookup.TryGetValue(varName, out VarDef varDef))
-            return varDef.Type;
-        else if (TryGetVariant(varName, out TextVariant value))
-            return value.VariantType;
-
-        return VarType.Undefined;
-    }
-
-    public bool TryGetVariant(ReadOnlySpan<char> key, [NotNullWhen(true)] out TextVariant value)
-    {
-        if (AltVarDefLookup.ContainsKey(key))
-            value = _dialogBridge.InternalGetProperty(key);
-        else if (!AltStorageLookup.TryGetValue(key, out value))
-            return false;
-
-        return true;
-    }
-
+    /// <summary>
+    /// Attempts to get the value associated with the specified key in the storage.
+    /// </summary>
+    /// <typeparam name="T">The type of the value to retrieve.</typeparam>
+    /// <param name="key">The key of the value to get.</param>
+    /// <param name="value">When this method returns, contains the value associated with the specified key, if the key is found.</param>
+    /// <returns>If true, the storage contains an entry with the specified key.</returns>
     public bool TryGetValue<T>(ReadOnlySpan<char> key, [NotNullWhen(true)] out T? value)
     {
         value = default;
@@ -64,12 +63,53 @@ public class DialogStorage : IMemberStorage
         return true;
     }
 
-    public void SetValue(ReadOnlySpan<char> key, TextVariant value)
+    /// <summary>
+    /// Adds the specified key and string value to the storage.
+    /// </summary>
+    /// <param name="key">The key of the entry to add.</param>
+    /// <param name="value">The string value of the entry to add.</param>
+    public void SetValue(ReadOnlySpan<char> key, string value) => SetVariant(key, new TextVariant(value), false);
+
+    /// <summary>
+    /// Adds the specified key and float value to the storage.
+    /// </summary>
+    /// <param name="key">The key of the entry to add.</param>
+    /// <param name="value">The float value of the entry to add.</param>
+    public void SetValue(ReadOnlySpan<char> key, float value) => SetVariant(key, new TextVariant(value), false);
+
+    /// <summary>
+    /// Adds the specified key and boolean value to the storage.
+    /// </summary>
+    /// <param name="key">The key of the entry to add.</param>
+    /// <param name="value">The boolean value of the entry to add.</param>
+    public void SetValue(ReadOnlySpan<char> key, bool value) => SetVariant(key, new TextVariant(value), false);
+
+    internal VarType GetVariableType(ReadOnlySpan<char> varName)
+    {
+        if (AltVarDefLookup.TryGetValue(varName, out VarDef varDef))
+            return varDef.Type;
+        else if (TryGetVariant(varName, out TextVariant value))
+            return value.VariantType;
+
+        return VarType.Undefined;
+    }
+
+    internal bool TryGetVariant(ReadOnlySpan<char> key, [NotNullWhen(true)] out TextVariant value)
+    {
+        if (AltVarDefLookup.ContainsKey(key))
+            value = DialogBridge.GetProperty(key);
+        else if (!AltStorageLookup.TryGetValue(key, out value))
+            return false;
+
+        return true;
+    }
+
+    internal void SetVariant(ReadOnlySpan<char> key, TextVariant value, bool validateOnly)
     {
         if (AltVarDefLookup.TryGetValue(key, out VarDef varDef))
         {
-            if (varDef.Type == value.VariantType)
-                _dialogBridge.InternalSetProperty(key, value);
+            if (varDef.Type == value.VariantType && !validateOnly)
+                DialogBridge.SetProperty(key, value);
         }
         else
         {
@@ -78,13 +118,7 @@ public class DialogStorage : IMemberStorage
         }
     }
 
-    public void SetValue(ReadOnlySpan<char> key, string value) => SetValue(key, new TextVariant(value));
-
-    public void SetValue(ReadOnlySpan<char> key, float value) => SetValue(key, new TextVariant(value));
-
-    public void SetValue(ReadOnlySpan<char> key, bool value) => SetValue(key, new TextVariant(value));
-
-    public VarType GetMethodReturnType(ReadOnlySpan<char> methodName)
+    internal static VarType GetMethodReturnType(ReadOnlySpan<char> methodName)
     {
         if (!AltFuncDefLookup.TryGetValue(methodName, out FuncDef? funcDef))
             return VarType.Undefined;
@@ -92,7 +126,7 @@ public class DialogStorage : IMemberStorage
         return funcDef.ReturnType;
     }
 
-    public FuncDef? GetMethodFuncDef(ReadOnlySpan<char> methodName)
+    internal static FuncDef? GetMethodFuncDef(ReadOnlySpan<char> methodName)
     {
         if (AltFuncDefLookup.TryGetValue(methodName, out FuncDef? funcDef))
             return funcDef;
@@ -100,14 +134,62 @@ public class DialogStorage : IMemberStorage
         return null;
     }
 
-    public TextVariant CallMethod(ReadOnlySpan<char> methodName, ReadOnlySpan<TextVariant> args)
+    internal TextVariant CallMethod(
+        ReadOnlySpan<char> methodName,
+        ReadOnlySpan<TextVariant> args,
+        bool validateOnly)
     {
-        return _dialogBridge.InternalCallMethod(methodName, args);
+        if (!validateOnly)
+            return DialogBridge.CallMethod(methodName, args);
+
+        FuncDef? funcDef = GetMethodFuncDef(methodName);
+
+        if (funcDef == null)
+            return TextVariant.Undefined;
+
+        if (args.Length != funcDef.ArgTypes.Length)
+            return TextVariant.Undefined;
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (args[i].VariantType != funcDef.ArgTypes[i])
+                return TextVariant.Undefined;
+        }
+
+        return funcDef.ReturnType switch
+        {
+            VarType.Float => new(0),
+            VarType.String => new(string.Empty),
+            VarType.Bool => new(false),
+            _ => new()
+        };
     }
 
-    public TextVariant CallAsyncMethod(ReadOnlySpan<char> methodName, ReadOnlySpan<TextVariant> args)
+    internal TextVariant CallAsyncMethod(
+        ReadOnlySpan<char> methodName,
+        ReadOnlySpan<TextVariant> args,
+        bool validateOnly)
     {
-        _dialogBridge.InternalCallAsyncMethod(methodName, args);
+        if (!validateOnly)
+        {
+            DialogBridge.CallAsyncMethod(methodName, args);
+            return new();
+        }
+
+        FuncDef? funcDef = GetMethodFuncDef(methodName);
+
+        if (funcDef == null || !funcDef.Awaitable)
+            return TextVariant.Undefined;
+
+        if (args.Length != funcDef.ArgTypes.Length)
+            return TextVariant.Undefined;
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (args[i].VariantType != funcDef.ArgTypes[i])
+                return TextVariant.Undefined;
+        }
+
         return new();
     }
 }

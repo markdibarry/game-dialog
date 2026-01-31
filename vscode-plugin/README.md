@@ -1,6 +1,6 @@
 # Game Dialog
 
-A game dialog extension for use with Godot 4.5
+A game dialog extension for use with Godot 4.5+
 
 ## Requirements
 

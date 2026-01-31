@@ -1,7 +1,8 @@
 {
     "name": "gamedialog",
     "displayName": "Game Dialog",
-    "description": "A game dialog language",
+    "description": "A game dialog language extension.",
+    "icon": "../icon.png",
     "version": "0.0.1",
     "repository": {
         "type": "git",
@@ -15,7 +16,6 @@
         "Programming Languages"
     ],
     "activationEvents": [
-        "workspaceContains:**/DialogBridge.cs",
         "workspaceContains:*.dia"
     ],
     "main": "./out/src/extension.js",
@@ -28,6 +28,10 @@
             {
                 "command": "extension.generatePOT",
                 "title": "Generate POT file"
+            },
+            {
+                "command": "extension.updateMembers",
+                "title": "Update Members"
             }
         ],
         "menus": {
@@ -35,6 +39,11 @@
                 {
                     "when": "resourceExtname == .dia",
                     "submenu": "gamedialog.generateTranslation",
+                    "group": "navigation"
+                },
+                {
+                    "when": "resourceExtname == .dia",
+                    "command": "extension.updateMembers",
                     "group": "navigation"
                 }
             ],

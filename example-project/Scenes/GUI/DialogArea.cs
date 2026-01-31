@@ -1,4 +1,3 @@
-using System;
 using GameDialog.Runner;
 using Godot;
 
@@ -52,17 +51,18 @@ public partial class DialogArea : Area2D
     public void RunDialog()
     {
         Game.Root.TestScene.ProcessMode = ProcessModeEnum.Disabled;
-        Dialog dialog = new();
-        dialog.ScriptEnded += RemoveDialog;
-        dialog.Load(DialogPath);
-        Game.Root.GUI.AddChild(dialog);
+        PackedScene packedScene = GD.Load<PackedScene>("./Scenes/GUI/DialogBox.tscn");
+        DialogBox dialogBox = packedScene.Instantiate<DialogBox>();
+        Game.Root.GUI.AddChild(dialogBox);
+        dialogBox.Dialog.ScriptEnded += RemoveDialog;
+        dialogBox.Dialog.Load(DialogPath);
         TimesTalked++;
-        dialog.Start();
+        dialogBox.Dialog.Start();
     }
 
-    public void RemoveDialog(DialogBase dialog)
+    public static void RemoveDialog(Dialog dialog)
     {
-        dialog.QueueFree();
+        dialog.Context.QueueFree();
         Game.Root.TestScene.SetDeferred(Node.PropertyName.ProcessMode, (int)ProcessModeEnum.Inherit);
     }
 }

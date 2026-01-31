@@ -31,3 +31,4 @@ bld/
 */obj/*
 */node_modules
 */out
+*/nupkg

@@ -1,10 +1,10 @@
 --HashTags--
-Devs: In your Dialog class, you can override the [color=Gold]OnHash()[/color] method.
-Devs: It gets triggered when your script encounters a hash tag like [color=Gold][lb]#MyTag[rb][/color].
+Devs: Using the Dialog class, you can subscribe to the [color=Gold]HashRead[/color] event.
+Devs: It gets invoked when your script encounters a hash tag like [color=Gold][lb]#MyTag[rb][/color].
 Devs: ^^You can assign a corresponding value as well, and add many to one block as long as they're 
     separated by white space. [color=Gold][lb]#MyTag #Another=4[rb][/color]^^
-Devs: All hash tags in a block are fed to the virtual method in a [color=Gold]Dictionary<string, string>[/color].
-Devs: In the example [color=Gold]Dialog.cs[/color], we handle an "OptionColumns" tag.
+Devs: All hash tags in a block are provided in a [color=Gold]Dictionary<string, string>[/color].
+Devs: In the example [color=Gold]DialogBox.cs[/color], we handle an "OptionColumns" tag.
 Devs: Since our example option box is a GridContainer, we use it to set the Columns property.
 [#OptionColumns=2]
 Devs: We just used [color=Gold][lb]#OptionColumns=2[rb][/color] to set the number of columns to two.

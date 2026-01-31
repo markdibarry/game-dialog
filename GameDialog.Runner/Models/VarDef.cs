@@ -1,6 +1,6 @@
 namespace GameDialog.Runner;
 
-public struct VarDef
+internal struct VarDef
 {
     public VarDef()
     {

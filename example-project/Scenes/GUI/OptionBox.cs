@@ -1,18 +1,18 @@
-using System;
 using System.Collections.Generic;
-using ExampleProject;
 using GameDialog.Runner;
 using Godot;
+
+namespace ExampleProject;
 
 public partial class OptionBox : MarginContainer
 {
     private GridContainer _gridContainer = null!;
-    public Dialog Dialog { get; set; } = null!;
+    public DialogBox DialogBox { get; set; } = null!;
 
     public override void _Ready()
     {
         _gridContainer = GetNode<GridContainer>("%GridContainer");
-        _gridContainer.Columns = Dialog.OptionColumns;
+        _gridContainer.Columns = DialogBox.OptionColumns;
     }
 
     public void Init(IReadOnlyList<Choice> choices)
@@ -36,9 +36,9 @@ public partial class OptionBox : MarginContainer
 
     public void OnButtonPressed(int next)
     {
-        Dialog dialog = Dialog;
+        DialogBox dialogBox = DialogBox;
         QueueFree();
-        dialog.ProcessMode = ProcessModeEnum.Inherit;
-        dialog.Resume(next);
+        dialogBox.ProcessMode = ProcessModeEnum.Inherit;
+        dialogBox.Dialog.Resume(next);
     }
 }

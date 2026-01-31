@@ -1,6 +1,6 @@
 namespace GameDialog.Runner;
 
-public class FuncDef
+internal class FuncDef
 {
     public FuncDef()
     {

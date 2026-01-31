@@ -7,24 +7,17 @@ using System.Text.RegularExpressions;
 
 namespace GameDialog.Runner;
 
-public partial class DialogValidator : IMemberStorage
+internal partial class DialogValidator
 {
-    public DialogValidator(
-        ParserState state,
-        Dictionary<string, VarDef> predefinedVarDefs,
-        Dictionary<string, FuncDef> predefinedFuncDefs)
+    public DialogValidator(DialogStorage dialogStorage, ParserState? parserState = null)
     {
-        _state = state;
-        _predefinedVarDefs = predefinedVarDefs;
-        _predefinedFuncDefs = predefinedFuncDefs;
+        _state = parserState ?? new();
+        _dialogStorage = dialogStorage;
     }
 
-    public TranslationFileType TranslationMode { get; set; }
     private readonly List<ReadOnlyMemory<char>> _sectionTitles = [];
     private readonly ParserState _state;
-    private readonly Dictionary<string, VarDef> _predefinedVarDefs;
-    private readonly Dictionary<string, FuncDef> _predefinedFuncDefs;
-    private readonly List<VarDef> _localVarDefs = [];
+    private readonly DialogStorage _dialogStorage;
     private readonly StringBuilder _sb = new();
     private List<Error>? _errors;
     private StringBuilder? _chart;
@@ -71,7 +64,7 @@ public partial class DialogValidator : IMemberStorage
 
     private void Reset()
     {
-        _localVarDefs.Clear();
+        _dialogStorage.ClearLocalStorage();
         _state.Reset();
         _sectionTitles.Clear();
         _sb.Clear();
@@ -247,7 +240,7 @@ public partial class DialogValidator : IMemberStorage
 
         if (exprType != ExprType.BuiltIn)
         {
-            ExprParser.Parse(exprInfo, this, _errors);
+            ExprParser.Parse(exprInfo, _dialogStorage, _errors);
             return;
         }
 
@@ -291,7 +284,7 @@ public partial class DialogValidator : IMemberStorage
             if (isAssignment)
             {
                 ExprInfo rightExprInfo = new(exprInfo.Memory, _state.LineIdx, exprInfo.OffsetStart + start);
-                TextVariant result = ExprParser.Parse(rightExprInfo, this, _errors);
+                TextVariant result = ExprParser.Parse(rightExprInfo, _dialogStorage, _errors);
 
                 if (isClosingTag)
                     _errors?.AddError(exprInfo, $"Built-in tag '{tagKey}' can only be assigned to or be part of a closing tag.");
@@ -337,7 +330,7 @@ public partial class DialogValidator : IMemberStorage
                 _errors?.AddError(exprInfo, $"Built-in tag '{tagKey}' must have a float value assigned.");
             else if (isClosingTag)
                 _errors?.AddError(exprInfo, $"Built-in tag '{tagKey}' cannot be a closing tag.");
-            else if (ExprParser.Parse(rightExprInfo, this, _errors).VariantType != VarType.Float)
+            else if (ExprParser.Parse(rightExprInfo, _dialogStorage, _errors).VariantType != VarType.Float)
                 _errors?.AddError(exprInfo, $"Built-in tag '{tagKey}' must have a float value assigned.");
         }
         else if (tagKey.SequenceEqual(BuiltIn.SPEED))
@@ -349,7 +342,7 @@ public partial class DialogValidator : IMemberStorage
                     _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagKey}' can only be assigned to or be part of a closing tag.");
 
                 ExprInfo rightExprInfo = new(exprInfo.Memory, _state.LineIdx, exprInfo.OffsetStart + start);
-                TextVariant result = ExprParser.Parse(rightExprInfo, this, _errors);
+                TextVariant result = ExprParser.Parse(rightExprInfo, _dialogStorage, _errors);
 
                 if (result.VariantType != VarType.Float || result.Float < 0)
                     _errors?.AddError(_state.LineIdx, start, end, $"Built-in tag '{tagKey}' must have a positive float value assigned.");
@@ -434,7 +427,7 @@ public partial class DialogValidator : IMemberStorage
 
             ExprInfo rightExprInfo = new(exprInfo.Memory[rightStart..i], _state.LineIdx, rightStart + exprInfo.OffsetStart);
 
-            if (ExprParser.Parse(rightExprInfo, this, _errors).VariantType == VarType.Undefined)
+            if (ExprParser.Parse(rightExprInfo, _dialogStorage, _errors).VariantType == VarType.Undefined)
             {
                 _errors?.AddError(rightExprInfo, "Invalid Hash Tag assignment.");
                 return;
@@ -454,7 +447,7 @@ public partial class DialogValidator : IMemberStorage
         _charIdx = DialogHelpers.GetNextNonWhitespace(line, _charIdx);
 
         if (!ExprInfo.TryGetExprInfo(mem, _state.LineIdx, _charIdx, _errors, out ExprInfo exprInfo)
-            || ExprParser.Parse(exprInfo, this, _errors).VariantType != VarType.Bool
+            || ExprParser.Parse(exprInfo, _dialogStorage, _errors).VariantType != VarType.Bool
             || !line[(exprInfo.OffsetEnd + 1)..].IsWhiteSpace())
         {
             _charIdx = line.Length;
@@ -487,7 +480,7 @@ public partial class DialogValidator : IMemberStorage
             _charIdx = DialogHelpers.GetNextNonWhitespace(line, _charIdx);
 
             if (!ExprInfo.TryGetExprInfo(mem, _state.LineIdx, _charIdx, _errors, out exprInfo)
-                || ExprParser.Parse(exprInfo, this, _errors).VariantType != VarType.Bool
+                || ExprParser.Parse(exprInfo, _dialogStorage, _errors).VariantType != VarType.Bool
                 || !line[(exprInfo.OffsetEnd + 1)..].IsWhiteSpace())
             {
                 _charIdx = line.Length;
@@ -555,7 +548,7 @@ public partial class DialogValidator : IMemberStorage
                 _charIdx = DialogHelpers.GetNextNonWhitespace(line, _charIdx);
 
                 if (!ExprInfo.TryGetExprInfo(_state.MemLine, _state.LineIdx, _charIdx, _errors, out ExprInfo exprInfo)
-                    || ExprParser.Parse(exprInfo, this, _errors).VariantType != VarType.Bool)
+                    || ExprParser.Parse(exprInfo, _dialogStorage, _errors).VariantType != VarType.Bool)
                 {
                     _charIdx = line.Length;
                     _errors?.AddError(_state.LineIdx, lineStart, line.Length, "Condition is invalid.");
@@ -583,7 +576,7 @@ public partial class DialogValidator : IMemberStorage
 
                 if (!choiceText.IsWhiteSpace())
                 {
-                    if (TranslationMode == TranslationFileType.CSV)
+                    if (Dialog.TranslationFileType == TranslationFileType.CSV)
                     {
                         _sw.WriteLine();
                         _sw.Write(_state.RowPrefix);
@@ -723,7 +716,7 @@ public partial class DialogValidator : IMemberStorage
 
         void WriteTranslation(StreamWriter sw, ReadOnlySpan<char> text)
         {
-            if (TranslationMode == TranslationFileType.CSV)
+            if (Dialog.TranslationFileType == TranslationFileType.CSV)
             {
                 sw.WriteLine();
                 sw.Write(_state.RowPrefix);
@@ -762,107 +755,6 @@ public partial class DialogValidator : IMemberStorage
         return true;
     }
 
-    public bool TryGetVariant(ReadOnlySpan<char> key, out TextVariant value)
-    {
-        VarType varType = GetVariableType(key);
-
-        value = varType switch
-        {
-            VarType.Float => new(0),
-            VarType.String => new(string.Empty),
-            VarType.Bool => new(false),
-            _ => default
-        };
-
-        return varType != VarType.Undefined;
-    }
-
-    public VarType GetVariableType(ReadOnlySpan<char> varName)
-    {
-        var lookup = _predefinedVarDefs.GetAlternateLookup<ReadOnlySpan<char>>();
-
-        if (lookup.TryGetValue(varName, out VarDef varDef))
-            return varDef.Type;
-
-        foreach (VarDef def in _localVarDefs)
-        {
-            if (def.Name.AsSpan().SequenceEqual(varName))
-                return def.Type;
-        }
-
-        return VarType.Undefined;
-    }
-
-    public void SetValue(ReadOnlySpan<char> varName, TextVariant value)
-    {
-        VarDef varDef = new()
-        {
-            Name = varName.ToString(),
-            Type = value.VariantType
-        };
-        _localVarDefs.Add(varDef);
-    }
-
-    public VarType GetMethodReturnType(ReadOnlySpan<char> methodName)
-    {
-        FuncDef? funcDef = GetMethodFuncDef(methodName);
-        return funcDef?.ReturnType ?? VarType.Undefined;
-    }
-
-    public FuncDef? GetMethodFuncDef(ReadOnlySpan<char> methodName)
-    {
-        var lookup = _predefinedFuncDefs.GetAlternateLookup<ReadOnlySpan<char>>();
-
-        if (lookup.TryGetValue(methodName, out FuncDef? funcDef))
-            return funcDef;
-
-        return null;
-    }
-
-    public TextVariant CallMethod(ReadOnlySpan<char> methodName, ReadOnlySpan<TextVariant> args)
-    {
-        FuncDef? funcDef = GetMethodFuncDef(methodName);
-
-        if (funcDef == null)
-            return TextVariant.Undefined;
-
-        if (args.Length != funcDef.ArgTypes.Length)
-            return TextVariant.Undefined;
-
-        for (int i = 0; i < args.Length; i++)
-        {
-            if (args[i].VariantType != funcDef.ArgTypes[i])
-                return TextVariant.Undefined;
-        }
-
-        return funcDef.ReturnType switch
-        {
-            VarType.Float => new(0),
-            VarType.String => new(string.Empty),
-            VarType.Bool => new(false),
-            _ => new()
-        };
-    }
-
-    public TextVariant CallAsyncMethod(ReadOnlySpan<char> methodName, ReadOnlySpan<TextVariant> args)
-    {
-        var lookup = _predefinedFuncDefs.GetAlternateLookup<ReadOnlySpan<char>>();
-
-        if (!lookup.TryGetValue(methodName, out FuncDef? funcDef) || !funcDef.Awaitable)
-            return TextVariant.Undefined;
-
-        if (args.Length != funcDef.ArgTypes.Length)
-            return TextVariant.Undefined;
-
-        for (int i = 0; i < args.Length; i++)
-        {
-            if (args[i].VariantType != funcDef.ArgTypes[i])
-                return TextVariant.Undefined;
-        }
-
-        return new();
-    }
-
     private static readonly char[] s_escapeChars = ['"', ',', '\n', '\r'];
 
     static void WriteEscapedCsvField(StreamWriter sw, ReadOnlySpan<char> span)
@@ -894,26 +786,9 @@ public partial class DialogValidator : IMemberStorage
     }
 }
 
-public enum ExprContext
+internal enum ExprContext
 {
     Block,
     Line,
     Choice
 }
-
-public class Error
-{
-    public Error(int line, int start, int end, string message)
-    {
-        Line = line;
-        Start = start;
-        End = end;
-        Message = message;
-    }
-
-    public int Line { get; set; }
-    public int Start { get; set; }
-    public int End { get; set; }
-    public string Message { get; set; }
-}
-

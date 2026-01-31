@@ -3,13 +3,23 @@ using System.Collections.Generic;
 
 namespace GameDialog.Runner;
 
-public static class BBCode
+internal static class BBCode
 {
+    /// <summary>
+    /// Determines if BBCode is a Godot supported tag.
+    /// </summary>
+    /// <param name="tag">The tag</param>
+    /// <returns>If true, the tag is supported.</returns>
     public static bool IsSupportedTag(string tag)
     {
         return SupportedTags.Contains(tag);
     }
 
+    /// <summary>
+    /// Determines if BBCode is a Godot supported tag.
+    /// </summary>
+    /// <param name="tag">The tag</param>
+    /// <returns>If true, the tag is supported.</returns>
     public static bool IsSupportedTag(ReadOnlySpan<char> tag)
     {
         return SupportedTags.GetAlternateLookup<ReadOnlySpan<char>>().Contains(tag);

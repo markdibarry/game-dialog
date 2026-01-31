@@ -1,4 +1,3 @@
-using GameDialog.Runner;
 using Godot;
 
 namespace ExampleProject;
@@ -11,7 +10,6 @@ public partial class Game : Node2D
 
     public override void _Ready()
     {
-        DialogBase.TranslationFileType = TranslationFileType.POT;
         Root = this;
         TestScene = GetNode<Node2D>("TestScene");
         GUI = GetNode<CanvasLayer>("GUI");
