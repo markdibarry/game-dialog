@@ -1,0 +1,56 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <NoWarn>NU5128</NoWarn>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <OutputPath>./nupkg</OutputPath>
+    <DebugType>portable</DebugType>
+    <IlcDisableReflection>true</IlcDisableReflection>
+
+    <Title>GameDialog</Title>
+    <Version>0.0.1</Version>
+    <Description>A game dialog library for use with Godot.</Description>
+    <Copyright>© 2026 Mark DiBarry</Copyright>
+    <Authors>Mark DiBarry</Authors>
+    <Company>Mark DiBarry</Company>
+
+    <PackageId>GameDialog</PackageId>
+    <PackageReleaseNotes>GameDialog release.</PackageReleaseNotes>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageTags>dialog;generator;godot;gamedev</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageProjectUrl>https://github.com/markdibarry/game-dialog</PackageProjectUrl>
+
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>git@github.com:markdibarry/game-dialog.git</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="\" />
+    <None Include="../LICENSE" Pack="true" PackagePath="\" />
+    <None Include="../icon.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GodotSharp" Version="4.5.0" />
+    <ProjectReference Include="../GameDialog.Runner/GameDialog.Runner.csproj" Pack="false" PrivateAssets="all"/>
+    <ProjectReference Include="../GameDialog.CodeFix/GameDialog.CodeFix.csproj" Pack="false" PrivateAssets="all"/>
+    <ProjectReference Include="../GameDialog.Diagnostics/GameDialog.Diagnostics.csproj" Pack="false" PrivateAssets="all"/>
+    <ProjectReference Include="../GameDialog.Generator/GameDialog.Generator.csproj" Pack="false" PrivateAssets="all"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(OutputPath)\GameDialog.Runner.dll" Pack="true" PackagePath="lib/net10.0/" />
+    <None Include="$(OutputPath)\GameDialog.Generator.dll" Pack="true" PackagePath="analyzers/dotnet/cs/" />
+    <None Include="$(OutputPath)\GameDialog.Diagnostics.dll" Pack="true" PackagePath="analyzers/dotnet/cs/" />
+    <None Include="$(OutputPath)\GameDialog.CodeFix.dll" Pack="true" PackagePath="analyzers/dotnet/cs/" />
+  </ItemGroup>
+</Project>

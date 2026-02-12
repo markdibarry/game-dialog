@@ -4,6 +4,10 @@ using System.Runtime.InteropServices;
 
 namespace GameDialog.Runner;
 
+#pragma warning disable CS1591
+/// <summary>
+/// Internal TextVariant struct. Do not use.
+/// </summary>
 [StructLayout(LayoutKind.Explicit)]
 public readonly record struct TextVariant
 {
@@ -113,3 +117,4 @@ public readonly record struct TextVariant
         _ => string.Empty
     };
 }
+#pragma warning restore CS1591

@@ -1,6 +1,6 @@
 namespace GameDialog.Runner;
 
-public enum ExprType
+internal enum ExprType
 {
     None,
     BuiltIn,

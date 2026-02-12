@@ -8,20 +8,34 @@ namespace ExampleProject;
 [Tool]
 public partial class DialogBox : MarginContainer
 {
+    private static readonly char[] _punctuation = ['?', '!', '.'];
+
+    public int OptionColumns { get; private set; } = 1;
+
+    public Dialog Dialog { get; set; } = null!;
+    public DialogTextLabel DialogText { get; set; } = null!;
     public PanelContainer NameContainer { get; set; } = null!;
     public Label NameLabel { get; set; } = null!;
-    public TextWriter TextWriter { get; set; } = null!;
     public List<string> SpeakerIds { get; private set; } = [];
     public MarginContainer NextArrow { get; set; } = null!;
-    public event Action? LineEnded;
+    public AudioStreamPlayer ClackSound { get; set; } = null!;
 
     public override void _Ready()
     {
         NameContainer = GetNode<PanelContainer>("%NameContainer");
         NameLabel = GetNode<Label>("%NameLabel");
         NextArrow = GetNode<MarginContainer>("%NextArrow");
-        TextWriter = GetNode<TextWriter>("%PagedText");
-        TextWriter.FinishedWriting += OnFinishedWriting;
+        ClackSound = GetNode<AudioStreamPlayer>("ClackSound");
+
+        Dialog = new(this);
+        Dialog.DialogLineStarted += OnDialogLineStarted;
+        Dialog.DialogLineResumed += OnDialogLineResumed;
+        Dialog.ChoiceRead += OnChoiceRead;
+        Dialog.HashRead += OnHashRead;
+        DialogText = GetNode<DialogTextLabel>("%DialogText");
+        DialogText.Dialog = Dialog;
+        DialogText.FinishedWriting += OnFinishedWriting;
+        DialogText.CharWritten += OnCharWritten;
     }
 
     public override void _Input(InputEvent inputEvent)
@@ -30,22 +44,70 @@ public partial class DialogBox : MarginContainer
 
         if (inputEvent.IsActionPressed("ui_accept"))
         {
-            if (TextWriter.Writing)
+            if (DialogText.Writing)
             {
-                TextWriter.IsSpeedUpEnabled = true;
+                DialogText.IsSpeedUpEnabled = true;
             }
             else
             {
                 HandleNext();
-                TextWriter.IsSpeedUpEnabled = false;
+                DialogText.IsSpeedUpEnabled = false;
             }
         }
         else if (inputEvent.IsActionReleased("ui_accept"))
         {
-            TextWriter.IsSpeedUpEnabled = false;
+            DialogText.IsSpeedUpEnabled = false;
         }
 
         inputEvent.Dispose();
+    }
+
+    public void OnDialogLineStarted(string text, IReadOnlyList<string> speakerIds)
+    {
+        WriteDialogLine(text, speakerIds);
+    }
+
+    protected void OnDialogLineResumed()
+    {
+        DialogText.Resume();
+    }
+
+    public void OnChoiceRead(IReadOnlyList<Choice> choices)
+    {
+        ProcessMode = ProcessModeEnum.Disabled;
+        PackedScene packedScene = GD.Load<PackedScene>("./Scenes/GUI/OptionBox.tscn");
+        OptionBox optionBox = packedScene.Instantiate<OptionBox>();
+        optionBox.DialogBox = this;
+        Game.Root.GUI.AddChild(optionBox);
+        optionBox.Init(choices);
+    }
+
+    public void OnHashRead(IReadOnlyDictionary<string, string> hashData)
+    {
+        if (hashData.TryGetValue("OptionColumns", out string? columnString)
+            && int.TryParse(columnString, out int columns))
+        {
+            OptionColumns = Math.Max(columns, 1);
+        }
+    }
+
+    public void OnCharWritten(int i, char c)
+    {
+        // Play clack after every other char
+        if (c != ' ' && i % 2 == 0)
+            ClackSound.Play();
+
+        if (ShouldPause())
+            DialogText.PauseTimer += 0.5;
+
+        bool ShouldPause()
+        {
+            if (!_punctuation.Contains(c))
+                return false;
+
+            // Don't pause if there isn't a space after the punctuation.
+            return i < DialogText.TotalChars - 1 && DialogText.CachedText[i + 1] == ' ';
+        }
     }
 
     public void WriteDialogLine(string text, IReadOnlyList<string> speakerIds)
@@ -63,24 +125,24 @@ public partial class DialogBox : MarginContainer
             NameLabel.Text = string.Join(", ", SpeakerIds);
         }
 
-        TextWriter.SetDialogText(text);
+        DialogText.SetDialogText(text);
         // In Godot, when a new Control is created, it is incorrect size until the next frame.
-        TextWriter.CallDeferred(TextWriter.MethodName.WriteNextPage);
+        DialogText.CallDeferred(nameof(DialogTextLabel.WriteNextPage));
     }
 
     private void HandleNext()
     {
         NextArrow.Hide();
 
-        if (!TextWriter.IsComplete())
-            TextWriter.WriteNextPage();
+        if (!DialogText.IsComplete())
+            DialogText.WriteNextPage();
         else
-            LineEnded?.Invoke();
+            Dialog.EndDialogLine();
     }
 
     private void OnFinishedWriting()
     {
-        if (TextWriter.AutoProceedEnabled)
+        if (DialogText.AutoProceedEnabled)
             HandleNext();
         else
             NextArrow.Show();

@@ -4,15 +4,25 @@ using Godot;
 
 namespace ExampleProject;
 
-public partial class DialogBridge : DialogBridgeBase
+[DialogBridge]
+public partial class CustomMembers
 {
-    public string MyString { get; set; }
+    public void Flash()
+    {
+        Node2D testScene = Game.Root.TestScene;
+        Tween tween = testScene.GetTree().CreateTween();
+        tween.TweenProperty(testScene, "modulate", new Color(20, 20, 20, 1), 0.50f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.InOut);
+        tween.TweenProperty(testScene, "modulate", Colors.White, 0.50f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.InOut)
+            .SetDelay(0.25f);
+    }
 
     public async ValueTask Shake()
     {
-        Dialog dialog = (Dialog)Dialog;
-
-        if (dialog.DialogBox is not DialogBox dialogBox)
+        if (Dialog.Context is not DialogBox dialogBox)
             return;
 
         Vector2 original = dialogBox!.Position;
@@ -29,20 +39,7 @@ public partial class DialogBridge : DialogBridgeBase
             .SetTrans(Tween.TransitionType.Sine)
             .SetEase(Tween.EaseType.InOut);
         tween.SetLoops(loops);
-        await dialog.ToSignal(tween, "finished");
-    }
-
-    public void Flash()
-    {
-        Node2D testScene = Game.Root.TestScene;
-        Tween tween = testScene.GetTree().CreateTween();
-        tween.TweenProperty(testScene, "modulate", new Color(20, 20, 20, 1), 0.50f)
-            .SetTrans(Tween.TransitionType.Sine)
-            .SetEase(Tween.EaseType.InOut);
-        tween.TweenProperty(testScene, "modulate", Colors.White, 0.50f)
-            .SetTrans(Tween.TransitionType.Sine)
-            .SetEase(Tween.EaseType.InOut)
-            .SetDelay(0.25f);
+        await dialogBox.ToSignal(tween, "finished");
     }
 
     public float GetTimesTalked(string nodeName)

@@ -4,9 +4,9 @@ using System.Text;
 
 namespace GameDialog.Runner;
 
-public static class DialogHelpers
+internal static class DialogHelpers
 {
-    public static int GetNextNonWhitespace(ReadOnlySpan<char> span, int startIdx)
+    internal static int GetNextNonWhitespace(ReadOnlySpan<char> span, int startIdx)
     {
         int i = startIdx;
 
@@ -16,7 +16,7 @@ public static class DialogHelpers
         return i;
     }
 
-    public static int GetNextNonIdentifier(ReadOnlySpan<char> span, int startIdx)
+    internal static int GetNextNonIdentifier(ReadOnlySpan<char> span, int startIdx)
     {
         int i = startIdx;
 
@@ -26,7 +26,7 @@ public static class DialogHelpers
         return i;
     }
 
-    public static ReadOnlySpan<char> StripLineComment(this ReadOnlySpan<char> line)
+    internal static ReadOnlySpan<char> StripLineComment(this ReadOnlySpan<char> line)
     {
         for (int i = 0; i < line.Length - 1; i++)
         {
@@ -42,13 +42,13 @@ public static class DialogHelpers
         return line;
     }
 
-    public static ReadOnlyMemory<char> StripLineComment(this ReadOnlyMemory<char> line)
+    internal static ReadOnlyMemory<char> StripLineComment(this ReadOnlyMemory<char> line)
     {
         ReadOnlySpan<char> span = StripLineComment(line.Span);
         return line[..span.Length];
     }
 
-    public static bool ContainsSequence(this List<ReadOnlyMemory<char>> col, ReadOnlySpan<char> seq)
+    internal static bool ContainsSequence(this List<ReadOnlyMemory<char>> col, ReadOnlySpan<char> seq)
     {
         foreach (var item in col)
         {
@@ -64,7 +64,7 @@ public static class DialogHelpers
         return false;
     }
 
-    public static int GetNextNonEmptyLine(this List<ReadOnlyMemory<char>> script, int lineIdx)
+    internal static int GetNextNonEmptyLine(this List<ReadOnlyMemory<char>> script, int lineIdx)
     {
         while (lineIdx < script.Count)
         {
@@ -83,24 +83,24 @@ public static class DialogHelpers
         return lineIdx;
     }
 
-    public static void AddError(this List<Error> errors, ExprInfo exprInfo, string message)
+    internal static void AddError(this List<Error> errors, ExprInfo exprInfo, string message)
     {
         errors.AddError(exprInfo, 0, message);
     }
 
-    public static void AddError(this List<Error> errors, ExprInfo exprInfo, int pos, string message)
+    internal static void AddError(this List<Error> errors, ExprInfo exprInfo, int pos, string message)
     {
         int start = exprInfo.OffsetStart + pos;
         int end = exprInfo.OffsetStart + exprInfo.Span.Length;
         errors.Add(new(exprInfo.LineIdx, start, end, message));
     }
 
-    public static void AddError(this List<Error> errors, int lineIdx, int charStart, int charEnd, string message)
+    internal static void AddError(this List<Error> errors, int lineIdx, int charStart, int charEnd, string message)
     {
         errors.Add(new(lineIdx, charStart, charEnd, message));
     }
 
-    public static void AppendChart(this StringBuilder sb, ParserState ps, string name)
+    internal static void AppendChart(this StringBuilder sb, ParserState ps, string name)
     {
         if (sb.Length > 0)
             sb.AppendLine();
@@ -111,7 +111,7 @@ public static class DialogHelpers
         sb.Append(name);
     }
 
-    public static string GetSnippet(this ReadOnlySpan<char> span, int start)
+    internal static string GetSnippet(this ReadOnlySpan<char> span, int start)
     {
         if (start + 10 > span.Length)
             return span[start..].ToString();

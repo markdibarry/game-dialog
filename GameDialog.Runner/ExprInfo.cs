@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace GameDialog.Runner;
 
-public readonly ref struct ExprInfo
+internal readonly ref struct ExprInfo
 {
     public ExprInfo(ReadOnlyMemory<char> content, int lineIdx, int offsetStart)
     {

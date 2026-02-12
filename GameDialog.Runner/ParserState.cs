@@ -7,7 +7,7 @@ using System.Text;
 
 namespace GameDialog.Runner;
 
-public class ParserState
+internal class ParserState
 {
     public List<ReadOnlyMemory<char>> Script { get; } = [];
     public ReadOnlySpan<char> SpanLine => MemLine.Span;
@@ -41,7 +41,8 @@ public class ParserState
     /// <summary>
     /// Reads a file at the specified path to the script. Uses System.IO.
     /// </summary>
-    /// <param name="globalPath"></param>
+    /// <param name="globalPath">The global file path.</param>
+    /// <param name="rootPath">The root path of the project.</param>
     public void ReadFileToScript(string globalPath, string rootPath)
     {
         if (RowPrefix.Length > 0 && MemoryMarshal.TryGetArray(RowPrefix, out var seg) && seg.Array != null)

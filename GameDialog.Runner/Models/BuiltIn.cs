@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace GameDialog.Runner;
 
-public static class BuiltIn
+internal static class BuiltIn
 {
     private static readonly HashSet<string> _builtInTags =
     [
@@ -26,11 +26,21 @@ public static class BuiltIn
     public const string SCROLL = "scroll";
     public const string PAGE = "page";
 
+    /// <summary>
+    /// Determines if tag name is a supported tag.
+    /// </summary>
+    /// <param name="text">The tag</param>
+    /// <returns>If true, the tag is supported.</returns>
     public static bool IsSupportedTag(string text)
     {
         return _builtInTags.Contains(text);
     }
 
+    /// <summary>
+    /// Determines if tag name is a supported tag.
+    /// </summary>
+    /// <param name="text">The tag</param>
+    /// <returns>If true, the tag is supported.</returns>
     public static bool IsSupportedTag(ReadOnlySpan<char> text)
     {
         return _builtInTags.GetAlternateLookup<ReadOnlySpan<char>>().Contains(text);

@@ -7,22 +7,27 @@ Devs: What would you like to know about?
 ? How to add them
     Devs: ^^By default, if you try to type a method or property name in your script that you 
         haven't pre-defined, it'll show you an error.^^
-    Devs: ^^You'll notice, in the same folder as the example [color=Gold]Dialog.cs[/color] partial 
-        class, there's another partial file named [color=Gold]DialogBridge.cs[/color].^^
-    Devs: ^^The extension looks for a file named [color=Gold]DialogBridge.cs[/color] and grabs 
-        all compatible methods and properties inside.^^
+    Devs: ^^The source generator looks for a partial class with the [ltag]DialogBridge[rtag] 
+        attribute and grabs all compatible methods and properties inside.^^
+    Devs: ^^In the same folder as the example [color=Gold]DialogBox.cs[/color] class, there's 
+        another file named [color=Gold]CustomMembers.cs[/color].^^
+    Devs: ^^If you add a compatible method or property to the [color=Gold]CustomMembers[/color] 
+        class, it will be available for use.^^
+    Devs: ^^If you have the VSCode extension installed, right click on a .dia file and select 
+        [ltag]Update Members[rtag] so it can see your new members!^^
+? What is supported
     Devs: ^^Compatible types for properties and method parameters are string, bool, and float. The 
         same goes for method return types, but they can also be void, Task, and ValueTask.^^
-    Devs: ^^If you've added a compatible method or property to the [color=Gold]DialogBridge.cs[/color], 
-        it'll be added to the file [color=Gold]DialogBridge.g.cs[/color] and will be available for use.^^
+    Devs: ^^Keep in mind: All methods and properties must be public and unique across all classes with 
+        a [ltag]DialogBridge[rtag] attribute.^^
 ? How to use them
-    Devs: ^^If you have added it to the dialog bridge, just write it like this: 
+    Devs: ^^If you've added it to the dialog bridge class, just write it like this: 
         [ltag]MyMethod()[rtag].^^
     Devs: We added a method called [color=Gold]Flash()[/color] as an example. Let's try it!
     Devs: Flash![Flash()]
-    Devs: Go to [color=Gold]DialogBridge.cs[/color] to take a look!
+    Devs: Go to [color=Gold]CustomMembers.cs[/color] to take a look!
 ? How to wait for them
-    Devs: ^^In the example dialog bridge, we created a custom method, [color=Gold]Shake()[/color], 
+    Devs: ^^In the example dialog bridge file, we created a custom method, [color=Gold]Shake()[/color], 
         that shakes the dialog box. Internally, it's handled asynchronously (Take a look!).^^
     Devs: ^^You can wait for it to finish before continuing with the script by writing 
         [ltag]await Shake()[rtag][await Shake()], or if you don't want to wait, 

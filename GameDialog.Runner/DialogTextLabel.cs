@@ -4,15 +4,24 @@ using Godot;
 
 namespace GameDialog.Runner;
 
-[Tool, GlobalClass]
-public partial class TextWriter : RichTextLabel
+/// <summary>
+/// An example RichTextLabel writer.
+/// </summary>
+[GlobalClass, Tool]
+public partial class DialogTextLabel : RichTextLabel
 {
-    public TextWriter()
+    /// <summary>
+    /// Creats a new DialogTextLabel instance.
+    /// </summary>
+    public DialogTextLabel()
     {
+        VisibleCharactersBehavior = TextServer.VisibleCharactersBehavior.CharsAfterShaping;
         ClipContents = true;
         BbcodeEnabled = true;
         _scrollBar = GetVScrollBar();
-        Reset(false);
+        _scrollBar.AllowGreater = true;
+        _scrollBar.Scale = Vector2.Zero;
+        Reset();
 
         if (_theme == null)
         {
@@ -31,7 +40,6 @@ public partial class TextWriter : RichTextLabel
 
     private bool _isWriting;
     private double _writeCounter;
-    private int _totalCharacters;
     private Vector2I _targetWriteRange;
     private readonly VScrollBar _scrollBar;
     private bool _isScrolling;
@@ -41,12 +49,14 @@ public partial class TextWriter : RichTextLabel
     private double _movingScrollValue;
     private readonly List<TextEvent> _textEvents = [];
     private int _textEventIndex;
-
+    /// <summary>
+    /// The speed, in characters per second, at which characters are written.
+    /// </summary>
     [Export]
-    public int CharsPerSecond { get; set; }
+    public int CharsPerSecond { get; set; } = DefaultCharsPerSecond;
 
     /// <summary>
-    /// Scroll speed in pixels per second
+    /// The speed, in pixels per second, at which the text scrolls.
     /// </summary>
     [Export]
     public float ScrollSpeed
@@ -55,7 +65,7 @@ public partial class TextWriter : RichTextLabel
         set => field = Math.Max(value, 0);
     }
     /// <summary>
-    /// Pixels at which the scroll updates
+    /// The interval, in pixels, at which the scroll visually updates.
     /// </summary>
     [Export]
     public float ScrollStep
@@ -63,36 +73,57 @@ public partial class TextWriter : RichTextLabel
         get;
         set => field = Math.Max(value, 0);
     }
+    /// <summary>
+    /// A helper export button to write the next dialog line.
+    /// </summary>
     [ExportToolButton("Write Next Line")]
     public Callable WriteNextLineButton => Callable.From(WriteNextLine);
+    /// <summary>
+    /// A helper export button to write the next dialog page.
+    /// </summary>
     [ExportToolButton("Write Next Page")]
     public Callable WriteNextPageButton => Callable.From(WriteNextPage);
+    /// <summary>
+    /// A helper export button to reset the DialogTextLabel.
+    /// </summary>
     [ExportToolButton("Reset")]
-    public Callable ResetButton => Callable.From(() => Reset(false));
+    public Callable ResetButton => Callable.From(Reset);
+    /// <summary>
+    /// Gets a cached RichTextLabel.Text.
+    /// </summary>
+    public string CachedText { get; private set; } = string.Empty;
+    /// <summary>
+    /// If true, the DialogTextLabel is currently writing text.
+    /// </summary>
     public bool Writing => _isWriting;
+    /// <summary>
+    /// The total characters in the text.
+    /// </summary>
+    public int TotalChars { get; private set; }
+    /// <summary>
+    /// The base writing speed is determined by this value multiplied by <c>CharsPerSecond</c>.
+    /// </summary>
     public double SpeedMultiplier { get; set; }
+    /// <summary>
+    /// If true, the base writing speed is multiplied by this value.
+    /// </summary>
     public bool IsSpeedUpEnabled { get; set; }
+    /// <summary>
+    /// If true, the text will automatically proceed when it reaches the end of the line/page.
+    /// </summary>
     public bool AutoProceedEnabled { get; set; }
+    /// <summary>
+    /// If true, the writing is temporarily suspended until Resume() is called.
+    /// </summary>
     public bool Suspended { get; private set; }
     /// <summary>
-    /// The DialogBase object. For parsing and handling text events.
+    /// The Dialog object. For parsing and handling text events.
     /// </summary>
-    public DialogBase? Dialog { get; set; }
+    public Dialog? Dialog { get; set; }
     /// <summary>
-    /// A replacement for the base Text property to set parsed text properly.
-    /// If set via the editor, this code is not called, even with an [Export] attribute.
+    /// If <c>AutoProceedEnabled</c> is true, determines the amount of time after reaching the end 
+    /// of the line/page before automatically proceeding.
     /// </summary>
-    public new string Text
-    {
-        get => base.Text;
-        set => SetDialogText(value);
-    }
-
-    private double PauseTimer
-    {
-        get;
-        set => field = value >= 0 ? value : field;
-    }
     public float AutoProceedTimeout
     {
         get
@@ -106,22 +137,47 @@ public partial class TextWriter : RichTextLabel
         }
         set;
     }
-
-    public event Action? FinishedWriting;
-
-    public override bool _Set(StringName property, Variant value)
+    /// <summary>
+    /// The amount of time left, in seconds, before the next char is written.
+    /// </summary>
+    public double PauseTimer
     {
-        if (property == RichTextLabel.PropertyName.Text)
-        {
-            if (value.Obj is string text)
-                SetDialogText(text);
-
-            return true;
-        }
-
-        return false;
+        get;
+        set => field = value >= 0 ? value : field;
     }
 
+    /// <summary>
+    /// Occurs when a character is written.
+    /// </summary>
+    public event CharWrittenHandler? CharWritten;
+    /// <summary>
+    /// Occurs when a TextEvent is triggered.
+    /// </summary>
+    public event TextEventTriggeredHandler? TextEventTriggered;
+    /// <summary>
+    /// Occurs when the DialogTextLabel finishes writing all available text.
+    /// </summary>
+    public event Action? FinishedWriting;
+
+    /// <summary>
+    /// Represents the method that will handle the CharWritten event.
+    /// </summary>
+    /// <param name="charIndex">The index of the char written.</param>
+    /// <param name="charWritten">The char that was written.</param>
+    public delegate void CharWrittenHandler(int charIndex, char charWritten);
+    /// <summary>
+    /// Represents the method that will handle the TextEventTriggered event.
+    /// </summary>
+    /// <param name="textEvent">The triggered TextEvent.</param>
+    public delegate void TextEventTriggeredHandler(TextEvent textEvent);
+
+    /// <inheritdoc/>
+    public override void _Ready()
+    {
+        TextEventTriggered += OnTextEventTriggered;
+    }
+
+    /// <inheritdoc/>
     public override void _PhysicsProcess(double delta)
     {
         if (Suspended)
@@ -135,34 +191,152 @@ public partial class TextWriter : RichTextLabel
             Write(delta);
     }
 
+    /// <summary>
+    /// Writes the next available text that can fit within the bounds of the RichTextLabel.
+    /// </summary>
     public void WriteNextPage() => WriteNext(false);
 
+    /// <summary>
+    /// Writes the next available line of text.
+    /// </summary>
     public void WriteNextLine() => WriteNext(true);
 
-    public bool IsComplete() => VisibleCharacters == -1 || VisibleCharacters == _totalCharacters;
-
+    /// <summary>
+    /// Resumes writing the text.
+    /// </summary>
     public void Resume() => Suspended = false;
 
-    public void SetDialogText(string text)
+    /// <summary>
+    /// Parses text for TextEvents and sets the parsed text to <c>RichTextLabel.Text</c>.
+    /// </summary>
+    /// <param name="text">The unparsed text.</param>
+    public void SetDialogText(string text) => ResetAndSetText(text);
+
+    /// <summary>
+    /// Resets the DialogTextLabel.
+    /// </summary>
+    public void Reset() => ResetAndSetText();
+
+    /// <summary>
+    /// Handles the TextEventTriggered event.
+    /// </summary>
+    /// <param name="textEvent">The triggered TextEvent.</param>
+    public void OnTextEventTriggered(TextEvent textEvent)
     {
+        if (Dialog == null)
+            return;
+
+        if (!Dialog.TryParseBuiltInEvent(textEvent, out EventType eventType, out float eventParam))
+        {
+            if (textEvent.Tag.Span.StartsWith("await "))
+                Suspended = true;
+
+            Dialog.TryEvaluateExpression(textEvent.Tag);
+            return;
+        }
+
+        int currentChar = VisibleCharacters == -1 ? TotalChars : VisibleCharacters;
+
+        switch (eventType)
+        {
+            case EventType.Pause:
+                float timeValue = eventParam;
+                PauseTimer += timeValue;
+                break;
+            case EventType.Speed:
+                SpeedMultiplier = eventParam;
+                break;
+            case EventType.Auto:
+                float autoValue = eventParam;
+                AutoProceedEnabled = autoValue != -2;
+                AutoProceedTimeout = autoValue;
+                bool isComplete = currentChar == TotalChars;
+
+                if (isComplete)
+                    PauseTimer += AutoProceedTimeout;
+
+                break;
+            case EventType.Prompt:
+                _targetWriteRange.Y = currentChar + 1;
+                break;
+            case EventType.Scroll:
+                int currentLine = GetCharacterLine(currentChar);
+                SetTargetScrollLine(currentLine);
+
+                // Is this screen fully written?
+                int lastFittingLine = GetLastFittingLine(_targetScrollValue);
+                int lastFittingChar = GetLineRange(lastFittingLine).Y;
+
+                if (currentChar != lastFittingChar)
+                {
+                    int firstFittingLine = GetFirstFittingLine(_targetScrollValue);
+                    int firstChar = GetLineRange(firstFittingLine).X;
+                    _targetWriteRange = new(firstChar, lastFittingChar);
+                    _isWriting = true;
+                }
+
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Determines if the DialogTextLabel has completed writing all available text.
+    /// </summary>
+    /// <returns>If true, the DialogTextLabel has completed writing all available text.</returns>
+    public bool IsComplete() => VisibleCharacters == -1 || VisibleCharacters == TotalChars;
+
+    /// <summary>
+    /// Determines if the displayed text is the last available page.
+    /// </summary>
+    /// <returns>If true, the current page is the last available page.</returns>
+    public bool IsOnLastPage() => _scrollBar.Value >= _scrollBar.MaxValue - Size.Y;
+
+    /// <summary>
+    /// Override of the _Set method to allow routing text to the <c>SetDialogText()</c> method in the editor.
+    /// </summary>
+    public override bool _Set(StringName property, Variant value)
+    {
+        if (property == RichTextLabel.PropertyName.Text)
+        {
+            if (value.Obj is string text)
+                SetDialogText(text);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Resets the DialogTextLabel and optionally sets new text.
+    /// </summary>
+    /// <param name="newText">The unparsed text to set.</param>
+    private void ResetAndSetText(string? newText = null)
+    {
+        _textEvents.Clear();
         _textEventIndex = 0;
         VisibleCharacters = 0;
-        _textEvents.Clear();
-        string textWithoutEvents = Dialog?.ParseEventsFromText(text, _textEvents) ?? text;
-        base.Text = textWithoutEvents;
-        DialogBase.AdjustEventIndices(textWithoutEvents, GetParsedText(), _textEvents);
-        _totalCharacters = GetTotalCharacterCount();
+
+        if (newText != null && Dialog != null)
+        {
+            string eventParsedText = Dialog.ParseEventsFromText(newText, _textEvents);
+            Text = eventParsedText;
+            string displayedText = GetParsedText();
+            CachedText = displayedText;
+            Dialog.AdjustEventIndices(eventParsedText, displayedText, _textEvents);
+        }
+
+        TotalChars = GetTotalCharacterCount();
         _scrollBar.Value = 0;
         _targetScrollValue = 0;
         _movingScrollValue = 0;
         _targetWriteRange = new(0, GetLastFittingCharacter(0));
 
-        AutoProceedEnabled = Dialog?.AutoProceedGlobalEnabled ?? false;
-        AutoProceedTimeout = Dialog?.AutoProceedGlobalTimeout ?? 0;
-        SpeedMultiplier = Dialog?.SpeedMultiplier ?? 1;
+        PauseTimer = 0;
+        AutoProceedEnabled = Dialog?.GlobalAutoProceedEnabled ?? false;
+        AutoProceedTimeout = Dialog?.GlobalAutoProceedTimeout ?? 0;
+        SpeedMultiplier = Dialog?.GlobalSpeedMultiplier ?? 0;
     }
-
-    public bool IsOnLastPage() => _scrollBar.Value >= _scrollBar.MaxValue - Size.Y;
 
     /// <summary>
     /// Sets up writing the next line or page.
@@ -173,9 +347,9 @@ public partial class TextWriter : RichTextLabel
         if (Writing || _isScrolling)
             return;
 
-        int currentChar = VisibleCharacters == -1 ? _totalCharacters : VisibleCharacters;
+        int currentChar = VisibleCharacters == -1 ? TotalChars : VisibleCharacters;
 
-        if (currentChar == _totalCharacters)
+        if (currentChar == TotalChars)
         {
             FinishedWriting?.Invoke();
             return;
@@ -283,23 +457,6 @@ public partial class TextWriter : RichTextLabel
     /// Finds the first line index that, when scrolled to the top of the RichTextLabel,
     /// still leaves the following line fully visible in the viewport.
     /// </summary>
-    /// <param name="startingOffset">
-    /// The vertical scroll offset from which to begin searching.
-    /// </param>
-    /// <returns>
-    /// The index of the line that can be aligned to the top
-    /// while keeping its next line fully in view.
-    /// </returns>
-    private int GetNextFittingLine(double startingOffset)
-    {
-        int lastVisibleLine = GetLastFittingLine(startingOffset);
-        return GetNextFittingLine(lastVisibleLine);
-    }
-
-    /// <summary>
-    /// Finds the first line index that, when scrolled to the top of the RichTextLabel,
-    /// still leaves the following line fully visible in the viewport.
-    /// </summary>
     /// <param name="lastFittingLine">
     /// The last visible line to start from.
     /// </param>
@@ -364,7 +521,7 @@ public partial class TextWriter : RichTextLabel
         }
     }
 
-    private bool HandleTextEvent(int textIndex)
+    private bool TryTriggerTextEvent(int textIndex)
     {
         if (Dialog == null || _textEventIndex >= _textEvents.Count)
             return false;
@@ -374,94 +531,17 @@ public partial class TextWriter : RichTextLabel
         if (textIndex < textEvent.TextIndex)
             return false;
 
-        if (textEvent.Tag.Span.StartsWith("await "))
-            Suspended = true;
-
         _textEventIndex++;
-        (EventType EventType, float Param1) result;
-        int currentChar = VisibleCharacters == -1 ? _totalCharacters : VisibleCharacters;
-
-        try
-        {
-            result = Dialog.HandleTextEvent(textEvent);
-        }
-        catch (Exception)
-        {
-            return true;
-        }
-
-        switch (result.EventType)
-        {
-            case EventType.Pause:
-                float timeValue = result.Param1;
-                PauseTimer += timeValue;
-                break;
-            case EventType.Speed:
-                SpeedMultiplier = result.Param1;
-                break;
-            case EventType.Auto:
-                float autoValue = result.Param1;
-                AutoProceedEnabled = autoValue != -2;
-                AutoProceedTimeout = autoValue;
-                bool isComplete = currentChar == _totalCharacters;
-
-                if (isComplete)
-                    PauseTimer += AutoProceedTimeout;
-
-                break;
-            case EventType.Prompt:
-                _targetWriteRange.Y = currentChar + 1;
-                break;
-            case EventType.Scroll:
-                int currentLine = GetCharacterLine(currentChar);
-                SetTargetScrollLine(currentLine);
-
-                // Is this screen fully written?
-                int lastFittingLine = GetLastFittingLine(_targetScrollValue);
-                int lastFittingChar = GetLineRange(lastFittingLine).Y;
-
-                if (currentChar != lastFittingChar)
-                {
-                    int firstFittingLine = GetFirstFittingLine(_targetScrollValue);
-                    int firstChar = GetLineRange(firstFittingLine).X;
-                    _targetWriteRange = new(firstChar, lastFittingChar);
-                    _isWriting = true;
-                }
-
-                break;
-        }
-
+        TextEventTriggered?.Invoke(textEvent);
         return true;
-    }
-
-    public void Reset(bool clearText)
-    {
-        if (clearText)
-            Text = string.Empty;
-
-        _textEvents.Clear();
-        _textEventIndex = 0;
-        VisibleCharacters = 0;
-        SpeedMultiplier = 1;
-        CharsPerSecond = DefaultCharsPerSecond;
-        AutoProceedEnabled = false;
-        AutoProceedTimeout = 0;
-        PauseTimer = 0;
-        //VisibleCharactersBehavior = TextServer.VisibleCharactersBehavior.CharsAfterShaping;
-        _scrollBar.AllowGreater = true;
-        _scrollBar.Scale = Vector2.Zero;
-        _scrollBar.Value = 0;
-        _targetScrollValue = 0;
-        _movingScrollValue = 0;
-        _targetWriteRange = new(0, GetLastFittingCharacter(0));
     }
 
     private void Write(double delta)
     {
         int currentChar = VisibleCharacters;
-        bool isComplete = currentChar == -1 || currentChar == _totalCharacters;
+        bool isComplete = currentChar == -1 || currentChar == TotalChars;
 
-        if (isComplete && HandleTextEvent(currentChar))
+        if (isComplete && TryTriggerTextEvent(currentChar))
             return;
 
         if (isComplete || currentChar >= _targetWriteRange.Y)
@@ -495,12 +575,13 @@ public partial class TextWriter : RichTextLabel
 
         while (_writeCounter >= 1 && currentChar < _targetWriteRange.Y)
         {
-            if (HandleTextEvent(currentChar))
+            if (TryTriggerTextEvent(currentChar))
                 break;
 
             _writeCounter--;
             currentChar++;
             VisibleCharacters = currentChar;
+            CharWritten?.Invoke(currentChar - 1, CachedText[currentChar - 1]);
         }
 
         if (_isScrolling)

@@ -4,25 +4,25 @@ using System.Collections.Generic;
 
 namespace GameDialog.Runner;
 
-public static class ExprParser
+internal static class ExprParser
 {
-    public static TextVariant Parse(ReadOnlyMemory<char> line, int offsetStart, IMemberStorage storage)
+    public static TextVariant Parse(ReadOnlyMemory<char> line, int offsetStart, DialogStorage storage)
     {
         ExprInfo.TryGetExprInfo(line, 0, offsetStart, null, out ExprInfo exprInfo);
         return Parse(exprInfo, storage);
     }
 
-    public static TextVariant Parse(ExprInfo exprInfo, IMemberStorage memberStorage, List<Error>? errors = null)
+    public static TextVariant Parse(ExprInfo exprInfo, DialogStorage storage, List<Error>? errors = null)
     {
-        return Parse(exprInfo, false, memberStorage, errors);
+        return Parse(exprInfo, false, storage, errors);
     }
 
-    public static VarType GetVarType(ExprInfo exprInfo, IMemberStorage memberStorage, List<Error>? errors = null)
+    public static VarType GetVarType(ExprInfo exprInfo, DialogStorage storage, List<Error>? errors = null)
     {
-        return Parse(exprInfo, true, memberStorage, errors).VariantType;
+        return Parse(exprInfo, true, storage, errors).VariantType;
     }
 
-    private static TextVariant Parse(ExprInfo exprInfo, bool typeOnly, IMemberStorage storage, List<Error>? errors)
+    private static TextVariant Parse(ExprInfo exprInfo, bool typeOnly, DialogStorage storage, List<Error>? errors)
     {
         ReadOnlySpan<char> expr = exprInfo.Span;
         int pos = 0;
@@ -61,7 +61,7 @@ public static class ExprParser
         return result;
     }
 
-    private static bool CheckInitializers(ExprInfo exprInfo, IMemberStorage memberStorage, List<Error>? errors)
+    private static bool CheckInitializers(ExprInfo exprInfo, DialogStorage storage, List<Error>? errors)
     {
         ReadOnlySpan<char> expr = exprInfo.Span;
 
@@ -118,19 +118,21 @@ public static class ExprParser
                 return true;
             }
 
-            if (memberStorage.GetVariableType(varName) != VarType.Undefined)
+            if (storage.GetVariableType(varName) != VarType.Undefined)
             {
                 errors?.AddError(exprInfo, start, $"Cannot initialize existing variable '{varName}'.");
                 return true;
             }
             else
             {
+                bool validateOnly = errors != null;
+
                 if (varType == VarType.Bool)
-                    memberStorage.SetValue(varName, new(false));
+                    storage.SetVariant(varName, new(false), validateOnly);
                 else if (varType == VarType.Float)
-                    memberStorage.SetValue(varName, new(0));
+                    storage.SetVariant(varName, new(0), validateOnly);
                 else if (varType == VarType.String)
-                    memberStorage.SetValue(varName, new(string.Empty));
+                    storage.SetVariant(varName, new(string.Empty), validateOnly);
             }
         }
 
@@ -141,12 +143,13 @@ public static class ExprParser
         ExprInfo exprInfo,
         AssignKind assignKind,
         TextVariant result,
-        IMemberStorage memberStorage,
+        DialogStorage storage,
         List<Error>? errors)
     {
         if (assignKind == AssignKind.Undefined)
             return;
 
+        bool validateOnly = errors != null;
         int i = DialogHelpers.GetNextNonIdentifier(exprInfo.Span, 0);
         ReadOnlySpan<char> varName = exprInfo.Span[..i];
 
@@ -156,12 +159,12 @@ public static class ExprParser
             return;
         }
 
-        VarType varType = memberStorage.GetVariableType(varName);
+        VarType varType = storage.GetVariableType(varName);
 
         if (assignKind == AssignKind.Assign)
         {
             if (varType == VarType.Undefined || varType == result.VariantType)
-                memberStorage.SetValue(varName, result);
+                storage.SetVariant(varName, result, validateOnly);
             else
                 errors?.AddError(exprInfo, 0, $"Cannot assign {result.VariantType} to {varType} '{varName}'.");
 
@@ -180,13 +183,13 @@ public static class ExprParser
             {
                 if (result.VariantType == VarType.String)
                 {
-                    memberStorage.TryGetVariant(varName, out TextVariant value);
-                    memberStorage.SetValue(varName, new(value.Chars.ToString() + result.Chars.ToString()));
+                    storage.TryGetVariant(varName, out TextVariant value);
+                    storage.SetVariant(varName, new(value.Chars.ToString() + result.Chars.ToString()), validateOnly);
                 }
                 else if (result.VariantType == VarType.Float)
                 {
-                    memberStorage.TryGetVariant(varName, out TextVariant value);
-                    memberStorage.SetValue(varName, new(value.Chars.ToString() + result.Float));
+                    storage.TryGetVariant(varName, out TextVariant value);
+                    storage.SetVariant(varName, new(value.Chars.ToString() + result.Float), validateOnly);
                 }
                 else
                 {
@@ -198,8 +201,8 @@ public static class ExprParser
             {
                 if (result.VariantType == VarType.Float)
                 {
-                    memberStorage.TryGetVariant(varName, out TextVariant value);
-                    memberStorage.SetValue(varName, new(value.Float + result.Float));
+                    storage.TryGetVariant(varName, out TextVariant value);
+                    storage.SetVariant(varName, new(value.Float + result.Float), validateOnly);
                 }
                 else
                 {
@@ -221,8 +224,8 @@ public static class ExprParser
                 return;
             }
 
-            memberStorage.TryGetVariant(varName, out TextVariant value);
-            memberStorage.SetValue(varName, new(value.Float - result.Float));
+            storage.TryGetVariant(varName, out TextVariant value);
+            storage.SetVariant(varName, new(value.Float - result.Float), validateOnly);
         }
         else if (assignKind == AssignKind.Mult)
         {
@@ -232,8 +235,8 @@ public static class ExprParser
                 return;
             }
 
-            memberStorage.TryGetVariant(varName, out TextVariant value);
-            memberStorage.SetValue(varName, new(value.Float * result.Float));
+            storage.TryGetVariant(varName, out TextVariant value);
+            storage.SetVariant(varName, new(value.Float * result.Float), validateOnly);
         }
         else if (assignKind == AssignKind.Div)
         {
@@ -246,8 +249,8 @@ public static class ExprParser
             if (result.Float == 0)
                 return;
 
-            memberStorage.TryGetVariant(varName, out TextVariant value);
-            memberStorage.SetValue(varName, new(value.Float / result.Float));
+            storage.TryGetVariant(varName, out TextVariant value);
+            storage.SetVariant(varName, new(value.Float / result.Float), validateOnly);
         }
     }
 
@@ -281,7 +284,7 @@ public static class ExprParser
         ref int parenCount,
         bool isAwait,
         bool typeOnly,
-        IMemberStorage storage,
+        DialogStorage storage,
         List<Error>? errors,
         int minLbp = 0)
     {
@@ -339,7 +342,7 @@ public static class ExprParser
         ref int parenCount,
         bool isAwait,
         bool typeOnly,
-        IMemberStorage storage,
+        DialogStorage storage,
         List<Error>? errors)
     {
         ReadOnlySpan<char> expr = exprInfo.Span;
@@ -485,7 +488,7 @@ public static class ExprParser
             ExprInfo exprInfo,
             bool typeOnly,
             ReadOnlySpan<char> ident,
-            IMemberStorage storage,
+            DialogStorage storage,
             List<Error>? errors)
         {
             if (typeOnly)
@@ -516,11 +519,11 @@ public static class ExprParser
             bool isAwait,
             bool typeOnly,
             ReadOnlySpan<char> methodName,
-            IMemberStorage storage,
+            DialogStorage storage,
             List<Error>? errors)
         {
             ReadOnlySpan<char> expr = exprInfo.Span;
-            FuncDef? funcDef = storage.GetMethodFuncDef(methodName);
+            FuncDef? funcDef = DialogStorage.GetMethodFuncDef(methodName);
 
             if (funcDef == null)
             {
@@ -604,10 +607,12 @@ public static class ExprParser
                     };
                 }
 
+                bool validateOnly = errors != null;
+
                 if (isAwait)
-                    funcValue = storage.CallAsyncMethod(methodName, args.AsSpan()[..funcDef.ArgTypes.Length]);
+                    funcValue = storage.CallAsyncMethod(methodName, args.AsSpan()[..funcDef.ArgTypes.Length], validateOnly);
                 else
-                    funcValue = storage.CallMethod(methodName, args.AsSpan()[..funcDef.ArgTypes.Length]);
+                    funcValue = storage.CallMethod(methodName, args.AsSpan()[..funcDef.ArgTypes.Length], validateOnly);
             }
             finally
             {

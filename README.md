@@ -4,5 +4,6 @@ A free game dialog language I'm making for my personal game framework. Obligator
 
 ## Docs (WIP)
 
+- [API](/docs/api/GameDialog.Runner.md)
 - [Setup](/docs/Setup.md)
 - [Scripts](/docs/Scripts.md)

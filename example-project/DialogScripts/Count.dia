@@ -2,8 +2,9 @@
 [timesTalked = GetTimesTalked("DialogAreaCount")]
 if [timesTalked < 2]
     Devs: This is the first time you've interacted with this dialog.
-    Devs: ^^You can create a method that searches for a node and gets data from it... 
-        like the number times you've interacted with a dialog, for example.^^
+    Devs: ^^You can create a method in [color=Gold]CustomMembers.cs[/color] that searches for a 
+        node and gets data from it...[page]...like the number times you've interacted with a 
+        dialog, for example.^^
     [end]
 else
     Devs: You've talked to me [timesTalked] times!

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -8,14 +9,21 @@ using Godot;
 
 namespace GameDialog.Runner;
 
-public partial class DialogBase
+internal partial class DialogReader
 {
-    protected List<Choice>? CacheChoiceList;
-    protected List<string>? CacheSpeakerList;
-    protected Dictionary<string, string>? CacheHashDict;
+    public DialogReader(Dialog dialog)
+    {
+        _dialog = dialog;
+    }
+
+    public List<Choice>? CacheChoiceList { get; set; }
+    public List<string>? CacheSpeakerList { get; set; }
+    public Dictionary<string, string>? CacheHashDict { get; set; }
 
     private const int EndScript = -2;
     private const int SuspendScript = -1;
+
+    private readonly Dialog _dialog;
     private readonly StringBuilder _sb = new();
     private DialogValidator? _validator;
     private readonly ParserState _state = new();
@@ -47,11 +55,11 @@ public partial class DialogBase
     {
         string text;
 
-        if (!FileAccess.FileExists(path))
+        if (!Godot.FileAccess.FileExists(path))
             return;
 
         // Godot does not allow array pooling, so must use heavier approach
-        using (var fs = FileAccess.Open(path, FileAccess.ModeFlags.Read))
+        using (var fs = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read))
             text = fs.GetAsText();
 
         _state.ReadStringToScript(text, path);
@@ -67,7 +75,7 @@ public partial class DialogBase
         _state.ReadStringToScript(text, string.Empty);
     }
 
-    public void LoadSingleLine(string text)
+    internal void LoadSingleLine(string text)
     {
         Clear();
         _state.Script.Add(SingleLineTitle.AsMemory());
@@ -75,13 +83,27 @@ public partial class DialogBase
     }
 
     /// <summary>
+    /// Loads a script from a path using System.IO
+    /// Faster, but not able to run in exports.
+    /// </summary>
+    /// <param name="filePath">The filepath to read from</param>
+    /// <param name="rootPath">The project's root path</param>
+    public void LoadFromFile(string filePath, string rootPath)
+    {
+        Clear();
+        _state.ReadStringToScript(filePath, rootPath);
+    }
+
+    /// <summary>
     /// Updates Errors with issues.
     /// </summary>
     /// <param name="errors">The error list to populate</param>
-    public void ValidateScript(List<Error> errors, StringBuilder? chart = null)
+    /// <param name="chart">The StringBuilder for generating a chart</param>
+    /// <param name="sw">The StreamWriter for generating translations</param>
+    public void ValidateScript(List<Error> errors, StringBuilder? chart = null, StreamWriter? sw = null)
     {
-        _validator ??= new(_state, DialogBridgeBase.InternalVarDefs, DialogBridgeBase.InternalFuncDefs);
-        _validator.ValidateScript(errors, chart);
+        _validator ??= new(_dialog.DialogStorage, _state);
+        _validator.ValidateScript(errors, chart, sw);
     }
 
     /// <summary>
@@ -94,14 +116,21 @@ public partial class DialogBase
         Resume(next);
     }
 
+    /// <summary>
+    /// Resumes the dialog.
+    /// </summary>
     public void Resume() => Resume(LineIdx + 1);
 
-    public void Resume(int nextIndex)
+    /// <summary>
+    /// Resumes the dialog.
+    /// </summary>
+    /// <param name="nextIndex">The next index to read.</param>
+    internal void Resume(int nextIndex)
     {
         // Next has not been set, so a line must be in progress.
         if (_inDialogLine)
         {
-            OnDialogLineResumed();
+            _dialog.InvokeDialogLineResumed();
             return;
         }
 
@@ -115,10 +144,10 @@ public partial class DialogBase
         }
         catch (Exception) { }
 
-        ScriptEnded?.Invoke(this);
+        _dialog.InvokeScriptEnded();
     }
 
-    protected void EndDialogLine()
+    internal void EndDialogLine()
     {
         _inDialogLine = false;
         Resume();
@@ -196,18 +225,18 @@ public partial class DialogBase
         // }
     }
 
-    private TextVariant ReadExpression(ExprInfo exprInfo)
+    private TextVariant ReadLineExpression(ExprInfo exprInfo)
     {
         if (exprInfo.ExprType == ExprType.Hash)
         {
             CacheHashDict?.Clear();
             Dictionary<string, string> dict = CacheHashDict ?? [];
             ReadHashExpression(exprInfo, dict);
-            OnHash(dict);
+            _dialog.InvokeHashRead(dict);
             return new();
         }
 
-        return ExprParser.Parse(exprInfo, DialogStorage);
+        return ExprParser.Parse(exprInfo, _dialog.DialogStorage);
     }
 
     private int ReadExpressionBlock()
@@ -226,7 +255,7 @@ public partial class DialogBase
             CacheHashDict?.Clear();
             Dictionary<string, string> dict = CacheHashDict ?? [];
             ReadHashExpression(exprInfo, dict);
-            OnHash(dict);
+            _dialog.InvokeHashRead(dict);
             return LineIdx + 1;
         }
 
@@ -236,7 +265,7 @@ public partial class DialogBase
         if (exprType == ExprType.BuiltIn)
             return ReadBuiltInTag(exprInfo);
 
-        ExprParser.Parse(exprInfo, DialogStorage);
+        ExprParser.Parse(exprInfo, _dialog.DialogStorage);
         return exprType == ExprType.Await ? SuspendScript : LineIdx + 1;
     }
 
@@ -293,7 +322,7 @@ public partial class DialogBase
             }
 
             ExprInfo rightExprInfo = new(mem[rightStart..i], 0, 0);
-            TextVariant result = ExprParser.Parse(rightExprInfo, DialogStorage);
+            TextVariant result = ExprParser.Parse(rightExprInfo, _dialog.DialogStorage);
 
             if (result.VariantType == VarType.Undefined)
                 return;
@@ -336,7 +365,7 @@ public partial class DialogBase
                 if (isClosingTag || !isAssignment)
                     return LineIdx + 1;
 
-                TextVariant result = ExprParser.Parse(new(restOfExpr, 0, 0), DialogStorage);
+                TextVariant result = ExprParser.Parse(new(restOfExpr, 0, 0), _dialog.DialogStorage);
 
                 if (result.VariantType != VarType.Float)
                     return LineIdx + 1;
@@ -344,8 +373,8 @@ public partial class DialogBase
                 value = result.Float;
             }
 
-            AutoProceedGlobalEnabled = value != -2;
-            AutoProceedGlobalTimeout = value;
+            _dialog.GlobalAutoProceedEnabled = value != -2;
+            _dialog.GlobalAutoProceedTimeout = value;
             return LineIdx + 1;
         }
         else if (firstToken.SequenceEqual(BuiltIn.END))
@@ -364,19 +393,19 @@ public partial class DialogBase
             if (isClosingTag || !isAssignment)
                 return LineIdx + 1;
 
-            TextVariant result = ExprParser.Parse(new(restOfExpr, 0, 0), DialogStorage);
+            TextVariant result = ExprParser.Parse(new(restOfExpr, 0, 0), _dialog.DialogStorage);
 
             if (result.VariantType != VarType.Float || result.Float < 0)
                 return LineIdx + 1;
 
-            SpeedMultiplier = result.Float;
+            _dialog.GlobalSpeedMultiplier = result.Float;
         }
         else if (firstToken.SequenceEqual(BuiltIn.PAUSE))
         {
             if (isClosingTag || !isAssignment)
                 return LineIdx + 1;
 
-            TextVariant result = ExprParser.Parse(new(restOfExpr, 0, 0), DialogStorage);
+            TextVariant result = ExprParser.Parse(new(restOfExpr, 0, 0), _dialog.DialogStorage);
 
             if (result.VariantType != VarType.Float || result.Float <= 0)
                 return LineIdx + 1;
@@ -402,7 +431,7 @@ public partial class DialogBase
         int charIdx = baseIndent;
         charIdx += "if".Length;
         charIdx = DialogHelpers.GetNextNonWhitespace(line, charIdx) + 1;
-        TextVariant result = ExprParser.Parse(mem, charIdx, DialogStorage);
+        TextVariant result = ExprParser.Parse(mem, charIdx, _dialog.DialogStorage);
         _state.MoveNextLine();
 
         if (result.VariantType == VarType.Bool && result.Bool)
@@ -426,7 +455,7 @@ public partial class DialogBase
             charIdx = DialogHelpers.GetNextNonWhitespace(line, 0);
             charIdx += "else if".Length;
             charIdx = DialogHelpers.GetNextNonWhitespace(line, charIdx) + 1;
-            result = ExprParser.Parse(mem, charIdx, DialogStorage);
+            result = ExprParser.Parse(mem, charIdx, _dialog.DialogStorage);
             _state.MoveNextLine();
 
             if (result.VariantType == VarType.Bool && result.Bool)
@@ -465,7 +494,7 @@ public partial class DialogBase
         CacheChoiceList?.Clear();
         List<Choice> choices = CacheChoiceList ?? [];
         FillChoices(choices);
-        OnChoice(choices);
+        _dialog.InvokeChoiceRead(choices);
         return SuspendScript;
 
         bool IsPartOfEarlierChoiceSet()
@@ -526,7 +555,7 @@ public partial class DialogBase
                     i += "if".Length;
                     i = DialogHelpers.GetNextNonWhitespace(line, i) + 1;
                     ExprInfo.TryGetExprInfo(mem, i, out ExprInfo exprInfo);
-                    TextVariant result = ExprParser.Parse(exprInfo, DialogStorage);
+                    TextVariant result = ExprParser.Parse(exprInfo, _dialog.DialogStorage);
 
                     if (result.VariantType == VarType.Bool)
                         disabled = !result.Bool;
@@ -534,15 +563,15 @@ public partial class DialogBase
                     i = DialogHelpers.GetNextNonWhitespace(line, exprInfo.OffsetEnd + 1);
                 }
 
-                if (TranslationFileType != TranslationFileType.None && _state.RowPrefix.Length > 0)
+                if (Dialog.TranslationFileType != TranslationFileType.None && _state.RowPrefix.Length > 0)
                 {
                     string key = $"{_state.RowPrefix}_Line{lineIdx}";
                     string text;
 
-                    if (TranslationFileType == TranslationFileType.CSV)
-                        text = Tr(key);
+                    if (Dialog.TranslationFileType == TranslationFileType.CSV)
+                        text = TranslationServer.Translate(key);
                     else
-                        text = Tr(mem[i..line.Length].ToString(), key);
+                        text = TranslationServer.Translate(mem[i..line.Length].ToString(), key);
 
                     if (key != text)
                     {
@@ -563,7 +592,7 @@ public partial class DialogBase
                     }
 
                     ExprInfo.TryGetExprInfo(mem, i, out ExprInfo exprInfo);
-                    TextVariant result = ExprParser.Parse(exprInfo, DialogStorage);
+                    TextVariant result = ExprParser.Parse(exprInfo, _dialog.DialogStorage);
                     _sb.Append(line[appendStart..i]);
                     _sb.Append(result.ToString());
                     i = exprInfo.OffsetEnd + 1;
@@ -575,12 +604,11 @@ public partial class DialogBase
 
                 lineIdx++;
 
-                choices.Add(new Choice
-                {
-                    Text = _sb.Length > 0 ? _sb.ToString() : line[appendStart..i].ToString(),
-                    Next = GetChoiceBranchLineIdx(lineIdx, currentIndent),
-                    Disabled = disabled
-                });
+                choices.Add(new Choice(
+                    text: _sb.Length > 0 ? _sb.ToString() : line[appendStart..i].ToString(),
+                    next: GetChoiceBranchLineIdx(lineIdx, currentIndent),
+                    disabled: disabled
+                ));
                 _sb.Clear();
             }
 
@@ -647,16 +675,16 @@ public partial class DialogBase
 
         string text = GetLineText(line, charIdx);
         _inDialogLine = true;
-        OnDialogLineStarted(text, speakerIds);
+        _dialog.InvokeDialogLineStarted(text, speakerIds);
         return SuspendScript;
     }
 
     private string GetLineText(ReadOnlySpan<char> line, int charIdx)
     {
-        if (TranslationFileType == TranslationFileType.CSV && _state.RowPrefix.Length > 0)
+        if (Dialog.TranslationFileType == TranslationFileType.CSV && _state.RowPrefix.Length > 0)
         {
             string key = $"{_state.RowPrefix}_Line{_state.LineIdx}";
-            string translatedText = Tr(key);
+            string translatedText = TranslationServer.Translate(key);
 
             if (key != translatedText)
                 return translatedText;
@@ -696,11 +724,11 @@ public partial class DialogBase
 
         string GetTextOrPotTranslation(string text)
         {
-            if (TranslationFileType != TranslationFileType.POT || _state.RowPrefix.Length == 0)
+            if (Dialog.TranslationFileType != TranslationFileType.POT || _state.RowPrefix.Length == 0)
                 return text;
 
             string key = $"{_state.RowPrefix}_Line{_state.LineIdx}";
-            string translatedText = Tr(text, key);
+            string translatedText = TranslationServer.Translate(text, key);
 
             if (!translatedText.SequenceEqual(text))
                 return translatedText;
@@ -709,8 +737,11 @@ public partial class DialogBase
         }
     }
 
-    public string ParseEventsFromText(string text, List<TextEvent> textEvents)
+    internal string ParseEventsFromText(string text, List<TextEvent> textEvents)
     {
+        if (text.Length == 0)
+            return text;
+
         ReadOnlyMemory<char> mem = text.AsMemory();
         ReadOnlySpan<char> line = text.AsSpan();
         int charIdx = 0;
@@ -756,11 +787,11 @@ public partial class DialogBase
 
             if (exprType == ExprType.Evaluation)
             {
-                VarType varType = ExprParser.GetVarType(exprInfo, DialogStorage);
+                VarType varType = ExprParser.GetVarType(exprInfo, _dialog.DialogStorage);
 
                 if (varType is VarType.Float or VarType.String)
                 {
-                    TextVariant result = ExprParser.Parse(exprInfo, DialogStorage);
+                    TextVariant result = ExprParser.Parse(exprInfo, _dialog.DialogStorage);
                     _sb.Append(result.ToString());
                     return;
                 }
@@ -827,5 +858,288 @@ public partial class DialogBase
         }
 
         return EndScript;
+    }
+
+    /// <summary>
+    /// Adjusts TextEvent indices based on comparing the text before and after setting the RichTextLabel.
+    /// An alternative to setting the RichTextLabel.Text twice.
+    /// </summary>
+    internal static void AdjustEventIndices(ReadOnlySpan<char> eventParsedText, ReadOnlySpan<char> displayedText, List<TextEvent> events)
+    {
+        if (events == null || events.Count == 0)
+            return;
+
+        int oLen = eventParsedText.Length;
+        int pLen = displayedText.Length;
+        int oPos = 0;
+        int pPos = 0;
+        int eventIdx = 0;
+        int offset = 0;
+
+        while (oPos < oLen)
+        {
+            if (!TryAdjustEvent(events, ref eventIdx, oPos, offset))
+                return;
+
+            if (eventParsedText[oPos] != '[')
+            {
+                oPos++;
+                pPos++;
+                continue;
+            }
+
+            int tagStart = oPos;
+            int tagEnd = GetBracketEnd(eventParsedText, oLen, tagStart);
+
+            // Doesn't close
+            if (tagEnd >= oLen)
+            {
+                oPos++;
+                pPos++;
+                continue;
+            }
+
+            int tagLength = tagEnd + 1 - tagStart;
+            ReadOnlySpan<char> oldTag = eventParsedText[tagStart..(tagEnd + 1)];
+
+            // Same text, skip
+            if (pPos + tagLength < pLen && oldTag.SequenceEqual(displayedText[pPos..(pPos + tagLength)]))
+            {
+                oPos += tagLength;
+                pPos += tagLength;
+                continue;
+            }
+
+            int tagNameStart = tagStart + 1;
+
+            if (eventParsedText[tagNameStart] == '/')
+            {
+                offset += tagLength;
+                oPos += tagLength;
+                pPos++;
+                continue;
+            }
+
+            int tagNameEnd = DialogHelpers.GetNextNonIdentifier(eventParsedText, tagNameStart);
+            ReadOnlySpan<char> tagName = eventParsedText[tagNameStart..tagNameEnd];
+
+            if (tagName.SequenceEqual("img"))
+            {
+                int closeTagStart = tagEnd + 1;
+
+                while (closeTagStart < oLen)
+                {
+                    if (eventParsedText[closeTagStart] != '[')
+                    {
+                        closeTagStart++;
+                        continue;
+                    }
+
+                    if (eventParsedText[closeTagStart..].StartsWith("[/img]"))
+                    {
+                        int tagsLength = closeTagStart + "[/img]".Length - tagStart;
+                        oPos += tagsLength;
+                        int imgOffset = IsImgTagValid(eventParsedText[oPos..], displayedText[pPos..]) ? 1 : 0;
+                        offset += tagsLength - imgOffset;
+                        pPos += 1 + imgOffset;
+                        break;
+                    }
+                }
+
+                continue;
+            }
+
+            offset += tagLength;
+            oPos += tagLength;
+
+            if (BBCode.IsReplaceTag(tagName))
+            {
+                offset--;
+                pPos++;
+            }
+        }
+
+        TryAdjustEvent(events, ref eventIdx, oPos, offset);
+
+        static bool TryAdjustEvent(List<TextEvent> events, ref int eventIdx, int oPos, int offset)
+        {
+            TextEvent textEvent = events[eventIdx];
+
+            while (textEvent.TextIndex == oPos)
+            {
+                ReadOnlySpan<char> span = textEvent.Tag.Span;
+                int pOffset = span.StartsWith(BuiltIn.PROMPT) ? 1 : 0;
+                events[eventIdx] = textEvent with { TextIndex = oPos - offset - pOffset };
+                eventIdx++;
+
+                if (eventIdx >= events.Count)
+                    return false;
+
+                textEvent = events[eventIdx];
+            }
+
+            return true;
+        }
+
+        static int GetBracketEnd(ReadOnlySpan<char> oldText, int oLen, int start)
+        {
+            int end = start;
+            bool inQuote = false;
+
+            while (end < oLen)
+            {
+                if (oldText[end] == ']' && !inQuote)
+                    break;
+
+                if (oldText[end] == '"')
+                {
+                    if (!inQuote)
+                        inQuote = true;
+                    else if (oldText[end - 1] != '\\')
+                        inQuote = false;
+                }
+
+                end++;
+            }
+
+            return end;
+        }
+
+        // img tag only replaced with a space when valid
+        static bool IsImgTagValid(ReadOnlySpan<char> oldText, ReadOnlySpan<char> parsedText)
+        {
+            int oldLastSpace = 0;
+            int pLastSpace = 0;
+
+            while (oldLastSpace < oldText.Length && oldText[oldLastSpace] == ' ')
+                oldLastSpace++;
+
+            while (pLastSpace < parsedText.Length && parsedText[pLastSpace] == ' ')
+                pLastSpace++;
+
+            return pLastSpace > oldLastSpace;
+        }
+    }
+
+    internal bool TryEvaluateExpression(ReadOnlyMemory<char> text)
+    {
+        try
+        {
+            ExprInfo exprInfo = new(text, 0, 0);
+            TextVariant result = ReadLineExpression(exprInfo);
+            return result.VariantType != VarType.Undefined;
+        }
+        catch (Exception) { }
+
+        return false;
+    }
+
+    internal bool TryParseBuiltInEvent(TextEvent textEvent, out EventType eventType, out float parameter)
+    {
+        eventType = EventType.Undefined;
+        parameter = 0;
+        ExprInfo exprInfo = new(textEvent.Tag, 0, 0);
+        ReadOnlySpan<char> expr = exprInfo.Span;
+
+        if (exprInfo.ExprType != ExprType.BuiltIn)
+            return false;
+
+        int start = 0;
+        bool isClosingTag = false;
+
+        if (expr[start] == '/')
+        {
+            isClosingTag = true;
+            start++;
+        }
+
+        int end = DialogHelpers.GetNextNonIdentifier(expr, start);
+        ReadOnlySpan<char> tagKey = expr[start..end];
+        start = DialogHelpers.GetNextNonWhitespace(expr, end);
+        ReadOnlySpan<char> tagValue = expr[start..];
+        bool isSingleToken = tagValue.IsWhiteSpace();
+        bool isAssignment = tagValue.Length >= 2 && tagValue[0] == '=' && tagValue[1] != '=';
+
+        if (isAssignment)
+        {
+            int i = DialogHelpers.GetNextNonWhitespace(tagValue, 1);
+            start += i;
+            tagValue = expr[start..];
+        }
+
+        if (tagKey.SequenceEqual(BuiltIn.AUTO))
+        {
+            if (isAssignment)
+            {
+                ExprInfo autoExpr = new(exprInfo.Memory[start..], 0, 0);
+                TextVariant result = ExprParser.Parse(autoExpr, _dialog.DialogStorage);
+
+                if (isClosingTag || result.VariantType != VarType.Float || result.Float < 0)
+                    return false;
+
+                eventType = EventType.Auto;
+                parameter = result.Float;
+                return true;
+            }
+
+            if (!isSingleToken)
+                return false;
+
+            eventType = EventType.Auto;
+            parameter = isClosingTag ? -2 : -1;
+            return true;
+        }
+        else if (tagKey.SequenceEqual(BuiltIn.PAUSE))
+        {
+            if (!isAssignment || isClosingTag)
+                return false;
+
+            ExprInfo pauseExpr = new(exprInfo.Memory[start..], 0, 0);
+            TextVariant result = ExprParser.Parse(pauseExpr, _dialog.DialogStorage);
+
+            if (result.VariantType != VarType.Float || result.Float <= 0)
+                return false;
+
+            eventType = EventType.Pause;
+            parameter = result.Float;
+            return true;
+        }
+        else if (tagKey.SequenceEqual(BuiltIn.SPEED))
+        {
+            if (isAssignment)
+            {
+                if (isClosingTag)
+                    return false;
+
+                ExprInfo speedExpr = new(exprInfo.Memory[start..], 0, 0);
+                TextVariant result = ExprParser.Parse(speedExpr, _dialog.DialogStorage);
+
+                if (result.VariantType != VarType.Float || result.Float <= 0)
+                    return false;
+
+                eventType = EventType.Speed;
+                parameter = result.Float;
+                return true;
+            }
+
+            if (!isClosingTag || !isSingleToken)
+                return false;
+
+            eventType = EventType.Speed;
+            parameter = 1;
+            return true;
+        }
+        else if (tagKey.SequenceEqual(BuiltIn.SCROLL))
+        {
+            eventType = EventType.Scroll;
+            return true;
+        }
+        else if (tagKey.SequenceEqual(BuiltIn.PROMPT))
+        {
+            eventType = EventType.Prompt;
+            return true;
+        }
+
+        return false;
     }
 }

@@ -18,8 +18,10 @@ import { ChildProcess, spawn } from 'child_process';
 const serverPath = "out/server/GameDialog.Server.dll";
 const extensionId = "gamedialog";
 
-interface NotificationRequest { isCSV: boolean }
-interface NotificationResponse { data: Array<string>; }
+interface GenerateTranslationRequest { isCSV: boolean }
+interface GenerateTranslationResponse { data: Array<string>; }
+interface UpdateMembersRequest { }
+interface UpdateMembersResponse { }
 
 let client: LanguageClient;
 let server: ChildProcess;
@@ -27,6 +29,7 @@ let server: ChildProcess;
 export function activate(context: ExtensionContext) {
     commands.registerCommand('extension.generateCSV', () => generateTranslation(true));
     commands.registerCommand('extension.generatePOT', () => generateTranslation(false));
+    commands.registerCommand('extension.updateMembers', () => updateMembers());
 
     let configuration = workspace.getConfiguration(extensionId);
     let enable = configuration.get("enabled");
@@ -59,7 +62,7 @@ async function runServer(context: ExtensionContext, configuration: WorkspaceConf
             throw new Error(`Server launch failure: no file exists at ${serverPath}`);
 
         server = spawn(languageServerExe, [fullServerPath]);
-        window.showInformationMessage(`Started server ${serverPath} - PID ${server.pid}`);
+        window.showInformationMessage(`Started GameDialog server - PID ${server.pid}`);
         return server;
     };
     let clientOptions: LanguageClientOptions = {
@@ -118,8 +121,8 @@ async function generateTranslation(isCSV: boolean): Promise<void> {
     }
 
     try {
-        const params: NotificationRequest = { isCSV };
-        const result = await client.sendRequest<NotificationResponse>(`dialog/generateTranslation`, params);
+        const params: GenerateTranslationRequest = { isCSV };
+        const result = await client.sendRequest<GenerateTranslationResponse>(`dialog/generateTranslation`, params);
 
         if (result.data.length > 0) {
             let errorText = result.data.join(os.EOL);
@@ -129,6 +132,17 @@ async function generateTranslation(isCSV: boolean): Promise<void> {
         }
     } catch (err) {
         console.error(err);
+    }
+}
+
+async function updateMembers(): Promise<void> {
+    try {
+        const params: UpdateMembersRequest = {};
+        await client.sendRequest<UpdateMembersResponse>(`dialog/updateMembers`, params);
+        window.showInformationMessage(`Dialog members updated successfully.`);
+    } catch (err) {
+        console.error(err);
+        window.showErrorMessage(`The dialog members could not be updated. Please check for problems like duplicate members.`);
     }
 }
 
