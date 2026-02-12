@@ -753,7 +753,7 @@ internal partial class DialogReader
             charIdx++;
         }
 
-        if (_sb.Length == 0)
+        if (_sb.Length == 0 && appendStart == 0)
             return text;
 
         _sb.Append(line[appendStart..]);

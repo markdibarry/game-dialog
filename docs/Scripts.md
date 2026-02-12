@@ -34,6 +34,15 @@ Stalone: ^^It all started on a Fall night a couple
     everyone seemed tense.^^
 ```
 
+```gamedialog
+--PretzelExposition--
+Stalone: ^^
+    Soft pretzels come in many shapes and sizes. 
+    Super Preztels are the classic variety, but 
+    a fresh-baked, buttery Amish-style is great too.
+    ^^
+```
+
 ## Comments
 
 You can add comments using two forward slashes `//`:
@@ -196,7 +205,6 @@ Stalone: What's your favorite breakfast food?
 
 --Waffles--
 Stalone: Waffles are my favorite too!
-[end]
 
 --Pancakes--
 Stalone: Pancakes are good, but have you tried waffles?
@@ -227,7 +235,7 @@ to make a partial class with the `[DialogBridge]` attribute. The source generato
 workspace for any matching class, and then grab all compatible methods and properties inside, 
 generating logic so that they can be referenced at runtime.
 
-All methods and properties must be public and unique across all classes the `DialogBridge` 
+All methods and properties must be public and unique across all classes with the `DialogBridge` 
 attribute. Compatible types for properties and method parameters include `string`, `bool`, and 
 `float`. Method return types include `string`, `bool`, `float`, `void`, `Task`, and `ValueTask`.
 

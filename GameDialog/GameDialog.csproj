@@ -15,14 +15,14 @@
     <IlcDisableReflection>true</IlcDisableReflection>
 
     <Title>GameDialog</Title>
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
     <Description>A game dialog library for use with Godot.</Description>
     <Copyright>© 2026 Mark DiBarry</Copyright>
     <Authors>Mark DiBarry</Authors>
     <Company>Mark DiBarry</Company>
 
     <PackageId>GameDialog</PackageId>
-    <PackageReleaseNotes>GameDialog release.</PackageReleaseNotes>
+    <PackageReleaseNotes>Line tag append fix.</PackageReleaseNotes>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>dialog;generator;godot;gamedev</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -30,7 +30,7 @@
     <PackageProjectUrl>https://github.com/markdibarry/game-dialog</PackageProjectUrl>
 
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>git@github.com:markdibarry/game-dialog.git</RepositoryUrl>
+    <RepositoryUrl>https://github.com/markdibarry/game-dialog.git</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

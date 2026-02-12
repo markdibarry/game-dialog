@@ -208,7 +208,7 @@ public void Resume()
 
 ### <a id="GameDialog_Runner_Dialog_Resume_System_Int32_"></a> Resume\(int\)
 
-Resumes the dialog.
+Resumes the dialog to the provided line index.
 
 ```csharp
 public void Resume(int nextIndex)

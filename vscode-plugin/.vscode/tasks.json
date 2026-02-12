@@ -2,26 +2,14 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "buildDebug",
+            "command": "npm",
+            "args": ["run", "buildDebug"]
+        },
+        {
             "label": "build",
-            "dependsOn": [
-                "build-extension",
-                "build-server"
-            ],
-            "dependsOrder": "parallel"
-        },
-        {
-            "label": "build-extension",
             "command": "npm",
-            "args": [ "run", "buildExtension"],
-            "type": "shell",
-            "problemMatcher": "$tsc-watch"
+            "args": ["run", "build"]
         },
-        {
-            "label": "build-server",
-            "command": "npm",
-            "args": [ "run", "buildServer"],
-            "type": "shell",
-            "problemMatcher": "$msCompile"
-        }
     ]
 }

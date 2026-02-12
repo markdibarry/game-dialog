@@ -46,6 +46,18 @@ public float AutoProceedTimeout { get; set; }
 
  [float](https://learn.microsoft.com/dotnet/api/system.single)
 
+### <a id="GameDialog_Runner_DialogTextLabel_CachedText"></a> CachedText
+
+Gets a cached RichTextLabel.Text.
+
+```csharp
+public string CachedText { get; }
+```
+
+#### Property Value
+
+ [string](https://learn.microsoft.com/dotnet/api/system.string)
+
 ### <a id="GameDialog_Runner_DialogTextLabel_CharsPerSecond"></a> CharsPerSecond
 
 The speed, in characters per second, at which characters are written.
@@ -82,6 +94,18 @@ public bool IsSpeedUpEnabled { get; set; }
 #### Property Value
 
  [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
+
+### <a id="GameDialog_Runner_DialogTextLabel_PauseTimer"></a> PauseTimer
+
+The amount of time left, in seconds, before the next char is written.
+
+```csharp
+public double PauseTimer { get; set; }
+```
+
+#### Property Value
+
+ [double](https://learn.microsoft.com/dotnet/api/system.double)
 
 ### <a id="GameDialog_Runner_DialogTextLabel_ResetButton"></a> ResetButton
 

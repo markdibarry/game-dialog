@@ -1,3 +1,16 @@
---Intro--
-Devs: Thanks for checking out my dialog system! This is the simplest script you can make!
-Devs: Take a look in the DialogScripts folder to follow along!
+// --Intro--
+// Devs: Thanks for checking out my dialog system! This is the simplest script you can make!
+// Devs: Take a look in the DialogScripts folder to follow along!
+
+--Greeting--
+Stalone: What's your favorite breakfast food?
+? Waffles.
+    [goto Waffles]
+? Pancakes.
+    [goto Pancakes]
+
+--Waffles--
+Stalone: Waffles are my favorite too!
+
+--Pancakes--
+Stalone: Pancakes are good, but have you tried waffles?
