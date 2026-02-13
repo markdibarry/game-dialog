@@ -89,9 +89,7 @@ public partial class TextDocumentHandler : TextDocumentSyncHandlerBase
     {
         return new TextDocumentSyncRegistrationOptions()
         {
-            DocumentSelector = new(
-                new() { Pattern = "**/*.dia" },
-                new() { Pattern = "**/DialogBridge.cs" }),
+            DocumentSelector = new TextDocumentSelector(new TextDocumentFilter() { Pattern = "**/*.dia" }),
             Change = TextDocumentSyncKind.Full,
             Save = new SaveOptions() { IncludeText = true }
         };
