@@ -6,6 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-      <PackageReference Include="GameDialog" Version="1.0.0" />
+      <PackageReference Include="GameDialog" Version="0.0.2" />
   </ItemGroup>
 </Project>
