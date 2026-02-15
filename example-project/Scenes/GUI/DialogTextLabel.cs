@@ -321,9 +321,9 @@ public partial class DialogTextLabel : RichTextLabel
         _textEventIndex = 0;
         VisibleCharacters = 0;
 
-        if (newText != null && Dialog != null)
+        if (newText != null)
         {
-            string eventParsedText = Dialog.ParseEventsFromText(newText, _textEvents);
+            string eventParsedText = Dialog?.ParseEventsFromText(newText, _textEvents) ?? newText;
             Text = eventParsedText;
             string displayedText = GetParsedText();
             CachedText = displayedText;
@@ -339,7 +339,7 @@ public partial class DialogTextLabel : RichTextLabel
         PauseTimer = 0;
         AutoProceedEnabled = Dialog?.GlobalAutoProceedEnabled ?? false;
         AutoProceedTimeout = Dialog?.GlobalAutoProceedTimeout ?? 0;
-        SpeedMultiplier = Dialog?.GlobalSpeedMultiplier ?? 0;
+        SpeedMultiplier = Dialog?.GlobalSpeedMultiplier ?? 1;
     }
 
     /// <summary>
