@@ -265,11 +265,11 @@ Stalone: My favorite food is [favoriteFood]!
 ### Passing members
 
 If you have some data you want available inside your script, but don't want to define it as a 
-global member, you can pass it in by setting the value on the dialog's `DialogStorage` object.
+global member, you can pass it in by setting the value on the dialog runner's `DialogStorage` object.
 
 ```cs
-dialog.DialogStorage.SetValue("songName", "Bulls On Parade");
-dialog.Start();
+dialogRunner.DialogStorage.SetValue("songName", "Bulls On Parade");
+dialogRunner.Start();
 ```
 
 Then in your dialog script, declare it as a passed-in value by providing the type and the variable 

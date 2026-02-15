@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using GameDialog.Runner;
+using GameCore.Dialog;
 using Godot;
 
 namespace ExampleProject;
@@ -22,7 +22,7 @@ public partial class CustomMembers
 
     public async ValueTask Shake()
     {
-        if (Dialog.Context is not DialogBox dialogBox)
+        if (DialogRunner.Context is not DialogBox dialogBox)
             return;
 
         Vector2 original = dialogBox!.Position;

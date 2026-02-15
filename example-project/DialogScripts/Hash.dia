@@ -1,5 +1,5 @@
 --HashTags--
-Devs: Using the Dialog class, you can subscribe to the [color=Gold]HashRead[/color] event.
+Devs: Using the [color=Gold]DialogRunner[/color] class, you can subscribe to the [color=Gold]HashRead[/color] event.
 Devs: It gets invoked when your script encounters a hash tag like [color=Gold][lb]#MyTag[rb][/color].
 Devs: ^^You can assign a corresponding value as well, and add many to one block as long as they're 
     separated by white space. [color=Gold][lb]#MyTag #Another=4[rb][/color]^^

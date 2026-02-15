@@ -15,7 +15,7 @@ import {
 import * as os from 'os';
 import * as fs from 'fs';
 import { ChildProcess, spawn } from 'child_process';
-const serverPath = "out/server/GameDialog.Server.dll";
+const serverPath = "out/server/GameCore.Dialog.Server.dll";
 const extensionId = "gamedialog";
 
 interface GenerateTranslationRequest { isCSV: boolean }

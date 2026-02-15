@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using GameDialog.Runner;
+using GameCore.Dialog;
 using Godot;
 
 namespace ExampleProject;
@@ -39,6 +39,6 @@ public partial class OptionBox : MarginContainer
         DialogBox dialogBox = DialogBox;
         QueueFree();
         dialogBox.ProcessMode = ProcessModeEnum.Inherit;
-        dialogBox.Dialog.Resume(next);
+        dialogBox.DialogRunner.Resume(next);
     }
 }

@@ -4,9 +4,9 @@ A free game dialog language extension I'm making for my personal game framework.
 
 ## Docs
 
-- [API](https://github.com/markdibarry/game-dialog/blob/main/docs/api/GameDialog.Runner.md)
-- [Setup](https://github.com/markdibarry/game-dialog/blob/main/docs/Setup.md)
-- [Scripts](https://github.com/markdibarry/game-dialog/blob/main/docs/Scripts.md)
+- [API](https://github.com/markdibarry/dialog/blob/main/docs/api/GameCore.Dialog.md)
+- [Setup](https://github.com/markdibarry/dialog/blob/main/docs/Setup.md)
+- [Scripts](https://github.com/markdibarry/dialog/blob/main/docs/Scripts.md)
 
 ## Requirements
 

@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using GameDialog.Runner;
+using GameCore.Dialog;
 using Godot;
 
 namespace ExampleProject;
@@ -12,7 +12,7 @@ public partial class DialogBox : MarginContainer
 
     public int OptionColumns { get; private set; } = 1;
 
-    public Dialog Dialog { get; set; } = null!;
+    public DialogRunner DialogRunner { get; set; } = null!;
     public DialogTextLabel DialogText { get; set; } = null!;
     public PanelContainer NameContainer { get; set; } = null!;
     public Label NameLabel { get; set; } = null!;
@@ -27,13 +27,13 @@ public partial class DialogBox : MarginContainer
         NextArrow = GetNode<MarginContainer>("%NextArrow");
         ClackSound = GetNode<AudioStreamPlayer>("ClackSound");
 
-        Dialog = new(this);
-        Dialog.DialogLineStarted += OnDialogLineStarted;
-        Dialog.DialogLineResumed += OnDialogLineResumed;
-        Dialog.ChoiceRead += OnChoiceRead;
-        Dialog.HashRead += OnHashRead;
+        DialogRunner = new(this);
+        DialogRunner.DialogLineStarted += OnDialogLineStarted;
+        DialogRunner.DialogLineResumed += OnDialogLineResumed;
+        DialogRunner.ChoiceRead += OnChoiceRead;
+        DialogRunner.HashRead += OnHashRead;
         DialogText = GetNode<DialogTextLabel>("%DialogText");
-        DialogText.Dialog = Dialog;
+        DialogText.DialogRunner = DialogRunner;
         DialogText.FinishedWriting += OnFinishedWriting;
         DialogText.CharWritten += OnCharWritten;
     }
@@ -137,7 +137,7 @@ public partial class DialogBox : MarginContainer
         if (!DialogText.IsComplete())
             DialogText.WriteNextPage();
         else
-            Dialog.EndDialogLine();
+            DialogRunner.EndDialogLine();
     }
 
     private void OnFinishedWriting()

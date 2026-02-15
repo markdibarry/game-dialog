@@ -1,4 +1,4 @@
-using GameDialog.Runner;
+using GameCore.Dialog;
 using Godot;
 
 namespace ExampleProject;
@@ -54,15 +54,15 @@ public partial class DialogArea : Area2D
         PackedScene packedScene = GD.Load<PackedScene>("./Scenes/GUI/DialogBox.tscn");
         DialogBox dialogBox = packedScene.Instantiate<DialogBox>();
         Game.Root.GUI.AddChild(dialogBox);
-        dialogBox.Dialog.ScriptEnded += RemoveDialog;
-        dialogBox.Dialog.Load(DialogPath);
+        dialogBox.DialogRunner.ScriptEnded += RemoveDialog;
+        dialogBox.DialogRunner.Load(DialogPath);
         TimesTalked++;
-        dialogBox.Dialog.Start();
+        dialogBox.DialogRunner.Start();
     }
 
-    public static void RemoveDialog(Dialog dialog)
+    public static void RemoveDialog(DialogRunner dialogRunner)
     {
-        dialog.Context.QueueFree();
+        dialogRunner.Context.QueueFree();
         Game.Root.TestScene.SetDeferred(Node.PropertyName.ProcessMode, (int)ProcessModeEnum.Inherit);
     }
 }

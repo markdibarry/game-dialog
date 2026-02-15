@@ -4,7 +4,7 @@
     "description": "A game dialog language extension.",
     "publisher": "markdibarry",
     "icon": "icon.png",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "repository": {
         "type": "git",
         "url": "https://github.com/markdibarry/game-dialog.git"
@@ -104,11 +104,11 @@
     "scripts": {
         "vscode:prepublish_debug": "npm run buildDebug",
         "buildDebug": "npm run buildServerDebug && npm run buildExtensionDebug",
-        "buildServerDebug": "dotnet publish -c Debug -o out/server ./../game-dialog/GameDialog.Server/GameDialog.Server.csproj",
+        "buildServerDebug": "dotnet publish -c Debug -o out/server ./../game-dialog/GameCore.Dialog.Server/GameCore.Dialog.Server.csproj",
         "buildExtensionDebug": "tsc -p ./tsconfig.json",
         "vscode:prepublish": "npm run build",
         "build": "npm run buildServer && npm run buildExtension",
-        "buildServer": "dotnet publish -c Release -o out/server ./../game-dialog/GameDialog.Server/GameDialog.Server.csproj",
+        "buildServer": "dotnet publish -c Release -o out/server ./../game-dialog/GameCore.Dialog.Server/GameCore.Dialog.Server.csproj",
         "buildExtension": "tsc -p ./tsconfig.json && npm run bundleExtension",
         "bundleExtension": "esbuild ./out/src/extension.js --bundle --platform=node --target=node18 --outfile=./out/src/extension.js --allow-overwrite --external:vscode"
     },
